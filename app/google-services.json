@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "520421140726",
+    "project_id": "finan-destiny",
+    "storage_bucket": "finan-destiny.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:520421140726:android:38a2f7c23185fb24fae4d7",
+        "android_client_info": {
+          "package_name": "com.devil.finaldestiny"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAl5WeqI0qVPASrWL3Vu-GVPINyTZNOjTU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
