@@ -2,13 +2,11 @@ package com.devil.finaldestiny.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Shield
@@ -17,9 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devil.finaldestiny.model.HostEarnings
@@ -51,7 +47,7 @@ fun CreatorMonetizationScreen(
 
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier
             .fillMaxSize()
             .background(PrimaryGradient)
@@ -59,10 +55,11 @@ fun CreatorMonetizationScreen(
         // Header
         item {
             Text("CREATOR MONETIZATION & PAYOUTS", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MetallicGold, letterSpacing = 1.sp)
+            Spacer(modifier = Modifier.height(4.dp))
             Text("Official 25% Net Revenue Share & Bank Verified Settlement", fontSize = 11.sp, color = LightGold)
         }
 
-        // Host Eligibility Progress Checklist (PRD Section 7.1)
+        // Module 1: Host Eligibility Criteria
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = CardBackground),
@@ -70,12 +67,11 @@ fun CreatorMonetizationScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .border(1.dp, CrimsonVelvet, RoundedCornerShape(20.dp))
-                    .padding(14.dp)
+                    .padding(16.dp)
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("1. Host Eligibility Criteria", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
 
-                    // 100 Followers Check
                     Row(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
@@ -94,7 +90,6 @@ fun CreatorMonetizationScreen(
                         Text("$userFollowers / 100", fontSize = 12.sp, color = MetallicGold, fontWeight = FontWeight.Bold)
                     }
 
-                    // Biometric Selfie Liveness Check
                     Row(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
@@ -108,7 +103,6 @@ fun CreatorMonetizationScreen(
                         Text("VERIFIED 🛡️", fontSize = 11.sp, color = LiveIndicatorGreen, fontWeight = FontWeight.Bold)
                     }
 
-                    // Government Aadhaar / PAN KYC Status
                     Row(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically,
@@ -135,7 +129,7 @@ fun CreatorMonetizationScreen(
             }
         }
 
-        // 25% Net Creator Revenue Model breakdown (PRD Section 7.2)
+        // Module 2: 25% Net Creator Revenue Model Breakdown
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = WineRedMedium),
@@ -143,11 +137,11 @@ fun CreatorMonetizationScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .border(1.dp, MetallicGold, RoundedCornerShape(20.dp))
-                    .padding(14.dp)
+                    .padding(16.dp)
             ) {
                 Column {
                     Text("2. 25% Net Creator Revenue Model", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
                     Row(
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -164,13 +158,13 @@ fun CreatorMonetizationScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text("💡 Remaining ₹75.00 (75%) covers streaming bandwidth, AI computer vision servers & payment gateway fees.", fontSize = 10.sp, color = LightGold.copy(0.8f))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("💡 Remaining ₹75.00 (75%) covers streaming bandwidth, AI computer vision servers & payment gateway fees.", fontSize = 10.sp, color = LightGold.copy(0.85f))
                 }
             }
         }
 
-        // Aadhaar & PAN KYC Submission Form
+        // Module 3: Aadhaar & PAN KYC Submission Form
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = CardBackground),
@@ -178,9 +172,9 @@ fun CreatorMonetizationScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .border(1.dp, CrimsonVelvet, RoundedCornerShape(20.dp))
-                    .padding(14.dp)
+                    .padding(16.dp)
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("3. Government KYC Document Submission", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
 
                     OutlinedTextField(
@@ -213,7 +207,7 @@ fun CreatorMonetizationScreen(
                     Button(
                         onClick = { onSubmitKyc(aadhaarInput, panInput, legalNameInput) },
                         colors = ButtonDefaults.buttonColors(containerColor = MetallicGold),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().height(48.dp)
                     ) {
                         Text("Submit Identity Documents for Validation", color = WineRedDark, fontWeight = FontWeight.Bold)
                     }
@@ -221,7 +215,7 @@ fun CreatorMonetizationScreen(
             }
         }
 
-        // Private Host Earnings Dashboard (Biometric / Passcode Protected) (PRD Section 7.3)
+        // Module 4: Private Host Earnings Dashboard & Payout Mechanics
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = CardBackground),
@@ -229,7 +223,7 @@ fun CreatorMonetizationScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .border(1.5.dp, DarkGold, RoundedCornerShape(20.dp))
-                    .padding(14.dp)
+                    .padding(16.dp)
             ) {
                 Column {
                     Row(
@@ -241,12 +235,12 @@ fun CreatorMonetizationScreen(
                         Icon(Icons.Default.Lock, contentDescription = null, tint = MetallicGold, modifier = Modifier.size(18.dp))
                     }
 
-                    Spacer(modifier = Modifier.height(10.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     if (!isDashboardUnlocked) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                             Text("🔒 Restricted Visibility: Enter Host Passcode / Biometric Auth to view financial ledger:", fontSize = 11.sp, color = LightGold)
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
                             OutlinedTextField(
                                 value = passcodeAttempt,
                                 onValueChange = { passcodeAttempt = it },
@@ -257,7 +251,7 @@ fun CreatorMonetizationScreen(
                             if (passcodeError != null) {
                                 Text(passcodeError!!, color = HeartRed, fontSize = 11.sp)
                             }
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
                             Button(
                                 onClick = {
                                     if (passcodeAttempt == "1234" || passcodeAttempt.isBlank()) {
@@ -272,8 +266,7 @@ fun CreatorMonetizationScreen(
                             }
                         }
                     } else {
-                        // Unlocked Host Financial Ledger
-                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Row(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 modifier = Modifier.fillMaxWidth()
@@ -332,7 +325,7 @@ fun CreatorMonetizationScreen(
                                     payoutResultMsg = onRequestPayout(amt, selectedMethod, upiOrAccountInput)
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = LiveIndicatorGreen),
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier.fillMaxWidth().height(48.dp)
                             ) {
                                 Text("Execute Bank Payout Request 💸", color = WineRedDark, fontWeight = FontWeight.Bold)
                             }
@@ -349,6 +342,10 @@ fun CreatorMonetizationScreen(
                     }
                 }
             }
+        }
+
+        item {
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }

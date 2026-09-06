@@ -4,10 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -40,10 +40,13 @@ fun PrimaryDashboardScreen(
     var selectedLanguage by remember { mutableStateOf("English") }
     var cacheSizeMb by remember { mutableStateOf(42) }
 
+    val scrollState = rememberScrollState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(PrimaryGradient)
+            .verticalScroll(scrollState)
             .padding(16.dp)
     ) {
         // User Profile Header Card
@@ -104,20 +107,17 @@ fun PrimaryDashboardScreen(
             letterSpacing = 1.sp
         )
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Modular Tile Grid Matrix (PRD Section 3.1)
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
+        // Grid Row 1: Find Match & Who Liked
+        Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.fillMaxWidth()
         ) {
-            // Tile 1: Find Your Match (Swipe deck launcher)
-            item {
+            Box(modifier = Modifier.weight(1f)) {
                 DashboardGridTile(
                     title = "FIND YOUR MATCH",
-                    subtitle = "Swipe dating discovery deck",
+                    subtitle = "Swipe dating deck",
                     icon = "🔥",
                     badge = "NEW",
                     gradient = Brush.linearGradient(listOf(WineRedMedium, CrimsonVelvet)),
@@ -125,8 +125,7 @@ fun PrimaryDashboardScreen(
                 )
             }
 
-            // Tile 2: Who Liked / Who Views (Blurred cards)
-            item {
+            Box(modifier = Modifier.weight(1f)) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = CardBackground),
                     shape = RoundedCornerShape(18.dp),
@@ -143,13 +142,12 @@ fun PrimaryDashboardScreen(
                             Text("14 Views", fontSize = 10.sp, color = LightGold.copy(0.7f))
                         }
 
-                        // Blurred preview cards representation
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            listOf("P1", "P2", "P3").forEach { p ->
+                            listOf("P1", "P2", "P3").forEach { _ ->
                                 Box(
                                     contentAlignment = Alignment.Center,
                                     modifier = Modifier
-                                        .size(36.dp)
+                                        .size(34.dp)
                                         .blur(4.dp)
                                         .clip(CircleShape)
                                         .background(WineRedLight)
@@ -163,9 +161,16 @@ fun PrimaryDashboardScreen(
                     }
                 }
             }
+        }
 
-            // Tile 3: 10-Mic Red Velvet Audio Room
-            item {
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Grid Row 2: Audio Room & Video Live Hub
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Box(modifier = Modifier.weight(1f)) {
                 DashboardGridTile(
                     title = "AUDIO PARTY ROOM",
                     subtitle = "10-Mic Red Sofa Live",
@@ -176,8 +181,7 @@ fun PrimaryDashboardScreen(
                 )
             }
 
-            // Tile 4: 10-Mic Video Live & YouTube Sync Hub
-            item {
+            Box(modifier = Modifier.weight(1f)) {
                 DashboardGridTile(
                     title = "VIDEO LIVE HUB",
                     subtitle = "YouTube Player Sync",
@@ -187,9 +191,16 @@ fun PrimaryDashboardScreen(
                     onClick = onNavigateToVideoRoom
                 )
             }
+        }
 
-            // Tile 5: Wallet & Recharge Center
-            item {
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Grid Row 3: Wallet Hub & Become a Host
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Box(modifier = Modifier.weight(1f)) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = CardBackground),
                     shape = RoundedCornerShape(18.dp),
@@ -207,8 +218,8 @@ fun PrimaryDashboardScreen(
                         }
 
                         Column {
-                            Text("🪙 ${user.coins} Coins", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = LightGold)
-                            Text("💎 ${user.diamonds} Diamonds", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = LightGold)
+                            Text("🪙 ${user.coins} Coins", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = LightGold)
+                            Text("💎 ${user.diamonds} Diamonds", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = LightGold)
                         }
 
                         Button(
@@ -223,8 +234,7 @@ fun PrimaryDashboardScreen(
                 }
             }
 
-            // Tile 6: Become a Host Portal (100 Followers & KYC)
-            item {
+            Box(modifier = Modifier.weight(1f)) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = CardBackground),
                     shape = RoundedCornerShape(18.dp),
@@ -257,9 +267,11 @@ fun PrimaryDashboardScreen(
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(24.dp))
     }
 
-    // Settings & Security Dialog Modal
+    // Settings Modal
     if (showSettingsModal) {
         AlertDialog(
             onDismissRequest = { showSettingsModal = false },
