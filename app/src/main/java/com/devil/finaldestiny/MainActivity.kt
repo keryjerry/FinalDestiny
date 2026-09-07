@@ -141,8 +141,7 @@ fun FinalDestinyApp(repository: AppRepository) {
         ) {
             when (currentScreen) {
                 Screen.AUTH_SPLASH -> SplashScreen(
-                    onGoogleSignInSuccess = { currentScreen = Screen.LIVENESS_CHECK },
-                    onShowPermissionsModal = { showPermissionModal = true }
+                    onLoginSuccess = { currentScreen = Screen.PRIMARY_DASHBOARD }
                 )
 
                 Screen.LIVENESS_CHECK -> LivenessVerificationScreen(
