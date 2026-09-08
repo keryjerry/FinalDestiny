@@ -40,6 +40,36 @@ object PaymentKycEngine {
     const val RAZORPAY_KEY_ID = "rzp_test_TZMLnOX4HsJCit"
     const val RAZORPAY_KEY_SECRET = "dw1qoKXAFKyKftZGhaH4BVTM"
 
+    fun launchRazorpayNativeCheckout(
+        activity: Activity,
+        orderDetails: PaymentOrderDetails,
+        apiKey: String = RAZORPAY_KEY_ID
+    ): Boolean {
+        return try {
+            val checkout = com.razorpay.Checkout()
+            checkout.setKeyID(apiKey)
+            val checkoutOptions = JSONObject().apply {
+                put("name", "FINAL CONNECT")
+                put("description", orderDetails.packageDescription)
+                put("image", "https://finaldestiny.app/assets/logo.png")
+                put("currency", orderDetails.currency)
+                put("amount", (orderDetails.amountRupees * 100).toLong()) // Amount in paise
+                put("prefill", JSONObject().apply {
+                    put("contact", orderDetails.customerPhone)
+                    put("email", orderDetails.customerEmail)
+                })
+                put("theme", JSONObject().apply {
+                    put("color", "#800020")
+                })
+            }
+            checkout.open(activity, checkoutOptions)
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
     fun generateRazorpayCheckoutHtml(
         amountRupees: Double,
         itemDescription: String,
@@ -51,7 +81,7 @@ object PaymentKycEngine {
             <!DOCTYPE html>
             <html>
             <head>
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
                 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
                 <style>
                     body {
@@ -89,52 +119,64 @@ object PaymentKycEngine {
                 </style>
             </head>
             <body>
-                <div class="loader"></div>
-                <div class="text">Connecting to Razorpay Test Gateway...</div>
+                <div id="loading-box" style="text-align:center;">
+                    <div class="loader"></div>
+                    <div class="text">Connecting to Razorpay Test Gateway...</div>
+                </div>
 
                 <script>
-                    var options = {
-                        "key": "$keyId",
-                        "amount": "$amountInPaise",
-                        "currency": "INR",
-                        "name": "FINAL CONNECT",
-                        "description": "$safeDesc",
-                        "image": "https://finaldestiny.app/assets/logo.png",
-                        "handler": function (response) {
-                            if (window.AndroidBridge) {
-                                window.AndroidBridge.onPaymentSuccess(response.razorpay_payment_id || "pay_test_success");
-                            }
-                        },
-                        "modal": {
-                            "ondismiss": function() {
+                    function launchCheckout() {
+                        var options = {
+                            "key": "$keyId",
+                            "amount": "$amountInPaise",
+                            "currency": "INR",
+                            "name": "FINAL CONNECT",
+                            "description": "$safeDesc",
+                            "image": "https://finaldestiny.app/assets/logo.png",
+                            "handler": function (response) {
                                 if (window.AndroidBridge) {
-                                    window.AndroidBridge.onPaymentDismiss();
+                                    window.AndroidBridge.onPaymentSuccess(response.razorpay_payment_id || "pay_test_success");
                                 }
+                            },
+                            "modal": {
+                                "ondismiss": function() {
+                                    if (window.AndroidBridge) {
+                                        window.AndroidBridge.onPaymentDismiss();
+                                    }
+                                },
+                                "escape": false,
+                                "backdropclose": false
+                            },
+                            "prefill": {
+                                "name": "Final Destiny User",
+                                "email": "user@finaldestiny.app",
+                                "contact": "9876543210"
+                            },
+                            "theme": {
+                                "color": "#800020"
                             }
-                        },
-                        "prefill": {
-                            "name": "Final Destiny User",
-                            "email": "user@finaldestiny.app",
-                            "contact": "9876543210"
-                        },
-                        "theme": {
-                            "color": "#800020"
-                        }
-                    };
-                    var rzp1 = new Razorpay(options);
-                    rzp1.on('payment.failed', function (response) {
-                        if (window.AndroidBridge) {
-                            var msg = (response && response.error && response.error.description) ? response.error.description : "Payment Failed";
-                            window.AndroidBridge.onPaymentError(msg);
-                        }
-                    });
-                    window.onload = function() {
+                        };
                         try {
+                            var rzp1 = new Razorpay(options);
+                            rzp1.on('payment.failed', function (response) {
+                                if (window.AndroidBridge) {
+                                    var msg = (response && response.error && response.error.description) ? response.error.description : "Payment Failed";
+                                    window.AndroidBridge.onPaymentError(msg);
+                                }
+                            });
                             rzp1.open();
-                        } catch(e) {
-                            console.error(e);
+                        } catch(err) {
+                            if (window.AndroidBridge) {
+                                window.AndroidBridge.onPaymentError("Script launch error: " + err.message);
+                            }
                         }
-                    };
+                    }
+
+                    if (typeof Razorpay !== 'undefined') {
+                        launchCheckout();
+                    } else {
+                        window.onload = launchCheckout;
+                    }
                 </script>
             </body>
             </html>

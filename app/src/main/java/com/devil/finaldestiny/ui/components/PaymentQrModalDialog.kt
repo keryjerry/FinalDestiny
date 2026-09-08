@@ -4,9 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.os.Handler
 import android.os.Looper
-import android.webkit.JavascriptInterface
-import android.webkit.WebView
-import android.webkit.WebViewClient
+import android.webkit.*
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,7 +27,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.devil.finaldestiny.MainActivity
 import com.devil.finaldestiny.engine.PaymentKycEngine
+import com.devil.finaldestiny.engine.PaymentOrderDetails
 import com.devil.finaldestiny.ui.theme.*
 
 class RazorpayWebAppInterface(
@@ -66,6 +66,22 @@ fun PaymentQrModalDialog(
     val context = LocalContext.current
     var showRazorpaySheet by remember { mutableStateOf(false) }
 
+    // Register Native Razorpay Result Listener on MainActivity
+    DisposableEffect(Unit) {
+        MainActivity.paymentResultListener = { success, result ->
+            if (success) {
+                Toast.makeText(context, "✅ Razorpay Payment Verified!\nPayment ID: $result", Toast.LENGTH_LONG).show()
+                onPaymentSuccess()
+                onDismiss()
+            } else {
+                Toast.makeText(context, "❌ Razorpay Payment Status: $result", Toast.LENGTH_SHORT).show()
+            }
+        }
+        onDispose {
+            MainActivity.paymentResultListener = null
+        }
+    }
+
     if (showRazorpaySheet) {
         Dialog(
             onDismissRequest = { showRazorpaySheet = false },
@@ -98,16 +114,30 @@ fun PaymentQrModalDialog(
                         }
                     }
 
-                    // WebView Container
+                    // WebView Container with WebChromeClient & Full Settings
                     AndroidView(
                         factory = { ctx ->
                             WebView(ctx).apply {
                                 @SuppressLint("SetJavaScriptEnabled")
                                 settings.javaScriptEnabled = true
                                 settings.domStorageEnabled = true
-                                settings.useWideViewPort = true
+                                settings.databaseEnabled = true
+                                settings.javaScriptCanOpenWindowsAutomatically = true
                                 settings.loadWithOverviewMode = true
-                                webViewClient = WebViewClient()
+                                settings.useWideViewPort = true
+                                settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                                settings.allowFileAccess = true
+                                settings.allowContentAccess = true
+
+                                webChromeClient = WebChromeClient()
+
+                                webViewClient = object : WebViewClient() {
+                                    override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+                                        super.onReceivedError(view, request, error)
+                                        val desc = error?.description ?: "Network Error"
+                                        Toast.makeText(ctx, "WebView Error: $desc", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
 
                                 addJavascriptInterface(
                                     RazorpayWebAppInterface(
@@ -208,8 +238,28 @@ fun PaymentQrModalDialog(
                 // Primary Razorpay Gateway Launch Button
                 Button(
                     onClick = {
-                        showRazorpaySheet = true
-                        Toast.makeText(context, "🚀 Opening Razorpay Gateway...", Toast.LENGTH_SHORT).show()
+                        val activity = context as? Activity
+                        if (activity != null) {
+                            val orderDetails = PaymentOrderDetails(
+                                orderId = "ord_test_${System.currentTimeMillis()}",
+                                amountRupees = amountInr.toDouble(),
+                                customerPhone = "9876543210",
+                                customerEmail = "user@finaldestiny.app",
+                                packageDescription = itemDescription
+                            )
+                            val launchedNative = PaymentKycEngine.launchRazorpayNativeCheckout(
+                                activity,
+                                orderDetails,
+                                PaymentKycEngine.RAZORPAY_KEY_ID
+                            )
+                            if (launchedNative) {
+                                Toast.makeText(context, "🚀 Launching Razorpay Test Gateway...", Toast.LENGTH_SHORT).show()
+                            } else {
+                                showRazorpaySheet = true
+                            }
+                        } else {
+                            showRazorpaySheet = true
+                        }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MetallicGold),
                     shape = RoundedCornerShape(12.dp),
@@ -242,4 +292,5 @@ fun PaymentQrModalDialog(
         }
     )
 }
+
 

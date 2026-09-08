@@ -37,6 +37,9 @@ import com.devil.finaldestiny.ui.theme.LiveIndicatorGreen
 import com.devil.finaldestiny.ui.theme.MetallicGold
 import com.devil.finaldestiny.ui.theme.WineRedDark
 import com.devil.finaldestiny.ui.theme.WineRedMedium
+import com.razorpay.Checkout
+import com.razorpay.PaymentData
+import com.razorpay.PaymentResultWithDataListener
 
 enum class Screen {
     AUTH_SPLASH,
@@ -52,17 +55,36 @@ enum class Screen {
     FINAL_DESTINY_DATING
 }
 
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), PaymentResultWithDataListener {
     private val repository = AppRepository()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        try {
+            Checkout.preload(applicationContext)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
         enableEdgeToEdge()
         setContent {
             FinalDestinyTheme {
                 FinalDestinyApp(repository = repository)
             }
         }
+    }
+
+    override fun onPaymentSuccess(razorpayPaymentId: String?, paymentData: PaymentData?) {
+        val id = razorpayPaymentId ?: paymentData?.paymentId ?: "pay_test_success"
+        paymentResultListener?.invoke(true, id)
+    }
+
+    override fun onPaymentError(code: Int, response: String?, paymentData: PaymentData?) {
+        val err = response ?: "Payment Cancelled/Failed (Code $code)"
+        paymentResultListener?.invoke(false, err)
+    }
+
+    companion object {
+        var paymentResultListener: ((Boolean, String) -> Unit)? = null
     }
 }
 
