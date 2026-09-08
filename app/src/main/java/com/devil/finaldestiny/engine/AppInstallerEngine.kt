@@ -31,7 +31,7 @@ object AppInstallerEngine {
         currentVersionCode: Int = 1
     ): UpdateReleaseInfo? = withContext(Dispatchers.IO) {
         val supabaseUrl = "https://twwezpogwtmjavoemdvi.supabase.co"
-        val anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3d2V6cG9nd3RtamF2b2VtZHZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3MDQ3ODksImV4cCI6MjEwNDI4MDc4Nn0.WFJm2x1h9qOEVcpOjeXGtcsqtjNMgocM5P2_1LaTWEQ"
+        val anonKey = "sb_publishable_RiDqsSCPgbWGxd6570P1FA_y_L10U_w"
         val endpoint = "$supabaseUrl/rest/v1/app_version_config?select=*&order=latest_version.desc&limit=1"
 
         try {

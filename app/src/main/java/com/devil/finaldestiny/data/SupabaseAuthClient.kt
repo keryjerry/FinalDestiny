@@ -24,7 +24,7 @@ object SupabaseAuthClient {
     private const val TAG = "[DestinyAuth]"
 
     var supabaseUrl: String = "https://twwezpogwtmjavoemdvi.supabase.co"
-    var supabaseAnonKey: String = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3d2V6cG9nd3RtamF2b2VtZHZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3MDQ3ODksImV4cCI6MjEwNDI4MDc4Nn0.WFJm2x1h9qOEVcpOjeXGtcsqtjNMgocM5P2_1LaTWEQ"
+    var supabaseAnonKey: String = "sb_publishable_RiDqsSCPgbWGxd6570P1FA_y_L10U_w"
 
     private var currentSessionToken: String? = null
     private var currentUserEmail: String? = null
@@ -94,7 +94,8 @@ object SupabaseAuthClient {
                 readTimeout = 8000
                 setRequestProperty("apikey", supabaseAnonKey)
                 setRequestProperty("Authorization", "Bearer $supabaseAnonKey")
-                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                setRequestProperty("Accept", "application/json")
                 doOutput = true
             }
 
@@ -152,7 +153,8 @@ object SupabaseAuthClient {
                 readTimeout = 8000
                 setRequestProperty("apikey", supabaseAnonKey)
                 setRequestProperty("Authorization", "Bearer $supabaseAnonKey")
-                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                setRequestProperty("Accept", "application/json")
                 doOutput = true
             }
 

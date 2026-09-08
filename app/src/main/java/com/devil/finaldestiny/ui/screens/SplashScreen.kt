@@ -47,6 +47,7 @@ import kotlinx.coroutines.launch
 fun SplashScreen(
     repository: AppRepository? = null,
     onLoginSuccess: () -> Unit
+
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
