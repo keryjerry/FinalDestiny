@@ -1,12 +1,15 @@
 package com.devil.finaldestiny
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -16,18 +19,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devil.finaldestiny.data.AppRepository
 import com.devil.finaldestiny.model.GiftItem
 import com.devil.finaldestiny.model.PaymentMethodType
+import com.devil.finaldestiny.ui.components.NotificationCenterModal
 import com.devil.finaldestiny.ui.components.PermissionModalDialog
 import com.devil.finaldestiny.ui.screens.*
 import com.devil.finaldestiny.ui.theme.CardBackground
 import com.devil.finaldestiny.ui.theme.CrimsonVelvet
 import com.devil.finaldestiny.ui.theme.FinalDestinyTheme
 import com.devil.finaldestiny.ui.theme.LightGold
+import com.devil.finaldestiny.ui.theme.LiveIndicatorGreen
 import com.devil.finaldestiny.ui.theme.MetallicGold
 import com.devil.finaldestiny.ui.theme.WineRedDark
 import com.devil.finaldestiny.ui.theme.WineRedMedium
@@ -41,7 +47,9 @@ enum class Screen {
     LIVE_AUDIO_ROOM,
     LIVE_VIDEO_ROOM,
     VIP_STORE,
-    CREATOR_MONETIZATION
+    CREATOR_MONETIZATION,
+    USER_PROFILE,
+    FINAL_DESTINY_DATING
 }
 
 class MainActivity : ComponentActivity() {
@@ -60,8 +68,13 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun FinalDestinyApp(repository: AppRepository) {
+    val context = LocalContext.current
     var currentScreen by remember { mutableStateOf(Screen.AUTH_SPLASH) }
     var showPermissionModal by remember { mutableStateOf(false) }
+
+    // Background Kept Room Sessions State
+    var isAudioRoomKeptInBackground by remember { mutableStateOf(false) }
+    var isVideoRoomKeptInBackground by remember { mutableStateOf(false) }
 
     val user by repository.currentUser.collectAsState()
     val swipeCards by repository.swipeCards.collectAsState()
@@ -76,60 +89,173 @@ fun FinalDestinyApp(repository: AppRepository) {
     val moderationAlerts by repository.moderationAlerts.collectAsState()
     val isVisionSentinelActive by repository.isVisionSentinelActive.collectAsState()
     val isVisionBlackoutTriggered by repository.isVisionBlackoutTriggered.collectAsState()
+    val notifications by repository.notifications.collectAsState()
+
+    var showNotificationModal by remember { mutableStateOf(false) }
 
     Scaffold(
         bottomBar = {
             if (currentScreen != Screen.AUTH_SPLASH && currentScreen != Screen.LIVENESS_CHECK) {
-                NavigationBar(
-                    containerColor = CardBackground,
-                    contentColor = MetallicGold,
-                    modifier = Modifier
-                        .height(72.dp)
-                        .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-                        .border(1.dp, CrimsonVelvet, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-                ) {
-                    NavigationBarItem(
-                        selected = currentScreen == Screen.PRIMARY_DASHBOARD,
-                        onClick = { currentScreen = Screen.PRIMARY_DASHBOARD },
-                        icon = { Icon(Icons.Default.Dashboard, contentDescription = "Dashboard", tint = if (currentScreen == Screen.PRIMARY_DASHBOARD) MetallicGold else LightGold.copy(0.6f)) },
-                        label = { Text("Dashboard", fontSize = 10.sp, color = if (currentScreen == Screen.PRIMARY_DASHBOARD) MetallicGold else LightGold.copy(0.6f)) }
-                    )
-                    NavigationBarItem(
-                        selected = currentScreen == Screen.SECONDARY_FEED,
-                        onClick = { currentScreen = Screen.SECONDARY_FEED },
-                        icon = { Icon(Icons.Default.DynamicFeed, contentDescription = "Moments", tint = if (currentScreen == Screen.SECONDARY_FEED) MetallicGold else LightGold.copy(0.6f)) },
-                        label = { Text("Moments", fontSize = 10.sp, color = if (currentScreen == Screen.SECONDARY_FEED) MetallicGold else LightGold.copy(0.6f)) }
-                    )
-                    NavigationBarItem(
-                        selected = currentScreen == Screen.DISCOVER_SWIPE,
-                        onClick = { currentScreen = Screen.DISCOVER_SWIPE },
-                        icon = { Icon(Icons.Default.Favorite, contentDescription = "Discover", tint = if (currentScreen == Screen.DISCOVER_SWIPE) MetallicGold else LightGold.copy(0.6f)) },
-                        label = { Text("Discover", fontSize = 10.sp, color = if (currentScreen == Screen.DISCOVER_SWIPE) MetallicGold else LightGold.copy(0.6f)) }
-                    )
-                    NavigationBarItem(
-                        selected = currentScreen == Screen.LIVE_AUDIO_ROOM,
-                        onClick = { currentScreen = Screen.LIVE_AUDIO_ROOM },
-                        icon = { Icon(Icons.Default.Mic, contentDescription = "Audio Live", tint = if (currentScreen == Screen.LIVE_AUDIO_ROOM) MetallicGold else LightGold.copy(0.6f)) },
-                        label = { Text("10-Mic Audio", fontSize = 10.sp, color = if (currentScreen == Screen.LIVE_AUDIO_ROOM) MetallicGold else LightGold.copy(0.6f)) }
-                    )
-                    NavigationBarItem(
-                        selected = currentScreen == Screen.LIVE_VIDEO_ROOM,
-                        onClick = { currentScreen = Screen.LIVE_VIDEO_ROOM },
-                        icon = { Icon(Icons.Default.Videocam, contentDescription = "Video Live", tint = if (currentScreen == Screen.LIVE_VIDEO_ROOM) MetallicGold else LightGold.copy(0.6f)) },
-                        label = { Text("Video Sync", fontSize = 10.sp, color = if (currentScreen == Screen.LIVE_VIDEO_ROOM) MetallicGold else LightGold.copy(0.6f)) }
-                    )
-                    NavigationBarItem(
-                        selected = currentScreen == Screen.VIP_STORE,
-                        onClick = { currentScreen = Screen.VIP_STORE },
-                        icon = { Icon(Icons.Default.Storefront, contentDescription = "VIP Store", tint = if (currentScreen == Screen.VIP_STORE) MetallicGold else LightGold.copy(0.6f)) },
-                        label = { Text("VIP Store", fontSize = 10.sp, color = if (currentScreen == Screen.VIP_STORE) MetallicGold else LightGold.copy(0.6f)) }
-                    )
-                    NavigationBarItem(
-                        selected = currentScreen == Screen.CREATOR_MONETIZATION,
-                        onClick = { currentScreen = Screen.CREATOR_MONETIZATION },
-                        icon = { Icon(Icons.Default.MonetizationOn, contentDescription = "Payouts", tint = if (currentScreen == Screen.CREATOR_MONETIZATION) MetallicGold else LightGold.copy(0.6f)) },
-                        label = { Text("25% Payouts", fontSize = 10.sp, color = if (currentScreen == Screen.CREATOR_MONETIZATION) MetallicGold else LightGold.copy(0.6f)) }
-                    )
+                Column {
+                    // FLOATING PIP MINI PLAYER BANNER WHEN A ROOM IS KEPT IN BACKGROUND
+                    if (isAudioRoomKeptInBackground && currentScreen != Screen.LIVE_AUDIO_ROOM) {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = WineRedMedium),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                                .border(1.dp, MetallicGold, RoundedCornerShape(12.dp))
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { currentScreen = Screen.LIVE_AUDIO_ROOM }
+                                ) {
+                                    Icon(Icons.Default.GraphicEq, contentDescription = null, tint = LiveIndicatorGreen, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Column {
+                                        Text("🔴 Audio Room Active (Keep Mode)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = LightGold)
+                                        Text("Host: ${audioRoom.hostUser.name} | Tap to Re-enter ↩", fontSize = 9.sp, color = MetallicGold)
+                                    }
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Button(
+                                        onClick = { currentScreen = Screen.LIVE_AUDIO_ROOM },
+                                        colors = ButtonDefaults.buttonColors(containerColor = MetallicGold),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                        modifier = Modifier.height(26.dp)
+                                    ) {
+                                        Text("Open ↩", fontSize = 10.sp, color = WineRedDark, fontWeight = FontWeight.Bold)
+                                    }
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    IconButton(
+                                        onClick = {
+                                            isAudioRoomKeptInBackground = false
+                                            Toast.makeText(context, "Audio Room Closed", Toast.LENGTH_SHORT).show()
+                                        },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(Icons.Default.Close, contentDescription = "Close", tint = LightGold, modifier = Modifier.size(16.dp))
+                                    }
+                                }
+                            }
+                        }
+                    } else if (isVideoRoomKeptInBackground && currentScreen != Screen.LIVE_VIDEO_ROOM) {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = WineRedMedium),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 2.dp)
+                                .border(1.dp, MetallicGold, RoundedCornerShape(12.dp))
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { currentScreen = Screen.LIVE_VIDEO_ROOM }
+                                ) {
+                                    Icon(Icons.Default.Videocam, contentDescription = null, tint = LiveIndicatorGreen, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Column {
+                                        Text("🔴 Video Stream Active (Keep Mode)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = LightGold)
+                                        Text("Host: ${videoRoom.hostUser.name} | Tap to Re-enter ↩", fontSize = 9.sp, color = MetallicGold)
+                                    }
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Button(
+                                        onClick = { currentScreen = Screen.LIVE_VIDEO_ROOM },
+                                        colors = ButtonDefaults.buttonColors(containerColor = MetallicGold),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                        modifier = Modifier.height(26.dp)
+                                    ) {
+                                        Text("Open ↩", fontSize = 10.sp, color = WineRedDark, fontWeight = FontWeight.Bold)
+                                    }
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    IconButton(
+                                        onClick = {
+                                            isVideoRoomKeptInBackground = false
+                                            Toast.makeText(context, "Video Room Closed", Toast.LENGTH_SHORT).show()
+                                        },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(Icons.Default.Close, contentDescription = "Close", tint = LightGold, modifier = Modifier.size(16.dp))
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // BOTTOM NAVIGATION BAR
+                    NavigationBar(
+                        containerColor = CardBackground,
+                        contentColor = MetallicGold,
+                        modifier = Modifier
+                            .navigationBarsPadding()
+                            .fillMaxWidth()
+                            .height(68.dp)
+                            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+                            .border(1.dp, CrimsonVelvet, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+                    ) {
+                        NavigationBarItem(
+                            selected = currentScreen == Screen.PRIMARY_DASHBOARD,
+                            onClick = { currentScreen = Screen.PRIMARY_DASHBOARD },
+                            icon = { Icon(Icons.Default.Dashboard, contentDescription = "Dashboard", tint = if (currentScreen == Screen.PRIMARY_DASHBOARD) MetallicGold else LightGold.copy(0.6f)) },
+                            label = { Text("Home", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.PRIMARY_DASHBOARD) MetallicGold else LightGold.copy(0.6f)) }
+                        )
+                        NavigationBarItem(
+                            selected = currentScreen == Screen.DISCOVER_SWIPE,
+                            onClick = { currentScreen = Screen.DISCOVER_SWIPE },
+                            icon = { Icon(Icons.Default.Favorite, contentDescription = "Discover", tint = if (currentScreen == Screen.DISCOVER_SWIPE) MetallicGold else LightGold.copy(0.6f)) },
+                            label = { Text("Discover", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.DISCOVER_SWIPE) MetallicGold else LightGold.copy(0.6f)) }
+                        )
+                        NavigationBarItem(
+                            selected = currentScreen == Screen.LIVE_AUDIO_ROOM,
+                            onClick = {
+                                isAudioRoomKeptInBackground = false
+                                currentScreen = Screen.LIVE_AUDIO_ROOM
+                            },
+                            icon = { Icon(Icons.Default.Mic, contentDescription = "Audio Live", tint = if (currentScreen == Screen.LIVE_AUDIO_ROOM) MetallicGold else LightGold.copy(0.6f)) },
+                            label = { Text("Audio Room", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.LIVE_AUDIO_ROOM) MetallicGold else LightGold.copy(0.6f)) }
+                        )
+                        NavigationBarItem(
+                            selected = currentScreen == Screen.LIVE_VIDEO_ROOM,
+                            onClick = {
+                                isVideoRoomKeptInBackground = false
+                                currentScreen = Screen.LIVE_VIDEO_ROOM
+                            },
+                            icon = { Icon(Icons.Default.Videocam, contentDescription = "Video Live", tint = if (currentScreen == Screen.LIVE_VIDEO_ROOM) MetallicGold else LightGold.copy(0.6f)) },
+                            label = { Text("Video Live", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.LIVE_VIDEO_ROOM) MetallicGold else LightGold.copy(0.6f)) }
+                        )
+                        NavigationBarItem(
+                            selected = currentScreen == Screen.VIP_STORE,
+                            onClick = { currentScreen = Screen.VIP_STORE },
+                            icon = { Icon(Icons.Default.Storefront, contentDescription = "VIP Store", tint = if (currentScreen == Screen.VIP_STORE) MetallicGold else LightGold.copy(0.6f)) },
+                            label = { Text("VIP Store", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.VIP_STORE) MetallicGold else LightGold.copy(0.6f)) }
+                        )
+                        NavigationBarItem(
+                            selected = currentScreen == Screen.USER_PROFILE,
+                            onClick = { currentScreen = Screen.USER_PROFILE },
+                            icon = { Icon(Icons.Default.Person, contentDescription = "Profile", tint = if (currentScreen == Screen.USER_PROFILE) MetallicGold else LightGold.copy(0.6f)) },
+                            label = { Text("Profile", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.USER_PROFILE) MetallicGold else LightGold.copy(0.6f)) }
+                        )
+                    }
                 }
             }
         }
@@ -150,20 +276,46 @@ fun FinalDestinyApp(repository: AppRepository) {
 
                 Screen.PRIMARY_DASHBOARD -> PrimaryDashboardScreen(
                     user = user,
-                    onNavigateToSwipe = { currentScreen = Screen.DISCOVER_SWIPE },
-                    onNavigateToAudioRoom = { currentScreen = Screen.LIVE_AUDIO_ROOM },
-                    onNavigateToVideoRoom = { currentScreen = Screen.LIVE_VIDEO_ROOM },
+                    notifications = notifications,
+                    onOpenNotifications = { showNotificationModal = true },
+                    onNavigateToSwipe = { currentScreen = Screen.FINAL_DESTINY_DATING },
+                    onNavigateToAudioRoom = {
+                        isAudioRoomKeptInBackground = false
+                        currentScreen = Screen.LIVE_AUDIO_ROOM
+                    },
+                    onNavigateToVideoRoom = {
+                        isVideoRoomKeptInBackground = false
+                        currentScreen = Screen.LIVE_VIDEO_ROOM
+                    },
                     onNavigateToHostPortal = { currentScreen = Screen.CREATOR_MONETIZATION },
                     onNavigateToVipStore = { currentScreen = Screen.VIP_STORE },
-                    onNavigateToSecondaryFeed = { currentScreen = Screen.SECONDARY_FEED }
+                    onNavigateToSecondaryFeed = { currentScreen = Screen.SECONDARY_FEED },
+                    onNavigateToProfile = { currentScreen = Screen.USER_PROFILE }
+                )
+
+                Screen.USER_PROFILE -> UserProfileScreen(
+                    user = user,
+                    onSaveProfile = { updated -> repository.updateUserProfile(updated) },
+                    onNavigateToStore = { currentScreen = Screen.VIP_STORE },
+                    onNavigateToSecondaryFeed = { currentScreen = Screen.SECONDARY_FEED },
+                    onNavigateToMonetization = { currentScreen = Screen.CREATOR_MONETIZATION },
+                    onNavigateToDating = { currentScreen = Screen.FINAL_DESTINY_DATING },
+                    onLogOut = { currentScreen = Screen.AUTH_SPLASH },
+                    onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
                 )
 
                 Screen.SECONDARY_FEED -> SecondaryDashboardScreen(
                     storyTrays = storyTrays,
                     momentPosts = momentPosts,
+                    notifications = notifications,
+                    onOpenNotifications = { showNotificationModal = true },
                     onLikePost = { postId -> repository.toggleLikePost(postId) },
-                    onPublishPost = { caption -> repository.postMoment(caption) },
-                    onTipPost = { post -> currentScreen = Screen.VIP_STORE }
+                    onPublishPost = { caption, mediaUri -> repository.postMoment(caption, mediaUri) },
+                    onTipPost = { currentScreen = Screen.VIP_STORE },
+                    onAddStory = { mediaUri -> repository.addStory(mediaUri) },
+                    onAddComment = { postId, text -> repository.addCommentToPost(postId, text) },
+                    onToggleFollowAuthor = { postId -> repository.toggleFollowPostAuthor(postId) },
+                    onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
                 )
 
                 Screen.DISCOVER_SWIPE -> DiscoverSwipeScreen(
@@ -184,7 +336,15 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onSendChatMessage = { text -> repository.sendChatMessage(text) },
                     onSendGift = { gift -> repository.sendGiftInRoom(gift) },
                     onToggleSeatMute = { seatIndex -> repository.toggleSeatMute(seatIndex) },
-                    onKickUser = { seatIndex -> repository.kickUserFromRoom(seatIndex) }
+                    onKickUser = { seatIndex -> repository.kickUserFromRoom(seatIndex) },
+                    onExitRoom = {
+                        isAudioRoomKeptInBackground = false
+                        currentScreen = Screen.PRIMARY_DASHBOARD
+                    },
+                    onKeepRoom = {
+                        isAudioRoomKeptInBackground = true
+                        currentScreen = Screen.PRIMARY_DASHBOARD
+                    }
                 )
 
                 Screen.LIVE_VIDEO_ROOM -> LiveVideoRoomScreen(
@@ -196,7 +356,15 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onTriggerSentinelTest = { repository.triggerVisionSentinelTest() },
                     onRestoreSentinel = { repository.restoreVisionSentinel() },
                     onSendGift = { gift -> repository.sendGiftInRoom(gift) },
-                    onSendChatMessage = { text -> repository.sendChatMessage(text) }
+                    onSendChatMessage = { text -> repository.sendChatMessage(text) },
+                    onExitRoom = {
+                        isVideoRoomKeptInBackground = false
+                        currentScreen = Screen.PRIMARY_DASHBOARD
+                    },
+                    onKeepRoom = {
+                        isVideoRoomKeptInBackground = true
+                        currentScreen = Screen.PRIMARY_DASHBOARD
+                    }
                 )
 
                 Screen.VIP_STORE -> VipStoreScreen(
@@ -204,7 +372,11 @@ fun FinalDestinyApp(repository: AppRepository) {
                     giftStoreItems = repository.giftStoreItems,
                     userVipLevel = user.vipLevel,
                     userDiamonds = user.diamonds,
-                    onPurchaseAsset = { gift -> repository.sendGiftInRoom(gift) }
+                    isMonetizedHost = kycData.isApproved,
+                    hostEarnings = hostEarnings,
+                    onPurchaseAsset = { gift -> repository.sendGiftInRoom(gift) },
+                    onTopUpDiamonds = { amt -> repository.topUpDiamonds(amt) },
+                    onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
                 )
 
                 Screen.CREATOR_MONETIZATION -> CreatorMonetizationScreen(
@@ -214,6 +386,17 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onSubmitKyc = { aadhaar, pan, legalName -> repository.submitKycForm(aadhaar, pan, legalName) },
                     onRequestPayout = { amt, method, upiOrAccount -> repository.requestBankPayout(amt, method, upiOrAccount) }
                 )
+
+                Screen.FINAL_DESTINY_DATING -> FinalDestinyDatingScreen(
+                    user = user,
+                    cards = swipeCards,
+                    matchedCard = matchedCard,
+                    onSwipeRight = { cardId -> repository.performSwipe(cardId, isLike = true, isSuperLike = false) },
+                    onSwipeLeft = { cardId -> repository.performSwipe(cardId, isLike = false, isSuperLike = false) },
+                    onSwipeUpSuperLike = { cardId -> repository.performSwipe(cardId, isLike = false, isSuperLike = true) },
+                    onDismissMatchModal = { repository.dismissMatchModal() },
+                    onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
+                )
             }
         }
     }
@@ -222,6 +405,33 @@ fun FinalDestinyApp(repository: AppRepository) {
         PermissionModalDialog(
             onAcceptPermissions = { showPermissionModal = false },
             onDismiss = { showPermissionModal = false }
+        )
+    }
+
+    if (showNotificationModal) {
+        NotificationCenterModal(
+            notifications = notifications,
+            onDismiss = { showNotificationModal = false },
+            onMarkAllRead = { repository.markAllNotificationsAsRead() },
+            onClearAll = { repository.clearAllNotifications() },
+            onNotificationClick = { notification ->
+                repository.markNotificationAsRead(notification.id)
+                showNotificationModal = false
+                when (notification.actionTargetScreen) {
+                    "LIVE_AUDIO_ROOM" -> {
+                        isAudioRoomKeptInBackground = false
+                        currentScreen = Screen.LIVE_AUDIO_ROOM
+                    }
+                    "LIVE_VIDEO_ROOM" -> {
+                        isVideoRoomKeptInBackground = false
+                        currentScreen = Screen.LIVE_VIDEO_ROOM
+                    }
+                    "DISCOVER_SWIPE" -> currentScreen = Screen.DISCOVER_SWIPE
+                    "SECONDARY_FEED" -> currentScreen = Screen.SECONDARY_FEED
+                    "CREATOR_MONETIZATION" -> currentScreen = Screen.CREATOR_MONETIZATION
+                    else -> {}
+                }
+            }
         )
     }
 }

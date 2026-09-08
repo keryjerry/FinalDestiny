@@ -39,54 +39,23 @@ class AppRepository {
     private val _isLivenessVerified = MutableStateFlow(true)
     val isLivenessVerified: StateFlow<Boolean> = _isLivenessVerified.asStateFlow()
 
-    // Swipe Discovery Deck
+    // Swipe Discovery Deck (14 Realistic Profiles)
     private val _swipeCards = MutableStateFlow(
         listOf(
-            SwipeCard(
-                id = "c1",
-                profile = UserProfile(
-                    id = "u201",
-                    handle = "@Stanbra",
-                    name = "Stanbra",
-                    age = 23,
-                    bio = "Music producer, passionate traveler. Looking for soulmate 💖",
-                    gender = Gender.FEMALE,
-                    photos = listOf("https://picsum.photos/400/600?random=10", "https://picsum.photos/400/600?random=11"),
-                    verifiedStatus = true,
-                    vipLevel = 3
-                ),
-                distanceKm = 4
-            ),
-            SwipeCard(
-                id = "c2",
-                profile = UserProfile(
-                    id = "u202",
-                    handle = "@AriaRose",
-                    name = "Aria Rose",
-                    age = 22,
-                    bio = "Live audio broadcaster & coffee lover ☕ Rules: Respect & Kindness!",
-                    gender = Gender.FEMALE,
-                    photos = listOf("https://picsum.photos/400/600?random=12", "https://picsum.photos/400/600?random=13"),
-                    verifiedStatus = true,
-                    vipLevel = 6
-                ),
-                distanceKm = 8
-            ),
-            SwipeCard(
-                id = "c3",
-                profile = UserProfile(
-                    id = "u203",
-                    handle = "@Simran_Vibes",
-                    name = "Simran",
-                    age = 24,
-                    bio = "Architect by day, karaoke queen by night 👑✨",
-                    gender = Gender.FEMALE,
-                    photos = listOf("https://picsum.photos/400/600?random=14"),
-                    verifiedStatus = true,
-                    vipLevel = 2
-                ),
-                distanceKm = 12
-            )
+            SwipeCard("c1", UserProfile("u201", "@Ananya_Roy", "Ananya Roy", 22, "Fashion Designer & Coffee Addict ☕✨ Looking for genuine vibes!", Gender.FEMALE, listOf("https://picsum.photos/400/600?random=101"), verifiedStatus = true, vipLevel = 4, relationshipIntent = "Serious Relationship", lifestyleTags = listOf("Fashion 👗", "Coffee ☕", "Travel ✈️")), 3),
+            SwipeCard("c2", UserProfile("u202", "@Aarav_Sharma", "Aarav Sharma", 24, "Music Producer & Guitarist 🎸 Let's record a duet or grab boba!", Gender.MALE, listOf("https://picsum.photos/400/600?random=102"), verifiedStatus = true, vipLevel = 5, relationshipIntent = "Dating & Long Drives", lifestyleTags = listOf("Music 🎶", "Guitar 🎸", "Fitness 🏋️‍♂️")), 5),
+            SwipeCard("c3", UserProfile("u203", "@Simran_Vibes", "Simran Kaur", 23, "Architect & Vocalist 🎤 Long drives, late-night chats & good food 🍕", Gender.FEMALE, listOf("https://picsum.photos/400/600?random=103"), verifiedStatus = true, vipLevel = 3, relationshipIntent = "Soulmate Search", lifestyleTags = listOf("Architecture 🏛️", "Singing 🎙️", "Foodie 🍕")), 2),
+            SwipeCard("c4", UserProfile("u204", "@Vikram_M", "Vikram Malhotra", 25, "Software Lead & Fitness Enthusiast 🏋️‍♂️ Weekend mountain hiker ⛰️", Gender.MALE, listOf("https://picsum.photos/400/600?random=104"), verifiedStatus = true, vipLevel = 6, relationshipIntent = "Meaningful Connections", lifestyleTags = listOf("Tech 💻", "Gym 🏋️‍♂️", "Hiking ⛰️")), 8),
+            SwipeCard("c5", UserProfile("u205", "@Riya_Kapoor", "Riya Kapoor", 22, "Dancer & Content Creator 💃 Life is better when you're smiling 😊", Gender.FEMALE, listOf("https://picsum.photos/400/600?random=105"), verifiedStatus = true, vipLevel = 2, relationshipIntent = "Dating & Romance", lifestyleTags = listOf("Dance 💃", "Reels 📸", "Parties 🎉")), 4),
+            SwipeCard("c6", UserProfile("u206", "@Kabir_V", "Kabir Verma", 26, "Startup Founder & Motorsport Fan 🏎️ Looking for someone sweet!", Gender.MALE, listOf("https://picsum.photos/400/600?random=106"), verifiedStatus = true, vipLevel = 7, relationshipIntent = "Serious Partner", lifestyleTags = listOf("Startup 🚀", "Racing 🏎️", "Coffee ☕")), 6),
+            SwipeCard("c7", UserProfile("u207", "@Priya_Singh", "Priya Singh", 24, "Journalist & Wildlife Photographer 📸 Tell me your favorite story!", Gender.FEMALE, listOf("https://picsum.photos/400/600?random=107"), verifiedStatus = true, vipLevel = 3, relationshipIntent = "Friendship to Romance", lifestyleTags = listOf("Photography 📸", "Nature 🌿", "Books 📚")), 7),
+            SwipeCard("c8", UserProfile("u208", "@Rohan_Mehta", "Rohan Mehta", 25, "Filmmaker & Cinephile 🎬 Let me host a private movie stream for us 🍿", Gender.MALE, listOf("https://picsum.photos/400/600?random=108"), verifiedStatus = true, vipLevel = 5, relationshipIntent = "Co-Watching Partner", lifestyleTags = listOf("Movies 🎬", "Popcorn 🍿", "Direction 📹")), 10),
+            SwipeCard("c9", UserProfile("u209", "@Sneha_P", "Sneha Patel", 23, "Pastry Chef & Food Blogger 🍰 Sweet treats and warm conversations!", Gender.FEMALE, listOf("https://picsum.photos/400/600?random=109"), verifiedStatus = true, vipLevel = 4, relationshipIntent = "Dating & Cooking", lifestyleTags = listOf("Baking 🍰", "Food Blog 📱", "Dogs 🐶")), 9),
+            SwipeCard("c10", UserProfile("u210", "@Devansh_S", "Devansh Singhania", 27, "Investment Banker 💼 Classic rock lover 🎸 Work hard, travel harder!", Gender.MALE, listOf("https://picsum.photos/400/600?random=110"), verifiedStatus = true, vipLevel = 8, relationshipIntent = "Serious Commitment", lifestyleTags = listOf("Finance 📈", "Rock 🎸", "Luxury 🏎️")), 12),
+            SwipeCard("c11", UserProfile("u211", "@Isha_M", "Isha Malhotra", 22, "Yoga Trainer & Wellness Coach 🧘‍♀️ Positivity & peace only ✨", Gender.FEMALE, listOf("https://picsum.photos/400/600?random=111"), verifiedStatus = true, vipLevel = 2, relationshipIntent = "Soulmate Vibes", lifestyleTags = listOf("Yoga 🧘‍♀️", "Meditation 🧘‍♂️", "Green Tea 🍵")), 3),
+            SwipeCard("c12", UserProfile("u212", "@Arjun_K", "Arjun Kapoor", 25, "DJ & Live Broadcaster 🎧 Mixing beats and creating magical room vibes!", Gender.MALE, listOf("https://picsum.photos/400/600?random=112"), verifiedStatus = true, vipLevel = 6, relationshipIntent = "Music Companion", lifestyleTags = listOf("DJing 🎧", "EDM 🎶", "Clubbing 🎉")), 5),
+            SwipeCard("c13", UserProfile("u213", "@Tara_S", "Tara Sutaria", 24, "Interior Stylist & Artist 🎨 Painting my dreams one day at a time", Gender.FEMALE, listOf("https://picsum.photos/400/600?random=113"), verifiedStatus = true, vipLevel = 5, relationshipIntent = "Romance & Art", lifestyleTags = listOf("Art 🎨", "Design 🖼️", "Vino 🍷")), 6),
+            SwipeCard("c14", UserProfile("u214", "@Samarth_S", "Samarth Saxena", 26, "Commercial Pilot ✈️ Above the clouds! Ready to take you on an adventure", Gender.MALE, listOf("https://picsum.photos/400/600?random=114"), verifiedStatus = true, vipLevel = 9, relationshipIntent = "Life Partner", lifestyleTags = listOf("Aviation ✈️", "Skyline 🌆", "Travel 🌍")), 15)
         )
     )
     val swipeCards: StateFlow<List<SwipeCard>> = _swipeCards.asStateFlow()
@@ -138,6 +107,75 @@ class AppRepository {
         )
     )
     val momentPosts: StateFlow<List<MomentPost>> = _momentPosts.asStateFlow()
+
+    // Real-Time Activity Notifications List
+    private val _notifications = MutableStateFlow(
+        listOf(
+            AppNotification(
+                id = "n1",
+                title = "New Match Alert! 🎉",
+                message = "Simran liked your profile back! You can now start 1v1 video call.",
+                type = NotificationType.MATCH,
+                iconSymbol = "💖",
+                timestamp = "2 mins ago",
+                isRead = false,
+                actionTargetScreen = "DISCOVER_SWIPE"
+            ),
+            AppNotification(
+                id = "n2",
+                title = "Live Room Invite 🎙️",
+                message = "DarkDevil invited you to join sofa seat #1 in Audio Room!",
+                type = NotificationType.ROOM_INVITE,
+                iconSymbol = "👑",
+                timestamp = "5 mins ago",
+                isRead = false,
+                actionTargetScreen = "LIVE_AUDIO_ROOM"
+            ),
+            AppNotification(
+                id = "n3",
+                title = "New Follower ❤️",
+                message = "Stanbra started following your profile!",
+                type = NotificationType.FOLLOW,
+                iconSymbol = "👥",
+                timestamp = "15 mins ago",
+                isRead = false
+            ),
+            AppNotification(
+                id = "n4",
+                title = "Post Liked ❤️",
+                message = "Aria Rose liked your recent Moment post!",
+                type = NotificationType.LIKE,
+                iconSymbol = "❤️",
+                timestamp = "1 hour ago",
+                isRead = true
+            ),
+            AppNotification(
+                id = "n5",
+                title = "Live Stream Broadcast 🔴",
+                message = "Farman Ali started a live HD video stream!",
+                type = NotificationType.LIVE_ALERT,
+                iconSymbol = "📹",
+                timestamp = "2 hours ago",
+                isRead = true,
+                actionTargetScreen = "LIVE_VIDEO_ROOM"
+            )
+        )
+    )
+    val notifications: StateFlow<List<AppNotification>> = _notifications.asStateFlow()
+
+    fun markNotificationAsRead(notificationId: String) {
+        _notifications.value = _notifications.value.map {
+            if (it.id == notificationId) it.copy(isRead = true) else it
+        }
+    }
+
+    fun markAllNotificationsAsRead() {
+        _notifications.value = _notifications.value.map { it.copy(isRead = true) }
+    }
+
+    fun clearAllNotifications() {
+        _notifications.value = emptyList()
+    }
 
     // 10-Mic Sofa Live Room Initializer
     private fun createDefaultSeats(): List<SofaSeat> {
@@ -275,22 +313,40 @@ class AppRepository {
         _matchedCard.value = null
     }
 
-    fun postMoment(caption: String) {
+    fun postMoment(caption: String, mediaUri: String? = null) {
         val user = _currentUser.value
         val newPost = MomentPost(
             id = "m_${System.currentTimeMillis()}",
             authorName = user.name,
             authorHandle = user.handle,
-            authorAvatar = "https://picsum.photos/100/100?random=1",
+            authorAvatar = user.profilePictureUri ?: "https://picsum.photos/100/100?random=1",
             mediaUrl = "https://picsum.photos/600/400?random=99",
             caption = caption,
             timestamp = "Just now",
             likesCount = 1,
             commentsCount = 0,
             giftTipsTotal = 0,
-            isLiked = true
+            isLiked = true,
+            mediaUri = mediaUri
         )
         _momentPosts.value = listOf(newPost) + _momentPosts.value
+    }
+
+    fun addStory(mediaUri: String) {
+        val user = _currentUser.value
+        val newStory = StoryItem(
+            id = "s_${System.currentTimeMillis()}",
+            authorName = user.name,
+            authorAvatar = user.profilePictureUri ?: "https://picsum.photos/100/100?random=1",
+            previewMedia = "https://picsum.photos/300/500?random=88",
+            timestamp = "Just now",
+            mediaUri = mediaUri
+        )
+        _storyTrays.value = listOf(newStory) + _storyTrays.value
+    }
+
+    fun updateVideoRoomYoutubeUrl(newUrl: String) {
+        _currentVideoRoom.value = _currentVideoRoom.value.copy(youtubeVideoUrl = newUrl)
     }
 
     fun toggleLikePost(postId: String) {
@@ -300,6 +356,27 @@ class AppRepository {
                     isLiked = !post.isLiked,
                     likesCount = if (post.isLiked) post.likesCount - 1 else post.likesCount + 1
                 )
+            } else post
+        }
+    }
+
+    fun addCommentToPost(postId: String, text: String) {
+        val user = _currentUser.value
+        _momentPosts.value = _momentPosts.value.map { post ->
+            if (post.id == postId) {
+                val newComment = MomentComment(senderName = user.name, text = text, timestamp = "Just now")
+                post.copy(
+                    comments = post.comments + newComment,
+                    commentsCount = post.commentsCount + 1
+                )
+            } else post
+        }
+    }
+
+    fun toggleFollowPostAuthor(postId: String) {
+        _momentPosts.value = _momentPosts.value.map { post ->
+            if (post.id == postId) {
+                post.copy(isFollowingAuthor = !post.isFollowingAuthor)
             } else post
         }
     }
@@ -445,5 +522,29 @@ class AppRepository {
             pendingPayoutInr = earnings.pendingPayoutInr - amount
         )
         return "SUCCESS: Payout request of ₹$amount processed successfully to $accountOrUpi via ${paymentMethod.name}."
+    }
+
+    fun topUpDiamonds(amount: Int) {
+        _currentUser.value = _currentUser.value.copy(
+            diamonds = _currentUser.value.diamonds + amount
+        )
+    }
+
+    fun updateUserProfile(updatedProfile: UserProfile) {
+        _currentUser.value = updatedProfile
+
+        // REAL-TIME SYNC: Update host profile picture and name across active Audio and Video Rooms
+        _currentAudioRoom.value = _currentAudioRoom.value.copy(
+            hostUser = _currentAudioRoom.value.hostUser.copy(
+                name = updatedProfile.name,
+                profilePictureUri = updatedProfile.profilePictureUri
+            )
+        )
+        _currentVideoRoom.value = _currentVideoRoom.value.copy(
+            hostUser = _currentVideoRoom.value.hostUser.copy(
+                name = updatedProfile.name,
+                profilePictureUri = updatedProfile.profilePictureUri
+            )
+        )
     }
 }

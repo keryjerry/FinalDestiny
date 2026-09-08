@@ -24,7 +24,8 @@ data class UserProfile(
     val diamonds: Int = 2500,
     val relationshipIntent: String = "Serious Dating & Marriage",
     val lifestyleTags: List<String> = listOf("Travel", "Music", "Fitness", "Coffee Lover"),
-    val isHost: Boolean = true
+    val isHost: Boolean = true,
+    val profilePictureUri: String? = null
 )
 
 data class SwipeCard(
@@ -33,6 +34,12 @@ data class SwipeCard(
     val distanceKm: Int,
     val isSuperLiked: Boolean = false,
     val isMatched: Boolean = false
+)
+
+data class MomentComment(
+    val senderName: String,
+    val text: String,
+    val timestamp: String
 )
 
 data class MomentPost(
@@ -46,7 +53,13 @@ data class MomentPost(
     val likesCount: Int,
     val commentsCount: Int,
     val giftTipsTotal: Int,
-    val isLiked: Boolean = false
+    val isLiked: Boolean = false,
+    val isFollowingAuthor: Boolean = false,
+    val comments: List<MomentComment> = listOf(
+        MomentComment("Stanbra", "Love this post! ❤️", "5m ago"),
+        MomentComment("Simran", "Amazing vibes! 🔥", "2m ago")
+    ),
+    val mediaUri: String? = null
 )
 
 data class StoryItem(
@@ -55,7 +68,8 @@ data class StoryItem(
     val authorAvatar: String,
     val previewMedia: String,
     val timestamp: String,
-    val isViewed: Boolean = false
+    val isViewed: Boolean = false,
+    val mediaUri: String? = null
 )
 
 data class SofaSeat(
@@ -139,4 +153,25 @@ data class ModerationAlert(
     val alertType: AlertType,
     val message: String,
     val timestamp: String
+)
+
+enum class NotificationType {
+    LIKE,
+    FOLLOW,
+    MATCH,
+    ROOM_INVITE,
+    LIVE_ALERT,
+    GIFT_TIP,
+    SYSTEM
+}
+
+data class AppNotification(
+    val id: String,
+    val title: String,
+    val message: String,
+    val type: NotificationType,
+    val iconSymbol: String,
+    val timestamp: String,
+    val isRead: Boolean = false,
+    val actionTargetScreen: String? = null
 )

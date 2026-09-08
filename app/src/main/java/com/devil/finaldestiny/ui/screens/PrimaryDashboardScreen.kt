@@ -1,8 +1,10 @@
 package com.devil.finaldestiny.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -14,28 +16,33 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.devil.finaldestiny.model.AppNotification
 import com.devil.finaldestiny.model.UserProfile
+import com.devil.finaldestiny.ui.components.NotificationBellButton
 import com.devil.finaldestiny.ui.components.VipBadge
 import com.devil.finaldestiny.ui.theme.*
 
 @Composable
 fun PrimaryDashboardScreen(
     user: UserProfile,
+    notifications: List<AppNotification> = emptyList(),
+    onOpenNotifications: () -> Unit = {},
     onNavigateToSwipe: () -> Unit,
     onNavigateToAudioRoom: () -> Unit,
     onNavigateToVideoRoom: () -> Unit,
     onNavigateToHostPortal: () -> Unit,
     onNavigateToVipStore: () -> Unit,
-    onNavigateToSecondaryFeed: () -> Unit
+    onNavigateToSecondaryFeed: () -> Unit,
+    onNavigateToProfile: () -> Unit = {}
 ) {
+    val context = LocalContext.current
     var showSettingsModal by remember { mutableStateOf(false) }
     var selectedLanguage by remember { mutableStateOf("English") }
     var cacheSizeMb by remember { mutableStateOf(42) }
@@ -46,265 +53,386 @@ fun PrimaryDashboardScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(PrimaryGradient)
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures { _, dragAmount ->
+                    // Swiping Left (negative dragAmount) navigates to Instagram Moments Feed!
+                    if (dragAmount < -40f) {
+                        onNavigateToSecondaryFeed()
+                    }
+                }
+            }
             .verticalScroll(scrollState)
-            .padding(16.dp)
+            .padding(14.dp)
     ) {
-        // User Profile Header Card
+        // User Profile Header Card with Realtime Notification Bell
         Card(
             colors = CardDefaults.cardColors(containerColor = CardBackground),
             shape = RoundedCornerShape(20.dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .border(1.dp, CrimsonVelvet, RoundedCornerShape(20.dp))
-                .padding(14.dp)
+                .clickable { onNavigateToProfile() }
+                .padding(12.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable { onNavigateToProfile() }
+                ) {
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(52.dp)
+                            .size(50.dp)
                             .clip(CircleShape)
                             .background(WineRedDark)
                             .border(2.dp, MetallicGold, CircleShape)
                     ) {
-                        Text(text = user.name.take(1), fontSize = 22.sp, color = MetallicGold, fontWeight = FontWeight.Bold)
+                        Text(text = user.name.take(1).uppercase(), fontSize = 22.sp, color = MetallicGold, fontWeight = FontWeight.Bold)
                     }
 
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
 
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(text = user.name, fontWeight = FontWeight.Bold, color = LightGold, fontSize = 16.sp)
+                            Text(text = user.name, fontWeight = FontWeight.Bold, color = LightGold, fontSize = 15.sp)
                             Spacer(modifier = Modifier.width(6.dp))
                             if (user.verifiedStatus) {
-                                Text(text = "🛡️", fontSize = 12.sp)
+                                Text(text = "🛡️", fontSize = 11.sp)
                             }
                         }
-                        Text(text = user.handle, fontSize = 12.sp, color = LightGold.copy(0.7f))
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(text = user.handle, fontSize = 11.sp, color = LightGold.copy(0.7f))
+                        Spacer(modifier = Modifier.height(3.dp))
                         VipBadge(vipLevel = user.vipLevel)
                     }
                 }
 
-                IconButton(onClick = { showSettingsModal = true }) {
-                    Icon(Icons.Default.Settings, contentDescription = "Settings", tint = MetallicGold)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "DASHBOARD CONTROL MATRIX",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            color = MetallicGold,
-            letterSpacing = 1.sp
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Grid Row 1: Find Match & Who Liked
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Box(modifier = Modifier.weight(1f)) {
-                DashboardGridTile(
-                    title = "FIND YOUR MATCH",
-                    subtitle = "Swipe dating deck",
-                    icon = "🔥",
-                    badge = "NEW",
-                    gradient = Brush.linearGradient(listOf(WineRedMedium, CrimsonVelvet)),
-                    onClick = onNavigateToSwipe
-                )
-            }
-
-            Box(modifier = Modifier.weight(1f)) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    shape = RoundedCornerShape(18.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(130.dp)
-                        .border(1.dp, CrimsonVelvet, RoundedCornerShape(18.dp))
-                        .clickable { onNavigateToSwipe() }
-                        .padding(12.dp)
+                // Top Right Action Controls: Notification Bell 🔔 & Settings ⚙️
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Column(verticalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxSize()) {
-                        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                            Text("WHO LIKED", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
-                            Text("14 Views", fontSize = 10.sp, color = LightGold.copy(0.7f))
-                        }
+                    NotificationBellButton(
+                        notifications = notifications,
+                        onClick = onOpenNotifications
+                    )
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            listOf("P1", "P2", "P3").forEach { _ ->
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier
-                                        .size(34.dp)
-                                        .blur(4.dp)
-                                        .clip(CircleShape)
-                                        .background(WineRedLight)
-                                ) {
-                                    Text("👤", fontSize = 14.sp)
-                                }
-                            }
-                        }
-
-                        Text("Tap to reveal profiles 🔒", fontSize = 10.sp, color = LightGold.copy(0.8f))
+                    IconButton(onClick = { showSettingsModal = true }) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = LightGold)
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
-        // Grid Row 2: Audio Room & Video Live Hub
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxWidth()
+        // INSTAGRAM MOMENTS & REELS FEED BANNER (TAP OR SWIPE LEFT TO OPEN)
+        Card(
+            colors = CardDefaults.cardColors(containerColor = WineRedMedium),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, MetallicGold, RoundedCornerShape(16.dp))
+                .clickable { onNavigateToSecondaryFeed() }
         ) {
-            Box(modifier = Modifier.weight(1f)) {
-                DashboardGridTile(
-                    title = "AUDIO PARTY ROOM",
-                    subtitle = "10-Mic Red Sofa Live",
-                    icon = "🛋️",
-                    badge = "LIVE",
-                    gradient = Brush.linearGradient(listOf(WineRedMedium, SeatVelvetBg)),
-                    onClick = onNavigateToAudioRoom
-                )
-            }
-
-            Box(modifier = Modifier.weight(1f)) {
-                DashboardGridTile(
-                    title = "VIDEO LIVE HUB",
-                    subtitle = "YouTube Player Sync",
-                    icon = "🎬",
-                    badge = "SYNC",
-                    gradient = Brush.linearGradient(listOf(CrimsonVelvet, WineRedDark)),
-                    onClick = onNavigateToVideoRoom
-                )
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("📸", fontSize = 20.sp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text("Destiny Live Moment Feed", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = LightGold)
+                        Text("Swipe Left 👈 or Tap to view live feeds", fontSize = 10.sp, color = MetallicGold)
+                    }
+                }
+                Text("Open Feed ➔", fontSize = 11.sp, color = MetallicGold, fontWeight = FontWeight.Bold)
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // Grid Row 3: Wallet Hub & Become a Host
+        // QUICK METRICS SUMMARY
         Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Box(modifier = Modifier.weight(1f)) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    shape = RoundedCornerShape(18.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(130.dp)
-                        .border(1.dp, MetallicGold.copy(alpha = 0.5f), RoundedCornerShape(18.dp))
-                        .clickable { onNavigateToVipStore() }
-                        .padding(12.dp)
-                ) {
-                    Column(verticalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxSize()) {
-                        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                            Text("WALLET HUB", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
-                            Text("💎 Store", fontSize = 10.sp, color = MetallicGold)
-                        }
-
-                        Column {
-                            Text("🪙 ${user.coins} Coins", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = LightGold)
-                            Text("💎 ${user.diamonds} Diamonds", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = LightGold)
-                        }
-
-                        Button(
-                            onClick = onNavigateToVipStore,
-                            colors = ButtonDefaults.buttonColors(containerColor = MetallicGold),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                            modifier = Modifier.height(28.dp)
-                        ) {
-                            Text("Recharge Gateway", fontSize = 10.sp, color = WineRedDark, fontWeight = FontWeight.Bold)
-                        }
-                    }
+            Card(
+                colors = CardDefaults.cardColors(containerColor = CardBackground),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.weight(1f).border(1.dp, CrimsonVelvet, RoundedCornerShape(14.dp)).padding(10.dp)
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    Text("💰 Coins", fontSize = 10.sp, color = LightGold.copy(0.7f))
+                    Text("${user.coins}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
                 }
             }
 
-            Box(modifier = Modifier.weight(1f)) {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    shape = RoundedCornerShape(18.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(130.dp)
-                        .border(1.dp, CrimsonVelvet, RoundedCornerShape(18.dp))
-                        .clickable { onNavigateToHostPortal() }
-                        .padding(12.dp)
-                ) {
-                    Column(verticalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxSize()) {
-                        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                            Text("BECOME A HOST", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
-                            Text("25% Share", fontSize = 10.sp, color = LiveIndicatorGreen, fontWeight = FontWeight.Bold)
-                        }
+            Card(
+                colors = CardDefaults.cardColors(containerColor = CardBackground),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.weight(1f).border(1.dp, CrimsonVelvet, RoundedCornerShape(14.dp)).padding(10.dp)
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    Text("💎 Diamonds", fontSize = 10.sp, color = LightGold.copy(0.7f))
+                    Text("${user.diamonds}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
+                }
+            }
 
-                        Column {
-                            Text("${user.followerCount} / 100 Followers", fontSize = 11.sp, color = LightGold)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            LinearProgressIndicator(
-                                progress = { (user.followerCount.toFloat() / 100f).coerceAtMost(1.0f) },
-                                color = LiveIndicatorGreen,
-                                trackColor = WineRedDark,
-                                modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape)
-                            )
-                        }
-
-                        Text("Aadhaar/PAN Payouts ->", fontSize = 10.sp, color = MetallicGold, fontWeight = FontWeight.Bold)
-                    }
+            Card(
+                colors = CardDefaults.cardColors(containerColor = CardBackground),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.weight(1f).border(1.dp, CrimsonVelvet, RoundedCornerShape(14.dp)).padding(10.dp)
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    Text("👥 Followers", fontSize = 10.sp, color = LightGold.copy(0.7f))
+                    Text("${user.followerCount}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = LightGold)
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // CORE APPLICATION HUB CARDS
+        Text("CORE APPLICATION HUBS", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MetallicGold, letterSpacing = 1.sp)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // 1. Live Audio Sofa Room Hub
+        Card(
+            colors = CardDefaults.cardColors(containerColor = CardBackground),
+            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, MetallicGold, RoundedCornerShape(18.dp))
+                .clickable { onNavigateToAudioRoom() }
+                .padding(14.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(WineRedMedium)
+                    ) {
+                        Icon(Icons.Default.Mic, contentDescription = null, tint = MetallicGold, modifier = Modifier.size(24.dp))
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text("10-Mic Red Velvet Audio Room", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = LightGold)
+                        Text("Achat Style Sofa Seats & MP3 Jukebox", fontSize = 10.sp, color = LightGold.copy(0.7f))
+                    }
+                }
+                Text("Enter 🎙️", fontSize = 12.sp, color = MetallicGold, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // 2. Video Broadcast & Co-Watching Stage
+        Card(
+            colors = CardDefaults.cardColors(containerColor = CardBackground),
+            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, CrimsonVelvet, RoundedCornerShape(18.dp))
+                .clickable { onNavigateToVideoRoom() }
+                .padding(14.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(WineRedMedium)
+                    ) {
+                        Icon(Icons.Default.Videocam, contentDescription = null, tint = LiveIndicatorGreen, modifier = Modifier.size(24.dp))
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text("HD Video Broadcast & YouTube Sync Stage", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = LightGold)
+                        Text("Live Cam Stream & YouTube Co-Watching", fontSize = 10.sp, color = LightGold.copy(0.7f))
+                    }
+                }
+                Text("Watch 📹", fontSize = 12.sp, color = LiveIndicatorGreen, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // 3. Instagram Social Moments Feed Card
+        Card(
+            colors = CardDefaults.cardColors(containerColor = CardBackground),
+            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, CrimsonVelvet, RoundedCornerShape(18.dp))
+                .clickable { onNavigateToSecondaryFeed() }
+                .padding(14.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(WineRedMedium)
+                    ) {
+                        Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = MetallicGold, modifier = Modifier.size(24.dp))
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text("Instagram Share Moments & Stories Feed", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = LightGold)
+                        Text("Post Images/Videos & Build Organic Followers", fontSize = 10.sp, color = LightGold.copy(0.7f))
+                    }
+                }
+                Text("Explore 📸", fontSize = 12.sp, color = MetallicGold, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // 4. Tinder 9:16 Swipe Match Portal
+        Card(
+            colors = CardDefaults.cardColors(containerColor = CardBackground),
+            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, CrimsonVelvet, RoundedCornerShape(18.dp))
+                .clickable { onNavigateToSwipe() }
+                .padding(14.dp)
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(WineRedMedium)
+                    ) {
+                        Icon(Icons.Default.Favorite, contentDescription = null, tint = HeartRed, modifier = Modifier.size(24.dp))
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text("Discover Match Swipe Cards", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = LightGold)
+                        Text("Swipe Right for Match & Instant 1v1 Calls", fontSize = 10.sp, color = LightGold.copy(0.7f))
+                    }
+                }
+                Text("Swipe ❤️", fontSize = 12.sp, color = HeartRed, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // 5. VIP Asset Store & Creator Monetization
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = CardBackground),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .border(1.dp, MetallicGold, RoundedCornerShape(16.dp))
+                    .clickable { onNavigateToVipStore() }
+                    .padding(12.dp)
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.Storefront, contentDescription = null, tint = MetallicGold, modifier = Modifier.size(28.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("VIP Store 👑", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
+                }
+            }
+
+            Card(
+                colors = CardDefaults.cardColors(containerColor = CardBackground),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .border(1.dp, CrimsonVelvet, RoundedCornerShape(16.dp))
+                    .clickable { onNavigateToHostPortal() }
+                    .padding(12.dp)
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.MonetizationOn, contentDescription = null, tint = LiveIndicatorGreen, modifier = Modifier.size(28.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Creator Payouts 💵", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = LiveIndicatorGreen)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
     }
 
-    // Settings Modal
+    // SETTINGS MODAL DIALOG
     if (showSettingsModal) {
         AlertDialog(
             onDismissRequest = { showSettingsModal = false },
             containerColor = CardBackground,
-            title = { Text("User Settings & Security", color = MetallicGold) },
+            title = { Text("⚙️ Settings & System Diagnostics", color = MetallicGold, fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("Language: $selectedLanguage", color = LightGold, fontSize = 13.sp)
-                    Row {
-                        listOf("English", "Hindi", "Punjabi", "Tamil").forEach { lang ->
-                            TextButton(onClick = { selectedLanguage = lang }) {
-                                Text(lang, color = if (selectedLanguage == lang) MetallicGold else LightGold.copy(0.7f), fontSize = 11.sp)
+                    Text("App Version: FinalDestiny v1.0.0", fontSize = 12.sp, color = LightGold)
+                    Text("Founder: DarkDevil", fontSize = 12.sp, color = MetallicGold, fontWeight = FontWeight.Bold)
+                    HorizontalDivider(color = CrimsonVelvet, thickness = 1.dp)
+
+                    Text("App Language: $selectedLanguage", fontSize = 12.sp, color = LightGold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf("English", "Hindi", "Hinglish").forEach { lang ->
+                            Button(
+                                onClick = { selectedLanguage = lang },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (selectedLanguage == lang) MetallicGold else WineRedMedium
+                                ),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                modifier = Modifier.height(28.dp)
+                            ) {
+                                Text(lang, fontSize = 10.sp, color = if (selectedLanguage == lang) WineRedDark else LightGold)
                             }
                         }
                     }
 
-                    HorizontalDivider(color = CrimsonVelvet)
+                    HorizontalDivider(color = CrimsonVelvet, thickness = 1.dp)
 
-                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                        Text("Storage Cache Cleaner", color = LightGold, fontSize = 13.sp)
-                        Text("${cacheSizeMb}MB", color = MetallicGold, fontSize = 13.sp)
-                    }
                     Button(
-                        onClick = { cacheSizeMb = 0 },
-                        colors = ButtonDefaults.buttonColors(containerColor = WineRedLight)
+                        onClick = {
+                            cacheSizeMb = 0
+                            Toast.makeText(context, "🧹 App Cache Cleared Successfully!", Toast.LENGTH_SHORT).show()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = CrimsonVelvet),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Clear Cache", color = LightGold, fontSize = 11.sp)
+                        Text("Clear Cache ($cacheSizeMb MB)", color = LightGold)
                     }
-
-                    HorizontalDivider(color = CrimsonVelvet)
-
-                    Text("Blocked Users & Privacy Disclaimers", color = LightGold, fontSize = 12.sp)
-                    Text("🔒 1v1 Calls strictly require recipient acceptance.", color = MetallicGold, fontSize = 11.sp)
                 }
             },
             confirmButton = {
@@ -313,47 +441,5 @@ fun PrimaryDashboardScreen(
                 }
             }
         )
-    }
-}
-
-@Composable
-private fun DashboardGridTile(
-    title: String,
-    subtitle: String,
-    icon: String,
-    badge: String,
-    gradient: Brush,
-    onClick: () -> Unit
-) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        shape = RoundedCornerShape(18.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(130.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(gradient)
-            .border(1.dp, CrimsonVelvet, RoundedCornerShape(18.dp))
-            .clickable { onClick() }
-            .padding(12.dp)
-    ) {
-        Column(verticalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxSize()) {
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Text(icon, fontSize = 22.sp)
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MetallicGold)
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                ) {
-                    Text(badge, fontSize = 9.sp, fontWeight = FontWeight.Bold, color = WineRedDark)
-                }
-            }
-
-            Column {
-                Text(title, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
-                Text(subtitle, fontSize = 10.sp, color = LightGold.copy(0.85f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
     }
 }

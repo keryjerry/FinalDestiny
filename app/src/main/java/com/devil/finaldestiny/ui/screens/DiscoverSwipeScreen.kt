@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devil.finaldestiny.model.SwipeCard
+import com.devil.finaldestiny.ui.components.ProfileAvatarView
 import com.devil.finaldestiny.ui.components.VipBadge
 import com.devil.finaldestiny.ui.theme.*
 
@@ -74,7 +75,7 @@ fun DiscoverSwipeScreen(
                         .border(1.5.dp, GoldGradient, RoundedCornerShape(24.dp))
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        // Background Photo Simulation
+                        // Background Photo / Avatar View
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
@@ -85,16 +86,14 @@ fun DiscoverSwipeScreen(
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = currentCard.profile.name.take(1),
-                                    fontSize = 72.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MetallicGold.copy(0.8f)
-                                )
-                                Spacer(modifier = Modifier.height(10.dp))
-                                Text("High-Res Profile Photo", color = LightGold.copy(0.6f), fontSize = 14.sp)
-                            }
+                            ProfileAvatarView(
+                                name = currentCard.profile.name,
+                                profilePictureUri = currentCard.profile.profilePictureUri ?: currentCard.profile.photos.firstOrNull(),
+                                gender = currentCard.profile.gender,
+                                size = 140.dp,
+                                showBorder = true,
+                                borderColor = MetallicGold
+                            )
                         }
 
                         // Gradient Overlay for Text Readability
