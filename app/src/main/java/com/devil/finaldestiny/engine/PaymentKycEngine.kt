@@ -54,9 +54,45 @@ object PaymentKycEngine {
                 put("image", "https://finaldestiny.app/assets/logo.png")
                 put("currency", orderDetails.currency)
                 put("amount", (orderDetails.amountRupees * 100).toLong()) // Amount in paise
+                put("send_sms_hash", true)
+                put("allow_rotation", true)
                 put("prefill", JSONObject().apply {
                     put("contact", orderDetails.customerPhone)
                     put("email", orderDetails.customerEmail)
+                    put("method", "upi")
+                })
+                put("method", JSONObject().apply {
+                    put("upi", true)
+                    put("card", true)
+                    put("netbanking", true)
+                    put("wallet", true)
+                })
+                put("config", JSONObject().apply {
+                    put("display", JSONObject().apply {
+                        put("blocks", JSONObject().apply {
+                            put("utib", JSONObject().apply {
+                                put("name", "Pay via UPI (GPay, PhonePe, Paytm)")
+                                put("instruments", org.json.JSONArray().apply {
+                                    put(JSONObject().apply { put("method", "upi") })
+                                })
+                            })
+                            put("other", JSONObject().apply {
+                                put("name", "Other Payment Methods")
+                                put("instruments", org.json.JSONArray().apply {
+                                    put(JSONObject().apply { put("method", "card") })
+                                    put(JSONObject().apply { put("method", "netbanking") })
+                                    put(JSONObject().apply { put("method", "wallet") })
+                                })
+                            })
+                        })
+                        put("sequence", org.json.JSONArray().apply {
+                            put("block.utib")
+                            put("block.other")
+                        })
+                        put("preferences", JSONObject().apply {
+                            put("show_default_blocks", true)
+                        })
+                    })
                 })
                 put("theme", JSONObject().apply {
                     put("color", "#800020")
@@ -150,7 +186,32 @@ object PaymentKycEngine {
                             "prefill": {
                                 "name": "Final Destiny User",
                                 "email": "user@finaldestiny.app",
-                                "contact": "9876543210"
+                                "contact": "9876543210",
+                                "method": "upi"
+                            },
+                            "method": {
+                                "upi": true,
+                                "card": true,
+                                "netbanking": true,
+                                "wallet": true
+                            },
+                            "config": {
+                                "display": {
+                                    "blocks": {
+                                        "utib": {
+                                            "name": "Pay via UPI (GPay, PhonePe, Paytm)",
+                                            "instruments": [{ "method": "upi" }]
+                                        },
+                                        "other": {
+                                            "name": "Other Payment Methods",
+                                            "instruments": [{ "method": "card" }, { "method": "netbanking" }, { "method": "wallet" }]
+                                        }
+                                    },
+                                    "sequence": ["block.utib", "block.other"],
+                                    "preferences": {
+                                        "show_default_blocks": true
+                                    }
+                                }
                             },
                             "theme": {
                                 "color": "#800020"
