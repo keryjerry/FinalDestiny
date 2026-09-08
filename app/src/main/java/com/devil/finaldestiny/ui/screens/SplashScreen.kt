@@ -109,30 +109,21 @@ fun SplashScreen(
                 .background(Color(0x5506B6D4))
         )
 
-        // SUBTLE AMBIENT LOGO WATERMARK (15-20% Opacity Ambient Background Element)
+        // AMBIENT APP ICON LOGIN BACKGROUND THEME (REPLACED COUPLE IMAGE WITH APP ICON WATERMARK)
         Image(
             painter = painterResource(id = R.drawable.app_logo),
-            contentDescription = null,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .size(280.dp)
-                .align(Alignment.Center)
-                .offset(y = (-60).dp)
-                .alpha(0.18f)
-                .blur(16.dp)
-        )
-
-        // 1. FULL SCREEN BACKGROUND COUPLE IMAGE
-        Image(
-            painter = painterResource(id = R.drawable.full_bg_couple),
-            contentDescription = "Background Couple",
+            contentDescription = "Ambient App Logo Background",
             contentScale = ContentScale.Crop,
             modifier = Modifier
-                .fillMaxSize()
-                .alpha(0.75f)
+                .size(360.dp)
+                .align(Alignment.Center)
+                .offset(y = (-40).dp)
+                .alpha(0.25f)
+                .blur(12.dp)
+                .clip(CircleShape)
         )
 
-        // 2. VIBRANT SKY BLUE OVERLAY LAYOVER
+        // VIBRANT SKY BLUE OVERLAY LAYOVER
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -147,7 +138,7 @@ fun SplashScreen(
                 )
         )
 
-        // 3. MAIN CONTENT LAYOUT
+        // MAIN CONTENT LAYOUT
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween,
@@ -373,7 +364,7 @@ fun SplashScreen(
 
                     Spacer(modifier = Modifier.height(4.dp))
 
-                    // ACTION BUTTON (REAL NETWORK CALL TO SUPABASE GO-TRUE AUTH SERVER)
+                    // ACTION BUTTON
                     Button(
                         onClick = {
                             if (isLoading) return@Button
