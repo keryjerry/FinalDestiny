@@ -109,6 +109,19 @@ fun SplashScreen(
                 .background(Color(0x5506B6D4))
         )
 
+        // SUBTLE AMBIENT LOGO WATERMARK (15-20% Opacity Ambient Background Element)
+        Image(
+            painter = painterResource(id = R.drawable.app_logo),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .size(280.dp)
+                .align(Alignment.Center)
+                .offset(y = (-60).dp)
+                .alpha(0.18f)
+                .blur(16.dp)
+        )
+
         // 1. FULL SCREEN BACKGROUND COUPLE IMAGE
         Image(
             painter = painterResource(id = R.drawable.full_bg_couple),
@@ -184,20 +197,14 @@ fun SplashScreen(
 
                 Spacer(modifier = Modifier.height(6.dp))
 
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xDD0B2545)),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .border(1.dp, neonGoldGradient, RoundedCornerShape(12.dp))
-                        .padding(horizontal = 12.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = "👑 Supabase GoTrue Auth",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFFFACC15)
-                    )
-                }
+                // FOUNDER BRANDING
+                Text(
+                    text = "Founder: Dilshad",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFFFFD700),
+                    textAlign = TextAlign.Center
+                )
             }
 
             Spacer(modifier = Modifier.height(80.dp))
@@ -265,7 +272,7 @@ fun SplashScreen(
                         Icon(Icons.Default.Shield, contentDescription = null, tint = Color(0xFF38BDF8))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (isSignUpMode) "Create Supabase Account" else "Supabase Authentication Login",
+                            text = if (isSignUpMode) "Create Account" else "Account Login",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFFFACC15)
