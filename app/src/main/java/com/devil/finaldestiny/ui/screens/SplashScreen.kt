@@ -79,60 +79,26 @@ fun SplashScreen(
             .fillMaxSize()
             .background(seaPartyGradient)
     ) {
-        // VIBRANT NEON BOKEH PARTY LIGHTS OVERLAY
-        Box(
-            modifier = Modifier
-                .size(240.dp)
-                .align(Alignment.TopStart)
-                .offset(x = (-40).dp, y = (-20).dp)
-                .blur(60.dp)
-                .clip(CircleShape)
-                .background(Color(0x9938BDF8))
-        )
-
-        Box(
-            modifier = Modifier
-                .size(220.dp)
-                .align(Alignment.TopEnd)
-                .offset(x = 40.dp, y = 50.dp)
-                .blur(55.dp)
-                .clip(CircleShape)
-                .background(Color(0x88C084FC))
-        )
-
-        Box(
-            modifier = Modifier
-                .size(260.dp)
-                .align(Alignment.Center)
-                .blur(70.dp)
-                .clip(CircleShape)
-                .background(Color(0x5506B6D4))
-        )
-
-        // AMBIENT APP ICON LOGIN BACKGROUND THEME (REPLACED COUPLE IMAGE WITH APP ICON WATERMARK)
+        // FULL-BLEED OFFICIAL APP ICON BACKGROUND (CLEAR, VIBRANT & SHARP)
         Image(
             painter = painterResource(id = R.drawable.app_logo),
-            contentDescription = "Ambient App Logo Background",
+            contentDescription = "Official App Logo Background",
             contentScale = ContentScale.Crop,
             modifier = Modifier
-                .size(360.dp)
-                .align(Alignment.Center)
-                .offset(y = (-40).dp)
-                .alpha(0.25f)
-                .blur(12.dp)
-                .clip(CircleShape)
+                .fillMaxSize()
+                .alpha(0.75f)
         )
 
-        // VIBRANT SKY BLUE OVERLAY LAYOVER
+        // ELEGANT GRADIENT OVERLAY SCRIM FOR HIGH CONTRAST & LEGIBILITY
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color(0x80031926),
-                            Color(0x400B2545),
-                            Color(0xB3051923)
+                            Color(0x550B1017),
+                            Color(0x200B1017),
+                            Color(0xCC0B1017)
                         )
                     )
                 )

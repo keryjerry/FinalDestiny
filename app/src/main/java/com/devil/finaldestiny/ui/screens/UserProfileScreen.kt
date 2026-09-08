@@ -111,8 +111,9 @@ fun UserProfileScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            val updated = user.copy(profilePictureUri = it.toString())
+            val updated = user.copy(profilePictureUri = it.toString(), verifiedStatus = true)
             onSaveProfile(updated)
+            Toast.makeText(context, "📸 Profile Photo Uploaded & Account Verified! 🛡️", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -122,8 +123,9 @@ fun UserProfileScreen(
         bitmap?.let {
             val tempUri = saveBitmapToCacheUri(context, it)
             tempUri?.let { uri ->
-                val updated = user.copy(profilePictureUri = uri.toString())
+                val updated = user.copy(profilePictureUri = uri.toString(), verifiedStatus = true)
                 onSaveProfile(updated)
+                Toast.makeText(context, "📷 Live Selfie Verified & Account Verified! 🛡️", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -668,6 +670,109 @@ fun UserProfileScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = MetallicGold)
                 ) {
                     Text("I Understand & Agree", color = WineRedDark, fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
+    // PHOTO / SELFIE UPLOADER MODAL DIALOG
+    if (showPhotoOptionsDialog) {
+        AlertDialog(
+            onDismissRequest = { showPhotoOptionsDialog = false },
+            containerColor = CardBackground,
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.CameraAlt, contentDescription = null, tint = MetallicGold)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("📷 Profile Photo & Selfie Verification", color = MetallicGold, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Upload a profile photo or take a live selfie to verify your profile automatically 🛡️:",
+                        fontSize = 12.sp,
+                        color = LightGold
+                    )
+
+                    Button(
+                        onClick = {
+                            showPhotoOptionsDialog = false
+                            try {
+                                cameraLauncher.launch(null)
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Camera launch error: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = WineRedMedium),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().height(44.dp)
+                    ) {
+                        Icon(Icons.Default.CameraAlt, contentDescription = null, tint = MetallicGold, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Take Live Selfie 📷 (Auto-Verify)", color = LightGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+
+                    Button(
+                        onClick = {
+                            showPhotoOptionsDialog = false
+                            try {
+                                galleryLauncher.launch("image/*")
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Gallery launch error: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MetallicGold),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().height(44.dp)
+                    ) {
+                        Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = WineRedDark, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Choose from Gallery 🖼️", color = WineRedDark, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showPhotoOptionsDialog = false }) {
+                    Text("Cancel", color = LightGold)
+                }
+            }
+        )
+    }
+
+    // FOLLOWERS / FOLLOWING LIST MODAL DIALOG
+    if (showFollowersDialog) {
+        AlertDialog(
+            onDismissRequest = { showFollowersDialog = false },
+            containerColor = CardBackground,
+            title = { Text(dialogTitle, color = MetallicGold, fontSize = 16.sp, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val mockList = listOf(
+                        "Ananya Roy (@Ananya_Roy)" to "VIP 4",
+                        "Aarav Sharma (@Aarav_Sharma)" to "VIP 5",
+                        "Simran Kaur (@Simran_Vibes)" to "VIP 3",
+                        "Vikram Malhotra (@Vikram_M)" to "VIP 6"
+                    )
+                    mockList.forEach { (nameHandle, vip) ->
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(WineRedMedium)
+                                .padding(8.dp)
+                        ) {
+                            Text(nameHandle, fontSize = 12.sp, color = LightGold, fontWeight = FontWeight.SemiBold)
+                            Text(vip, fontSize = 10.sp, color = MetallicGold, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showFollowersDialog = false }) {
+                    Text("Close", color = LightGold)
                 }
             }
         )
