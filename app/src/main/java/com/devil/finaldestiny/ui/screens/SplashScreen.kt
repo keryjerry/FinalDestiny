@@ -137,40 +137,20 @@ fun SplashScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.padding(top = 16.dp)
             ) {
-                // VIBRANT LOGO EMBLEM
+                // VIBRANT OFFICIAL LOGO EMBLEM
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .size(72.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(Color(0xFF0284C7), Color(0xFF0F172A), Color(0xFF0369A1))
-                            )
-                        )
-                        .border(2.dp, neonGoldGradient, CircleShape)
+                        .size(84.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .border(2.dp, neonGoldGradient, RoundedCornerShape(20.dp))
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Favorite,
-                        contentDescription = "Logo Heart",
-                        tint = Color(0xFFFACC15),
-                        modifier = Modifier.size(46.dp)
+                    Image(
+                        painter = painterResource(id = R.drawable.app_logo),
+                        contentDescription = "Final Destiny Logo",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
                     )
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF0F172A))
-                            .border(1.dp, Color(0xFF38BDF8), CircleShape)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Handshake,
-                            contentDescription = "Handshake",
-                            tint = Color(0xFF38BDF8),
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
                 }
 
                 Spacer(modifier = Modifier.height(6.dp))

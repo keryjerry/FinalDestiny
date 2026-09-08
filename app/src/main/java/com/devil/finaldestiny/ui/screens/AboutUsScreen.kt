@@ -1,5 +1,6 @@
 package com.devil.finaldestiny.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -16,9 +17,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.devil.finaldestiny.R
 import com.devil.finaldestiny.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -72,19 +76,19 @@ fun AboutUsScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth()
                 ) {
+
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(72.dp)
-                            .clip(CircleShape)
-                            .background(SkyBlueHeader)
-                            .border(2.dp, BrightCyanAccent, CircleShape)
+                            .size(80.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .border(2.dp, BrightCyanAccent, RoundedCornerShape(18.dp))
                     ) {
-                        Icon(
-                            Icons.Default.Stars,
-                            contentDescription = null,
-                            tint = SkyBluePrimary,
-                            modifier = Modifier.size(40.dp)
+                        Image(
+                            painter = painterResource(id = R.drawable.app_logo),
+                            contentDescription = "Final Destiny Logo",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
                     Spacer(modifier = Modifier.height(12.dp))
