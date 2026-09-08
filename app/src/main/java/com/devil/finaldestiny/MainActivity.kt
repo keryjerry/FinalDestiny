@@ -24,16 +24,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devil.finaldestiny.data.AppRepository
+import com.devil.finaldestiny.engine.AppInstallerEngine
+import com.devil.finaldestiny.engine.UpdateReleaseInfo
 import com.devil.finaldestiny.model.GiftItem
 import com.devil.finaldestiny.model.PaymentMethodType
 import com.devil.finaldestiny.ui.components.MonetizationAnnouncementModal
 import com.devil.finaldestiny.ui.components.NotificationCenterModal
 import com.devil.finaldestiny.ui.components.PermissionModalDialog
+import com.devil.finaldestiny.ui.components.UpdateInstallerModalDialog
 import com.devil.finaldestiny.ui.screens.*
 import com.devil.finaldestiny.ui.theme.*
 import com.razorpay.Checkout
 import com.razorpay.PaymentData
 import com.razorpay.PaymentResultWithDataListener
+import kotlinx.coroutines.launch
 
 enum class Screen {
     AUTH_SPLASH,
@@ -110,8 +114,20 @@ fun FinalDestinyApp(repository: AppRepository) {
     val isVisionBlackoutTriggered by repository.isVisionBlackoutTriggered.collectAsState()
     val notifications by repository.notifications.collectAsState()
     val creatorAnalytics by repository.creatorAnalytics.collectAsState()
-
     var showNotificationModal by remember { mutableStateOf(false) }
+
+    // Auto-Update Checker State (Supabase Remote Config)
+    var updateInfoState by remember { mutableStateOf<UpdateReleaseInfo?>(null) }
+    var isDownloadingUpdate by remember { mutableStateOf(false) }
+    var updateDownloadProgress by remember { mutableStateOf(0) }
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        val releaseInfo = AppInstallerEngine.checkSupabaseAppVersion(currentVersionCode = 1)
+        if (releaseInfo != null) {
+            updateInfoState = releaseInfo
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -474,6 +490,39 @@ fun FinalDestinyApp(repository: AppRepository) {
                     "CREATOR_MONETIZATION" -> currentScreen = Screen.CREATOR_MONETIZATION
                     else -> {}
                 }
+            }
+        )
+    }
+
+    val currentUpdate = updateInfoState
+    if (currentUpdate != null) {
+        UpdateInstallerModalDialog(
+            updateInfo = currentUpdate,
+            downloadProgress = updateDownloadProgress,
+            isDownloading = isDownloadingUpdate,
+            onStartDownload = {
+                coroutineScope.launch {
+                    isDownloadingUpdate = true
+                    updateDownloadProgress = 0
+                    val downloadedFile = AppInstallerEngine.downloadApkFile(
+                        context = context,
+                        downloadUrl = currentUpdate.apkDownloadUrl
+                    ) { progress ->
+                        updateDownloadProgress = progress
+                    }
+                    isDownloadingUpdate = false
+                    if (downloadedFile != null) {
+                        val installPromptSuccess = AppInstallerEngine.promptPackageInstall(context, downloadedFile)
+                        if (!installPromptSuccess) {
+                            Toast.makeText(context, "Please allow 'Install Unknown Apps' permission to complete update.", Toast.LENGTH_LONG).show()
+                        }
+                    } else {
+                        Toast.makeText(context, "Download failed. Please check network connection.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            },
+            onDismiss = {
+                updateInfoState = null
             }
         )
     }

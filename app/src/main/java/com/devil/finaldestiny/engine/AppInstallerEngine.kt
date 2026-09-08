@@ -25,7 +25,53 @@ data class UpdateReleaseInfo(
 
 object AppInstallerEngine {
 
-    private const val DEFAULT_VERSION_CHECK_ENDPOINT = "https://api.finaldestiny.app/api/app/version"
+    private const val DEFAULT_VERSION_CHECK_ENDPOINT = "https://twwezpogwtmjavoemdvi.supabase.co/rest/v1/app_version_config?select=*"
+
+    suspend fun checkSupabaseAppVersion(
+        currentVersionCode: Int = 1
+    ): UpdateReleaseInfo? = withContext(Dispatchers.IO) {
+        val supabaseUrl = "https://twwezpogwtmjavoemdvi.supabase.co"
+        val anonKey = "sb_publishable_RiDqsSCPGbWGxd6570P1FA_y_L10U_w"
+        val endpoint = "$supabaseUrl/rest/v1/app_version_config?select=*&order=latest_version.desc&limit=1"
+
+        try {
+            val url = URL(endpoint)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 6000
+                readTimeout = 6000
+                setRequestProperty("apikey", anonKey)
+                setRequestProperty("Authorization", "Bearer $anonKey")
+                setRequestProperty("Accept", "application/json")
+            }
+
+            if (connection.responseCode in 200..299) {
+                val jsonString = connection.inputStream.bufferedReader().use { it.readText() }
+                val jsonArray = org.json.JSONArray(jsonString)
+                if (jsonArray.length() > 0) {
+                    val obj = jsonArray.getJSONObject(0)
+                    val minSupported = obj.optInt("min_supported_version", 1)
+                    val latestVer = obj.optInt("latest_version", 2)
+                    val downloadUrl = obj.optString("download_url", "$supabaseUrl/storage/v1/object/public/reels/app-debug.apk")
+                    val releaseNotes = obj.optString("release_notes", "• New 9:16 Live Video Stage with aspect-ratio camera preview\n• ExoPlayer Media3 Feed Video Reels\n• Dynamic Multi-User Profiles & Supabase Avatars\n• Creator Studio Velocity Analytics & Refresh Engine")
+
+                    if (latestVer > currentVersionCode) {
+                        return@withContext UpdateReleaseInfo(
+                            versionCode = latestVer,
+                            versionName = "v$latestVer.0",
+                            apkDownloadUrl = downloadUrl,
+                            changelog = releaseNotes,
+                            isMandatory = (currentVersionCode < minSupported)
+                        )
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        return@withContext null
+    }
 
     suspend fun checkServerVersion(
         endpointUrl: String = DEFAULT_VERSION_CHECK_ENDPOINT,
