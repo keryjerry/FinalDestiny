@@ -35,6 +35,8 @@ import com.devil.finaldestiny.model.HostEarnings
 import com.devil.finaldestiny.model.VipTierInfo
 import com.devil.finaldestiny.ui.components.PaymentQrModalDialog
 import com.devil.finaldestiny.ui.theme.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import kotlinx.coroutines.launch
 
 data class RechargePack(
     val id: String,
@@ -53,6 +55,7 @@ data class ThemeEffectItem(
     val description: String
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VipStoreScreen(
     vipTiers: List<VipTierInfo>,
@@ -63,9 +66,13 @@ fun VipStoreScreen(
     hostEarnings: HostEarnings? = null,
     onPurchaseAsset: (GiftItem) -> Unit,
     onTopUpDiamonds: (Int) -> Unit = {},
+    onRefresh: suspend () -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    var isRefreshing by remember { mutableStateOf(false) }
+
     var selectedTab by remember { mutableStateOf(0) } // 0: Wallet & Recharge, 1: VIP & Noble, 2: Gift Wall, 3: Themes & Mic Effects, 4: Host Wallet
     var selectedRechargePack by remember { mutableStateOf<RechargePack?>(null) }
     var showPaymentModal by remember { mutableStateOf(false) }
@@ -89,12 +96,26 @@ fun VipStoreScreen(
         ThemeEffectItem("t6", "Destiny Legend Badge", "ROOM_TITLE", "🛡️", 500, "Legendary Hall of Fame Room Title Banner")
     )
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(PrimaryGradient)
-            .padding(14.dp)
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = {
+            coroutineScope.launch {
+                isRefreshing = true
+                try {
+                    onRefresh()
+                } finally {
+                    isRefreshing = false
+                }
+            }
+        },
+        modifier = Modifier.fillMaxSize()
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(PrimaryGradient)
+                .padding(14.dp)
+        ) {
         // TOP HEADER BAR & DIAMOND BALANCE
         Card(
             colors = CardDefaults.cardColors(containerColor = CardBackground),
@@ -464,6 +485,7 @@ fun VipStoreScreen(
             }
         }
     }
+}
 
     // OFFICIAL PAYTM UPI QR PAYMENT MODAL
     if (showPaymentModal && selectedRechargePack != null) {

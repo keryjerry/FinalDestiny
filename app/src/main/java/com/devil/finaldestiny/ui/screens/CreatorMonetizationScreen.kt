@@ -1,36 +1,51 @@
 package com.devil.finaldestiny.ui.screens
 
+import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.devil.finaldestiny.model.HostEarnings
-import com.devil.finaldestiny.model.KycData
-import com.devil.finaldestiny.model.PaymentMethodType
+import com.devil.finaldestiny.model.*
 import com.devil.finaldestiny.ui.theme.*
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreatorMonetizationScreen(
     kycData: KycData,
     hostEarnings: HostEarnings,
     userFollowers: Int,
+    analytics: CreatorAnalytics = CreatorAnalytics(),
     onSubmitKyc: (String, String, String) -> Unit,
-    onRequestPayout: (Double, PaymentMethodType, String) -> String
+    onRequestPayout: (Double, PaymentMethodType, String) -> String,
+    onRefresh: suspend () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    var isRefreshing by remember { mutableStateOf(false) }
+
+    var selectedStudioTab by remember { mutableStateOf(0) } // 0: Growth & Charts, 1: Post Insights, 2: Milestones & Go-Live, 3: KYC & Payouts
+    var chartPeriod7D by remember { mutableStateOf(true) } // true: 7D, false: 30D
+
     var isDashboardUnlocked by remember { mutableStateOf(false) }
     var passcodeAttempt by remember { mutableStateOf("") }
     var passcodeError by remember { mutableStateOf<String?>(null) }
@@ -45,307 +60,667 @@ fun CreatorMonetizationScreen(
 
     var payoutResultMsg by remember { mutableStateOf<String?>(null) }
 
-    LazyColumn(
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-        modifier = Modifier
-            .fillMaxSize()
-            .background(PrimaryGradient)
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = {
+            coroutineScope.launch {
+                isRefreshing = true
+                try {
+                    onRefresh()
+                } finally {
+                    isRefreshing = false
+                }
+            }
+        },
+        modifier = Modifier.fillMaxSize()
     ) {
-        // Header
-        item {
-            Text("CREATOR MONETIZATION & PAYOUTS", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MetallicGold, letterSpacing = 1.sp)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text("Official 25% Net Revenue Share & Bank Verified Settlement", fontSize = 11.sp, color = LightGold)
-        }
-
-        // Module 1: Host Eligibility Criteria
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = CardBackground),
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(1.dp, CrimsonVelvet, RoundedCornerShape(20.dp))
-                    .padding(16.dp)
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("1. Host Eligibility Criteria", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
-
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = if (userFollowers >= 100) Icons.Default.CheckCircle else Icons.Default.Shield,
-                                contentDescription = null,
-                                tint = if (userFollowers >= 100) LiveIndicatorGreen else DarkGold,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("100 Organic Followers Goal", fontSize = 12.sp, color = LightGold)
-                        }
-                        Text("$userFollowers / 100", fontSize = 12.sp, color = MetallicGold, fontWeight = FontWeight.Bold)
-                    }
-
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = LiveIndicatorGreen, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Biometric Selfie Liveness Check", fontSize = 12.sp, color = LightGold)
-                        }
-                        Text("VERIFIED 🛡️", fontSize = 11.sp, color = LiveIndicatorGreen, fontWeight = FontWeight.Bold)
-                    }
-
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = if (kycData.isApproved) Icons.Default.CheckCircle else Icons.Default.Shield,
-                                contentDescription = null,
-                                tint = if (kycData.isApproved) LiveIndicatorGreen else DarkGold,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Aadhaar & PAN Government KYC", fontSize = 12.sp, color = LightGold)
-                        }
-                        Text(
-                            text = if (kycData.isApproved) "KYC APPROVED ✅" else "KYC PENDING",
-                            fontSize = 11.sp,
-                            color = if (kycData.isApproved) LiveIndicatorGreen else MetallicGold,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-        }
-
-        // Module 2: 25% Net Creator Revenue Model Breakdown
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = WineRedMedium),
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(1.dp, MetallicGold, RoundedCornerShape(20.dp))
-                    .padding(16.dp)
-            ) {
-                Column {
-                    Text("2. 25% Net Creator Revenue Model", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column {
-                            Text("Viewer Gift Dispatch", fontSize = 11.sp, color = LightGold.copy(0.7f))
-                            Text("₹100.00 (10,000 💎)", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = LightGold)
-                        }
-
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text("Host Net INR Credit", fontSize = 11.sp, color = LiveIndicatorGreen)
-                            Text("₹25.00 (25%)", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = LiveIndicatorGreen)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("💡 Remaining ₹75.00 (75%) covers streaming bandwidth, AI computer vision servers & payment gateway fees.", fontSize = 10.sp, color = LightGold.copy(0.85f))
-                }
-            }
-        }
-
-        // Module 3: Aadhaar & PAN KYC Submission Form
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = CardBackground),
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(1.dp, CrimsonVelvet, RoundedCornerShape(20.dp))
-                    .padding(16.dp)
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("3. Government KYC Document Submission", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
-
-                    OutlinedTextField(
-                        value = legalNameInput,
-                        onValueChange = { legalNameInput = it },
-                        label = { Text("Legal Full Name (Matches Aadhaar)", color = LightGold) },
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MetallicGold, unfocusedBorderColor = DarkGold),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    OutlinedTextField(
-                        value = aadhaarInput,
-                        onValueChange = { aadhaarInput = it },
-                        label = { Text("Aadhaar Card Number (12 Digits)", color = LightGold) },
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MetallicGold, unfocusedBorderColor = DarkGold),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    OutlinedTextField(
-                        value = panInput,
-                        onValueChange = { panInput = it },
-                        label = { Text("PAN Card Number", color = LightGold) },
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MetallicGold, unfocusedBorderColor = DarkGold),
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Button(
-                        onClick = { onSubmitKyc(aadhaarInput, panInput, legalNameInput) },
-                        colors = ButtonDefaults.buttonColors(containerColor = MetallicGold),
-                        modifier = Modifier.fillMaxWidth().height(48.dp)
-                    ) {
-                        Text("Submit Identity Documents for Validation", color = WineRedDark, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-        }
-
-        // Module 4: Private Host Earnings Dashboard & Payout Mechanics
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = CardBackground),
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(1.5.dp, DarkGold, RoundedCornerShape(20.dp))
-                    .padding(16.dp)
-            ) {
-                Column {
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("4. Private Earnings & Settlement Hub", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
-                        Icon(Icons.Default.Lock, contentDescription = null, tint = MetallicGold, modifier = Modifier.size(18.dp))
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    if (!isDashboardUnlocked) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                            Text("🔒 Restricted Visibility: Enter Host Passcode / Biometric Auth to view financial ledger:", fontSize = 11.sp, color = LightGold)
-                            Spacer(modifier = Modifier.height(10.dp))
-                            OutlinedTextField(
-                                value = passcodeAttempt,
-                                onValueChange = { passcodeAttempt = it },
-                                label = { Text("Enter Passcode (Default: 1234)", color = LightGold) },
-                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MetallicGold, unfocusedBorderColor = DarkGold),
-                                singleLine = true
-                            )
-                            if (passcodeError != null) {
-                                Text(passcodeError!!, color = HeartRed, fontSize = 11.sp)
+        LazyColumn(
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .background(PrimaryGradient)
+        ) {
+            // CREATOR STUDIO TOP HEADER BAR
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = CardBackground),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, MetallicGold.copy(0.7f), RoundedCornerShape(20.dp))
+                        .padding(14.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .clip(CircleShape)
+                                        .background(WineRedMedium)
+                                        .border(1.5.dp, MetallicGold, CircleShape)
+                                ) {
+                                    Icon(Icons.Default.Analytics, contentDescription = null, tint = MetallicGold, modifier = Modifier.size(24.dp))
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text("📊 CREATOR STUDIO & ANALYTICS", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MetallicGold, letterSpacing = 0.5.sp)
+                                    Text("Velocity Metrics & Revenue Settlement", fontSize = 10.sp, color = LightGold)
+                                }
                             }
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Button(
-                                onClick = {
-                                    if (passcodeAttempt == "1234" || passcodeAttempt.isBlank()) {
-                                        isDashboardUnlocked = true
-                                    } else {
-                                        passcodeError = "Invalid passcode. Use 1234."
-                                    }
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = MetallicGold)
+
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = LiveIndicatorGreen.copy(0.15f)),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.border(1.dp, LiveIndicatorGreen, RoundedCornerShape(12.dp))
                             ) {
-                                Text("Authenticate Biometric / Passcode", color = WineRedDark, fontWeight = FontWeight.Bold)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(8.dp)
+                                            .clip(CircleShape)
+                                            .background(LiveIndicatorGreen)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("LIVE ANALYTICS", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = LiveIndicatorGreen)
+                                }
                             }
                         }
-                    } else {
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    }
+                }
+            }
+
+            // CREATOR STUDIO SCROLLABLE TAB ROW
+            item {
+                ScrollableTabRow(
+                    selectedTabIndex = selectedStudioTab,
+                    containerColor = CardBackground,
+                    contentColor = MetallicGold,
+                    edgePadding = 0.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .border(1.dp, CrimsonVelvet, RoundedCornerShape(14.dp))
+                ) {
+                    Tab(selected = selectedStudioTab == 0, onClick = { selectedStudioTab = 0 }) {
+                        Text("📈 Growth & Charts", fontSize = 11.sp, modifier = Modifier.padding(10.dp), color = if (selectedStudioTab == 0) MetallicGold else LightGold.copy(0.6f), fontWeight = FontWeight.Bold)
+                    }
+                    Tab(selected = selectedStudioTab == 1, onClick = { selectedStudioTab = 1 }) {
+                        Text("🎬 Post Insights", fontSize = 11.sp, modifier = Modifier.padding(10.dp), color = if (selectedStudioTab == 1) MetallicGold else LightGold.copy(0.6f), fontWeight = FontWeight.Bold)
+                    }
+                    Tab(selected = selectedStudioTab == 2, onClick = { selectedStudioTab = 2 }) {
+                        Text("🎯 Milestones & Live", fontSize = 11.sp, modifier = Modifier.padding(10.dp), color = if (selectedStudioTab == 2) MetallicGold else LightGold.copy(0.6f), fontWeight = FontWeight.Bold)
+                    }
+                    Tab(selected = selectedStudioTab == 3, onClick = { selectedStudioTab = 3 }) {
+                        Text("💳 KYC & Payouts", fontSize = 11.sp, modifier = Modifier.padding(10.dp), color = if (selectedStudioTab == 3) MetallicGold else LightGold.copy(0.6f), fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
+            // TAB 0: 📈 GROWTH TRENDS, VELOCITY & INTERACTIVE PERFORMANCE CHART
+            if (selectedStudioTab == 0) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        // 1. GROWTH VELOCITY METRICS GRID (2x2)
+                        Text("⚡ Velocity & Reach Metrics (Last 30 Days)", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                            MetricVelocityCard(
+                                title = "Total Views 👁️",
+                                value = "%,d".format(analytics.totalViews),
+                                trendLabel = "+%.1f%% vs last wk".format(analytics.viewsGrowthPct),
+                                isPositive = analytics.viewsGrowthPct >= 0,
+                                modifier = Modifier.weight(1f)
+                            )
+                            MetricVelocityCard(
+                                title = "Total Likes ❤️",
+                                value = "%,d".format(analytics.totalLikes),
+                                trendLabel = "+%.1f%% vs last wk".format(analytics.likesGrowthPct),
+                                isPositive = analytics.likesGrowthPct >= 0,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                            MetricVelocityCard(
+                                title = "Followers 👥",
+                                value = "%,d".format(analytics.totalFollowers),
+                                trendLabel = "+%.1f%% vs last wk".format(analytics.followersGrowthPct),
+                                isPositive = analytics.followersGrowthPct >= 0,
+                                modifier = Modifier.weight(1f)
+                            )
+                            MetricVelocityCard(
+                                title = "Impressions 📡",
+                                value = "%,d".format(analytics.totalImpressions),
+                                trendLabel = "%.1f%% Engagement".format(analytics.reachEngagementRatioPct),
+                                isPositive = true,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        // 2. INTERACTIVE 7-DAY / 30-DAY PERFORMANCE CHART
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = CardBackground),
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, CrimsonVelvet, RoundedCornerShape(20.dp))
+                                .padding(14.dp)
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Row(
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column {
+                                        Text("📊 Performance Curve", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
+                                        Text("Daily views & engagement spikes", fontSize = 10.sp, color = LightGold.copy(0.7f))
+                                    }
+
+                                    // 7D / 30D Period Switcher
+                                    Row(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(WineRedMedium)
+                                            .border(1.dp, MetallicGold.copy(0.4f), RoundedCornerShape(10.dp))
+                                    ) {
+                                        Button(
+                                            onClick = { chartPeriod7D = true },
+                                            colors = ButtonDefaults.buttonColors(containerColor = if (chartPeriod7D) MetallicGold else Color.Transparent),
+                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                            modifier = Modifier.height(28.dp)
+                                        ) {
+                                            Text("7 Days", fontSize = 10.sp, color = if (chartPeriod7D) WineRedDark else LightGold, fontWeight = FontWeight.Bold)
+                                        }
+                                        Button(
+                                            onClick = { chartPeriod7D = false },
+                                            colors = ButtonDefaults.buttonColors(containerColor = if (!chartPeriod7D) MetallicGold else Color.Transparent),
+                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                            modifier = Modifier.height(28.dp)
+                                        ) {
+                                            Text("30 Days", fontSize = 10.sp, color = if (!chartPeriod7D) WineRedDark else LightGold, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+
+                                HorizontalDivider(color = CrimsonVelvet, thickness = 1.dp)
+
+                                // Bar Chart Visualization
+                                val currentPoints = if (chartPeriod7D) analytics.dailyPoints7D else analytics.dailyPoints30D
+                                val maxViews = (currentPoints.maxOfOrNull { it.viewsCount } ?: 50000).toFloat()
+
+                                Row(
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.Bottom,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(150.dp)
+                                        .padding(top = 10.dp)
+                                ) {
+                                    currentPoints.forEach { pt ->
+                                        val heightPct = (pt.viewsCount.toFloat() / maxViews).coerceIn(0.15f, 1.0f)
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text(
+                                                text = "${pt.viewsCount / 1000}k",
+                                                fontSize = 9.sp,
+                                                color = MetallicGold,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Box(
+                                                modifier = Modifier
+                                                    .width(18.dp)
+                                                    .fillMaxHeight(heightPct * 0.8f)
+                                                    .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
+                                                    .background(
+                                                        Brush.verticalGradient(
+                                                            listOf(BrightCyanAccent, SkyBluePrimary)
+                                                        )
+                                                    )
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = pt.dayLabel,
+                                                fontSize = 9.sp,
+                                                color = LightGold.copy(0.8f)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 3. AUDIENCE & WATCH TIME INSIGHTS
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = CardBackground),
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, CrimsonVelvet, RoundedCornerShape(20.dp))
+                                .padding(14.dp)
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Text("⏱️ Audience Watch Time & Retention", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
+
+                                Row(
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column {
+                                        Text("Avg Watch Duration", fontSize = 11.sp, color = LightGold.copy(0.7f))
+                                        Text(analytics.avgWatchDuration, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
+                                    }
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text("Reel Completion Rate", fontSize = 11.sp, color = LightGold.copy(0.7f))
+                                        Text("%.1f%%".format(analytics.completionRatePct), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = LiveIndicatorGreen)
+                                    }
+                                }
+
+                                LinearProgressIndicator(
+                                    progress = { (analytics.completionRatePct / 100.0).toFloat() },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(8.dp)
+                                        .clip(RoundedCornerShape(4.dp)),
+                                    color = BrightCyanAccent,
+                                    trackColor = WineRedMedium
+                                )
+                                Text("78.5% of viewers watch past the first 3 seconds of your uploaded reels.", fontSize = 10.sp, color = LightGold.copy(0.6f))
+                            }
+                        }
+                    }
+                }
+            }
+
+            // TAB 1: 🎬 PER-POST PERFORMANCE BREAKDOWN ("MY CONTENT & INSIGHTS")
+            if (selectedStudioTab == 1) {
+                item {
+                    Text("🎬 Per-Post Granular Insights", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
+                }
+
+                items(analytics.postInsights) { post ->
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = CardBackground),
+                        shape = RoundedCornerShape(18.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, CrimsonVelvet, RoundedCornerShape(18.dp))
+                            .padding(12.dp)
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = post.title,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = LightGold,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = SkyBluePrimary.copy(0.2f)),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.border(0.8.dp, BrightCyanAccent, RoundedCornerShape(8.dp))
+                                ) {
+                                    Text(
+                                        text = post.viralVelocityBadge,
+                                        fontSize = 9.sp,
+                                        color = BrightCyanAccent,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+
+                            HorizontalDivider(color = CrimsonVelvet, thickness = 0.8.dp)
+
                             Row(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column {
-                                    Text("Total Diamonds Earned", fontSize = 11.sp, color = LightGold.copy(0.7f))
-                                    Text("💎 ${hostEarnings.totalDiamondsEarned}", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = LightGold)
+                                    Text("Total Views", fontSize = 9.sp, color = LightGold.copy(0.6f))
+                                    Text("%,d".format(post.totalViews), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
                                 }
-                                Column(horizontalAlignment = Alignment.End) {
-                                    Text("Converted Net Earnings", fontSize = 11.sp, color = LiveIndicatorGreen)
-                                    Text("₹${hostEarnings.netInrEarnings}", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = LiveIndicatorGreen)
+                                Column {
+                                    Text("Peak Hours", fontSize = 9.sp, color = LightGold.copy(0.6f))
+                                    Text(post.peakViewingHours, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = LightGold)
+                                }
+                                Column {
+                                    Text("Like Ratio", fontSize = 9.sp, color = LightGold.copy(0.6f))
+                                    Text("%.1f%%".format(post.likeToViewRatioPct), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = LiveIndicatorGreen)
+                                }
+                                Column {
+                                    Text("Comments / Shares", fontSize = 9.sp, color = LightGold.copy(0.6f))
+                                    Text("${post.commentsCount} • ${post.sharesCount}", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = LightGold)
                                 }
                             }
+                        }
+                    }
+                }
+            }
 
-                            HorizontalDivider(color = CrimsonVelvet)
+            // TAB 2: 🎯 MONETIZATION & LIVE ELIGIBILITY MILESTONES
+            if (selectedStudioTab == 2) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Text("🎯 Milestone Roadmap for Go-Live & Revenue Sharing", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
 
-                            Text("Payout Settlement Options:", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
+                        // 1. GO LIVE MILESTONE (500 Followers)
+                        val followerTarget = 500
+                        val followerProgress = (userFollowers.toFloat() / followerTarget).coerceIn(0f, 1f)
+                        val isGoLiveUnlocked = userFollowers >= followerTarget
 
-                            Row {
-                                FilterChip(
-                                    selected = selectedMethod == PaymentMethodType.UPI,
-                                    onClick = { selectedMethod = PaymentMethodType.UPI },
-                                    label = { Text("Direct UPI ID") }
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = CardBackground),
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, if (isGoLiveUnlocked) LiveIndicatorGreen else CrimsonVelvet, RoundedCornerShape(20.dp))
+                                .padding(14.dp)
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = if (isGoLiveUnlocked) Icons.Default.CheckCircle else Icons.Default.Mic,
+                                            contentDescription = null,
+                                            tint = if (isGoLiveUnlocked) LiveIndicatorGreen else DarkGold,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Column {
+                                            Text("1. 'Go Live' Broadcasting Milestone", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = LightGold)
+                                            Text("Unlocks 10-mic audio sofa & video stage hosting", fontSize = 10.sp, color = LightGold.copy(0.6f))
+                                        }
+                                    }
+                                    Text("$userFollowers / $followerTarget", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
+                                }
+
+                                LinearProgressIndicator(
+                                    progress = { followerProgress },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(8.dp)
+                                        .clip(RoundedCornerShape(4.dp)),
+                                    color = if (isGoLiveUnlocked) LiveIndicatorGreen else MetallicGold,
+                                    trackColor = WineRedMedium
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                FilterChip(
-                                    selected = selectedMethod == PaymentMethodType.BANK_WIRE,
-                                    onClick = { selectedMethod = PaymentMethodType.BANK_WIRE },
-                                    label = { Text("Direct Bank Wire") }
-                                )
-                            }
-
-                            OutlinedTextField(
-                                value = upiOrAccountInput,
-                                onValueChange = { upiOrAccountInput = it },
-                                label = { Text(if (selectedMethod == PaymentMethodType.UPI) "UPI VPA ID" else "Bank Account + IFSC", color = LightGold) },
-                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MetallicGold, unfocusedBorderColor = DarkGold),
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            OutlinedTextField(
-                                value = payoutAmountInput,
-                                onValueChange = { payoutAmountInput = it },
-                                label = { Text("Withdrawal Amount (₹ INR)", color = LightGold) },
-                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MetallicGold, unfocusedBorderColor = DarkGold),
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            Text("🔒 Strict Name-Match Validation: Aadhaar name '${kycData.legalName}' must match bank account holder.", fontSize = 10.sp, color = DarkGold)
-
-                            Button(
-                                onClick = {
-                                    val amt = payoutAmountInput.toDoubleOrNull() ?: 0.0
-                                    payoutResultMsg = onRequestPayout(amt, selectedMethod, upiOrAccountInput)
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = LiveIndicatorGreen),
-                                modifier = Modifier.fillMaxWidth().height(48.dp)
-                            ) {
-                                Text("Execute Bank Payout Request 💸", color = WineRedDark, fontWeight = FontWeight.Bold)
-                            }
-
-                            if (payoutResultMsg != null) {
                                 Text(
-                                    text = payoutResultMsg!!,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (payoutResultMsg!!.startsWith("SUCCESS")) LiveIndicatorGreen else HeartRed
+                                    text = if (isGoLiveUnlocked) "🎉 UNLOCKED: You can now host live audio & video rooms!" else "%.1f%% completed. Gain %d more followers to unlock.".format(followerProgress * 100, followerTarget - userFollowers),
+                                    fontSize = 10.sp,
+                                    color = if (isGoLiveUnlocked) LiveIndicatorGreen else LightGold.copy(0.7f)
                                 )
+                            }
+                        }
+
+                        // 2. CUMULATIVE VIEWS MILESTONE (1,000,000 Views)
+                        val viewTarget = 1000000
+                        val viewProgress = (analytics.totalViews.toFloat() / viewTarget).coerceIn(0f, 1f)
+                        val isViewsUnlocked = analytics.totalViews >= viewTarget
+
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = CardBackground),
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, if (isViewsUnlocked) LiveIndicatorGreen else CrimsonVelvet, RoundedCornerShape(20.dp))
+                                .padding(14.dp)
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = if (isViewsUnlocked) Icons.Default.CheckCircle else Icons.Default.MonetizationOn,
+                                            contentDescription = null,
+                                            tint = if (isViewsUnlocked) LiveIndicatorGreen else DarkGold,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Column {
+                                            Text("2. Cumulative 1 Million Reel Views", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = LightGold)
+                                            Text("Unlocks 25% Net Ad Share & Direct Bank Settlements", fontSize = 10.sp, color = LightGold.copy(0.6f))
+                                        }
+                                    }
+                                    Text("%,d / 1M".format(analytics.totalViews), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
+                                }
+
+                                LinearProgressIndicator(
+                                    progress = { viewProgress },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(8.dp)
+                                        .clip(RoundedCornerShape(4.dp)),
+                                    color = if (isViewsUnlocked) LiveIndicatorGreen else BrightCyanAccent,
+                                    trackColor = WineRedMedium
+                                )
+                                Text(
+                                    text = if (isViewsUnlocked) "🎉 UNLOCKED: Eligible for real cash revenue sharing!" else "%.2f%% completed. Keep uploading reels to reach 1M views!".format(viewProgress * 100),
+                                    fontSize = 10.sp,
+                                    color = if (isViewsUnlocked) LiveIndicatorGreen else LightGold.copy(0.7f)
+                                )
+                            }
+                        }
+
+                        // PRE-QUALIFIED BADGE & MILESTONE ALERTS TRAY
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = WineRedDark),
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.5.dp, GoldGradient, RoundedCornerShape(20.dp))
+                                .padding(14.dp)
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("✨ Pre-Qualified Creator Status", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
+                                }
+                                Text(
+                                    text = "Your account is pre-qualified for early monetization testing. Complete identity KYC verification in the Payouts tab to bind your UPI bank account.",
+                                    fontSize = 10.sp,
+                                    color = LightGold.copy(0.8f)
+                                )
+                            }
+                        }
+
+                        // MILESTONE ACTIVITY ALERTS TRAY
+                        Text("🔔 Creator Activity & Milestone Alerts", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
+
+                        analytics.milestoneAlerts.forEach { alert ->
+                            Card(
+                                colors = CardDefaults.cardColors(containerColor = CardBackground),
+                                shape = RoundedCornerShape(14.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .border(1.dp, CrimsonVelvet.copy(0.6f), RoundedCornerShape(14.dp))
+                                    .padding(10.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(alert.iconSymbol, fontSize = 20.sp)
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                            Text(alert.title, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = LightGold)
+                                            Text(alert.timestamp, fontSize = 9.sp, color = LightGold.copy(0.5f))
+                                        }
+                                        Text(alert.message, fontSize = 10.sp, color = LightGold.copy(0.8f))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // TAB 3: 💳 KYC VERIFICATION & BANK/UPI PAYOUT SETTLEMENT FORM
+            if (selectedStudioTab == 3) {
+                item {
+                    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Text("💳 Identity KYC Verification & Payout Setup", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
+
+                        // 1. Identity Form Card
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = CardBackground),
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, CrimsonVelvet, RoundedCornerShape(20.dp))
+                                .padding(16.dp)
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text("Aadhaar & PAN Compliance Verification", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
+
+                                OutlinedTextField(
+                                    value = legalNameInput,
+                                    onValueChange = { legalNameInput = it },
+                                    label = { Text("Full Legal Name (as per Aadhaar/PAN)", color = LightGold) },
+                                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MetallicGold, unfocusedBorderColor = CrimsonVelvet, focusedTextColor = LightGold, unfocusedTextColor = LightGold),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                OutlinedTextField(
+                                    value = aadhaarInput,
+                                    onValueChange = { aadhaarInput = it },
+                                    label = { Text("12-Digit Aadhaar Number", color = LightGold) },
+                                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MetallicGold, unfocusedBorderColor = CrimsonVelvet, focusedTextColor = LightGold, unfocusedTextColor = LightGold),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                OutlinedTextField(
+                                    value = panInput,
+                                    onValueChange = { panInput = it },
+                                    label = { Text("10-Character PAN Number", color = LightGold) },
+                                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MetallicGold, unfocusedBorderColor = CrimsonVelvet, focusedTextColor = LightGold, unfocusedTextColor = LightGold),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                Button(
+                                    onClick = {
+                                        onSubmitKyc(aadhaarInput, panInput, legalNameInput)
+                                        Toast.makeText(context, "✅ Identity KYC Submitted for Automated Settlement Check!", Toast.LENGTH_SHORT).show()
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = MetallicGold),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Submit Identity KYC Documents", color = WineRedDark, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
+                        // 2. Bank Payout Settlement Form
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = CardBackground),
+                            shape = RoundedCornerShape(20.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, CrimsonVelvet, RoundedCornerShape(20.dp))
+                                .padding(16.dp)
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text("Bank & UPI Payout Settlement", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
+                                Text("Available Balance: ₹%.2f INR".format(hostEarnings.pendingPayoutInr), fontSize = 12.sp, color = LiveIndicatorGreen, fontWeight = FontWeight.Bold)
+
+                                OutlinedTextField(
+                                    value = payoutAmountInput,
+                                    onValueChange = { payoutAmountInput = it },
+                                    label = { Text("Withdrawal Amount (₹ INR)", color = LightGold) },
+                                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MetallicGold, unfocusedBorderColor = CrimsonVelvet, focusedTextColor = LightGold, unfocusedTextColor = LightGold),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                OutlinedTextField(
+                                    value = upiOrAccountInput,
+                                    onValueChange = { upiOrAccountInput = it },
+                                    label = { Text("Bound UPI ID or Bank Account Number", color = LightGold) },
+                                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MetallicGold, unfocusedBorderColor = CrimsonVelvet, focusedTextColor = LightGold, unfocusedTextColor = LightGold),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                Button(
+                                    onClick = {
+                                        val amt = payoutAmountInput.toDoubleOrNull() ?: 0.0
+                                        val res = onRequestPayout(amt, selectedMethod, upiOrAccountInput)
+                                        payoutResultMsg = res
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = LiveIndicatorGreen),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Request Instant Bank Withdrawal 💸", color = Color.White, fontWeight = FontWeight.Bold)
+                                }
+
+                                payoutResultMsg?.let { msg ->
+                                    Text(
+                                        text = msg,
+                                        fontSize = 11.sp,
+                                        color = if (msg.startsWith("SUCCESS")) LiveIndicatorGreen else Color.Red,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
         }
+    }
+}
 
-        item {
-            Spacer(modifier = Modifier.height(24.dp))
+@Composable
+private fun MetricVelocityCard(
+    title: String,
+    value: String,
+    trendLabel: String,
+    isPositive: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        shape = RoundedCornerShape(16.dp),
+        modifier = modifier
+            .border(1.dp, CrimsonVelvet, RoundedCornerShape(16.dp))
+            .padding(12.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(title, fontSize = 10.sp, color = LightGold.copy(0.7f))
+            Text(value, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = if (isPositive) "↗ " else "↘ ",
+                    fontSize = 11.sp,
+                    color = if (isPositive) LiveIndicatorGreen else Color.Red
+                )
+                Text(
+                    text = trendLabel,
+                    fontSize = 9.sp,
+                    color = if (isPositive) LiveIndicatorGreen else Color.Red,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
     }
 }

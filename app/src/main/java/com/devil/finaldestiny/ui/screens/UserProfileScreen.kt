@@ -54,6 +54,8 @@ import com.devil.finaldestiny.model.Gender
 import com.devil.finaldestiny.model.UserProfile
 import com.devil.finaldestiny.ui.components.VipBadge
 import com.devil.finaldestiny.ui.theme.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
 
@@ -76,9 +78,12 @@ fun UserProfileScreen(
     onNavigateToDating: () -> Unit = {},
     onNavigateToAboutUs: () -> Unit = {},
     onLogOut: () -> Unit,
+    onRefresh: suspend () -> Unit = {},
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    var isRefreshing by remember { mutableStateOf(false) }
 
     var isEditing by remember { mutableStateOf(false) }
     var showPhotoOptionsDialog by remember { mutableStateOf(false) }
@@ -200,15 +205,29 @@ fun UserProfileScreen(
         },
         containerColor = WineRedDark
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .background(PrimaryGradient)
-                .verticalScroll(scrollState)
-                .padding(14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                coroutineScope.launch {
+                    isRefreshing = true
+                    try {
+                        onRefresh()
+                    } finally {
+                        isRefreshing = false
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxSize()
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .background(PrimaryGradient)
+                    .verticalScroll(scrollState)
+                    .padding(14.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
             // Profile Header Card
             Card(
                 colors = CardDefaults.cardColors(containerColor = CardBackground),
@@ -536,6 +555,7 @@ fun UserProfileScreen(
             }
         }
     }
+}
 
     // FEEDBACK & COMPLAINT BOX DIALOG
     if (showComplaintModal) {

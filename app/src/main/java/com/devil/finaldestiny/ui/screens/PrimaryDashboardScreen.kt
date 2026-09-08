@@ -28,7 +28,10 @@ import com.devil.finaldestiny.model.UserProfile
 import com.devil.finaldestiny.ui.components.NotificationBellButton
 import com.devil.finaldestiny.ui.components.VipBadge
 import com.devil.finaldestiny.ui.theme.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PrimaryDashboardScreen(
     user: UserProfile,
@@ -41,30 +44,48 @@ fun PrimaryDashboardScreen(
     onNavigateToVipStore: () -> Unit,
     onNavigateToSecondaryFeed: () -> Unit,
     onNavigateToProfile: () -> Unit = {},
-    onNavigateToAboutUs: () -> Unit = {}
+    onNavigateToAboutUs: () -> Unit = {},
+    onRefresh: suspend () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    var isRefreshing by remember { mutableStateOf(false) }
+
     var showSettingsModal by remember { mutableStateOf(false) }
     var selectedLanguage by remember { mutableStateOf("English") }
     var cacheSizeMb by remember { mutableStateOf(42) }
 
     val scrollState = rememberScrollState()
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(PrimaryGradient)
-            .pointerInput(Unit) {
-                detectHorizontalDragGestures { _, dragAmount ->
-                    // Swiping Left (negative dragAmount) navigates to Instagram Moments Feed!
-                    if (dragAmount < -40f) {
-                        onNavigateToSecondaryFeed()
-                    }
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = {
+            coroutineScope.launch {
+                isRefreshing = true
+                try {
+                    onRefresh()
+                } finally {
+                    isRefreshing = false
                 }
             }
-            .verticalScroll(scrollState)
-            .padding(14.dp)
+        },
+        modifier = Modifier.fillMaxSize()
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(PrimaryGradient)
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures { _, dragAmount ->
+                        // Swiping Left (negative dragAmount) navigates to Instagram Moments Feed!
+                        if (dragAmount < -40f) {
+                            onNavigateToSecondaryFeed()
+                        }
+                    }
+                }
+                .verticalScroll(scrollState)
+                .padding(14.dp)
+        ) {
         // User Profile Header Card with Realtime Notification Bell
         Card(
             colors = CardDefaults.cardColors(containerColor = CardBackground),
@@ -473,4 +494,5 @@ fun PrimaryDashboardScreen(
             }
         )
     }
+}
 }

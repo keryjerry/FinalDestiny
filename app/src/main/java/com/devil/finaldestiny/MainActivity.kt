@@ -108,6 +108,7 @@ fun FinalDestinyApp(repository: AppRepository) {
     val isVisionSentinelActive by repository.isVisionSentinelActive.collectAsState()
     val isVisionBlackoutTriggered by repository.isVisionBlackoutTriggered.collectAsState()
     val notifications by repository.notifications.collectAsState()
+    val creatorAnalytics by repository.creatorAnalytics.collectAsState()
 
     var showNotificationModal by remember { mutableStateOf(false) }
 
@@ -309,7 +310,8 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onNavigateToVipStore = { currentScreen = Screen.VIP_STORE },
                     onNavigateToSecondaryFeed = { currentScreen = Screen.SECONDARY_FEED },
                     onNavigateToProfile = { currentScreen = Screen.USER_PROFILE },
-                    onNavigateToAboutUs = { currentScreen = Screen.ABOUT_US }
+                    onNavigateToAboutUs = { currentScreen = Screen.ABOUT_US },
+                    onRefresh = { repository.refreshDashboardData() }
                 )
 
                 Screen.USER_PROFILE -> UserProfileScreen(
@@ -321,6 +323,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onNavigateToDating = { currentScreen = Screen.FINAL_DESTINY_DATING },
                     onNavigateToAboutUs = { currentScreen = Screen.ABOUT_US },
                     onLogOut = { currentScreen = Screen.AUTH_SPLASH },
+                    onRefresh = { repository.refreshUserProfile() },
                     onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
                 )
 
@@ -336,6 +339,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onAddStory = { mediaUri -> repository.addStory(mediaUri) },
                     onAddComment = { postId, text -> repository.addCommentToPost(postId, text) },
                     onToggleFollowAuthor = { postId -> repository.toggleFollowPostAuthor(postId) },
+                    onRefresh = { repository.refreshMomentsAndReels() },
                     onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
                 )
 
@@ -397,6 +401,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                     hostEarnings = hostEarnings,
                     onPurchaseAsset = { gift -> repository.sendGiftInRoom(gift) },
                     onTopUpDiamonds = { amt -> repository.topUpDiamonds(amt) },
+                    onRefresh = { repository.refreshVipStore() },
                     onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
                 )
 
@@ -404,8 +409,10 @@ fun FinalDestinyApp(repository: AppRepository) {
                     kycData = kycData,
                     hostEarnings = hostEarnings,
                     userFollowers = user.followerCount,
+                    analytics = creatorAnalytics,
                     onSubmitKyc = { aadhaar, pan, legalName -> repository.submitKycForm(aadhaar, pan, legalName) },
-                    onRequestPayout = { amt, method, upiOrAccount -> repository.requestBankPayout(amt, method, upiOrAccount) }
+                    onRequestPayout = { amt, method, upiOrAccount -> repository.requestBankPayout(amt, method, upiOrAccount) },
+                    onRefresh = { repository.refreshCreatorAnalytics() }
                 )
 
                 Screen.FINAL_DESTINY_DATING -> FinalDestinyDatingScreen(

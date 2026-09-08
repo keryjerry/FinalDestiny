@@ -53,6 +53,11 @@ import com.devil.finaldestiny.ui.components.NotificationBellButton
 import com.devil.finaldestiny.ui.components.ProfileAvatarView
 import com.devil.finaldestiny.ui.theme.*
 
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import kotlinx.coroutines.launch
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SecondaryDashboardScreen(
     storyTrays: List<StoryItem>,
@@ -66,9 +71,12 @@ fun SecondaryDashboardScreen(
     onAddStory: (String) -> Unit = {},
     onAddComment: (String, String) -> Unit = { _, _ -> },
     onToggleFollowAuthor: (String) -> Unit = {},
+    onRefresh: suspend () -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    var isRefreshing by remember { mutableStateOf(false) }
 
     var showCreatePostDialog by remember { mutableStateOf(false) }
     var isReelUploadMode by remember { mutableStateOf(false) }
@@ -103,7 +111,18 @@ fun SecondaryDashboardScreen(
         colors = listOf(BrightCyanAccent, SkyBluePrimary, VerifiedBlue)
     )
 
-    Box(
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = {
+            coroutineScope.launch {
+                isRefreshing = true
+                try {
+                    onRefresh()
+                } finally {
+                    isRefreshing = false
+                }
+            }
+        },
         modifier = Modifier
             .fillMaxSize()
             .background(SkyBlueBgLight)

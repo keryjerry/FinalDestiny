@@ -53,4 +53,5 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation("com.razorpay:checkout:1.6.33")
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 }

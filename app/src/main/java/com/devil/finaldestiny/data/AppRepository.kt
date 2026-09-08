@@ -35,6 +35,10 @@ class AppRepository {
     )
     val currentUser: StateFlow<UserProfile> = _currentUser.asStateFlow()
 
+    // Creator Studio Analytics State
+    private val _creatorAnalytics = MutableStateFlow(CreatorAnalytics())
+    val creatorAnalytics: StateFlow<CreatorAnalytics> = _creatorAnalytics.asStateFlow()
+
     // Liveness Selfie Check State
     private val _isLivenessVerified = MutableStateFlow(true)
     val isLivenessVerified: StateFlow<Boolean> = _isLivenessVerified.asStateFlow()
@@ -604,6 +608,37 @@ class AppRepository {
                 name = updatedProfile.name,
                 profilePictureUri = updatedProfile.profilePictureUri
             )
+        )
+    }
+
+    suspend fun refreshDashboardData() {
+        kotlinx.coroutines.delay(800)
+        // Refresh balances, active room stats & notifications
+        _currentUser.value = _currentUser.value.copy(
+            exp = _currentUser.value.exp + 10
+        )
+    }
+
+    suspend fun refreshMomentsAndReels() {
+        kotlinx.coroutines.delay(800)
+        // Refresh posts & reels feed order / timestamps
+    }
+
+    suspend fun refreshUserProfile() {
+        kotlinx.coroutines.delay(800)
+        // Refresh profile stats
+    }
+
+    suspend fun refreshVipStore() {
+        kotlinx.coroutines.delay(800)
+        // Refresh wallet and diamond packages
+    }
+
+    suspend fun refreshCreatorAnalytics() {
+        kotlinx.coroutines.delay(800)
+        _creatorAnalytics.value = _creatorAnalytics.value.copy(
+            totalViews = _creatorAnalytics.value.totalViews + (100..500).random(),
+            totalLikes = _creatorAnalytics.value.totalLikes + (10..50).random()
         )
     }
 }
