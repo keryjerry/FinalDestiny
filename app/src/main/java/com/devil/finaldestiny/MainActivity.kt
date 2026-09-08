@@ -26,17 +26,11 @@ import androidx.compose.ui.unit.sp
 import com.devil.finaldestiny.data.AppRepository
 import com.devil.finaldestiny.model.GiftItem
 import com.devil.finaldestiny.model.PaymentMethodType
+import com.devil.finaldestiny.ui.components.MonetizationAnnouncementModal
 import com.devil.finaldestiny.ui.components.NotificationCenterModal
 import com.devil.finaldestiny.ui.components.PermissionModalDialog
 import com.devil.finaldestiny.ui.screens.*
-import com.devil.finaldestiny.ui.theme.CardBackground
-import com.devil.finaldestiny.ui.theme.CrimsonVelvet
-import com.devil.finaldestiny.ui.theme.FinalDestinyTheme
-import com.devil.finaldestiny.ui.theme.LightGold
-import com.devil.finaldestiny.ui.theme.LiveIndicatorGreen
-import com.devil.finaldestiny.ui.theme.MetallicGold
-import com.devil.finaldestiny.ui.theme.WineRedDark
-import com.devil.finaldestiny.ui.theme.WineRedMedium
+import com.devil.finaldestiny.ui.theme.*
 import com.razorpay.Checkout
 import com.razorpay.PaymentData
 import com.razorpay.PaymentResultWithDataListener
@@ -52,7 +46,8 @@ enum class Screen {
     VIP_STORE,
     CREATOR_MONETIZATION,
     USER_PROFILE,
-    FINAL_DESTINY_DATING
+    FINAL_DESTINY_DATING,
+    ABOUT_US
 }
 
 class MainActivity : ComponentActivity(), PaymentResultWithDataListener {
@@ -93,6 +88,7 @@ fun FinalDestinyApp(repository: AppRepository) {
     val context = LocalContext.current
     var currentScreen by remember { mutableStateOf(Screen.AUTH_SPLASH) }
     var showPermissionModal by remember { mutableStateOf(false) }
+    var showMonetizationPopup by remember { mutableStateOf(true) }
 
     // Background Kept Room Sessions State
     var isAudioRoomKeptInBackground by remember { mutableStateOf(false) }
@@ -117,17 +113,17 @@ fun FinalDestinyApp(repository: AppRepository) {
 
     Scaffold(
         bottomBar = {
-            if (currentScreen != Screen.AUTH_SPLASH && currentScreen != Screen.LIVENESS_CHECK) {
+            if (currentScreen != Screen.AUTH_SPLASH && currentScreen != Screen.LIVENESS_CHECK && currentScreen != Screen.ABOUT_US) {
                 Column {
                     // FLOATING PIP MINI PLAYER BANNER WHEN A ROOM IS KEPT IN BACKGROUND
                     if (isAudioRoomKeptInBackground && currentScreen != Screen.LIVE_AUDIO_ROOM) {
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = WineRedMedium),
+                            colors = CardDefaults.cardColors(containerColor = SkyBlueHeader),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 8.dp, vertical = 2.dp)
-                                .border(1.dp, MetallicGold, RoundedCornerShape(12.dp))
+                                .border(1.dp, BrightCyanAccent, RoundedCornerShape(12.dp))
                         ) {
                             Row(
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -145,18 +141,18 @@ fun FinalDestinyApp(repository: AppRepository) {
                                     Icon(Icons.Default.GraphicEq, contentDescription = null, tint = LiveIndicatorGreen, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Column {
-                                        Text("🔴 Audio Room Active (Keep Mode)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = LightGold)
-                                        Text("Host: ${audioRoom.hostUser.name} | Tap to Re-enter ↩", fontSize = 9.sp, color = MetallicGold)
+                                        Text("🔴 Audio Room Active (Keep Mode)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = NavyTextPrimary)
+                                        Text("Host: ${audioRoom.hostUser.name} | Tap to Re-enter ↩", fontSize = 9.sp, color = SkyBluePrimary)
                                     }
                                 }
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Button(
                                         onClick = { currentScreen = Screen.LIVE_AUDIO_ROOM },
-                                        colors = ButtonDefaults.buttonColors(containerColor = MetallicGold),
+                                        colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary),
                                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                                         modifier = Modifier.height(26.dp)
                                     ) {
-                                        Text("Open ↩", fontSize = 10.sp, color = WineRedDark, fontWeight = FontWeight.Bold)
+                                        Text("Open ↩", fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Bold)
                                     }
                                     Spacer(modifier = Modifier.width(4.dp))
                                     IconButton(
@@ -166,19 +162,19 @@ fun FinalDestinyApp(repository: AppRepository) {
                                         },
                                         modifier = Modifier.size(24.dp)
                                     ) {
-                                        Icon(Icons.Default.Close, contentDescription = "Close", tint = LightGold, modifier = Modifier.size(16.dp))
+                                        Icon(Icons.Default.Close, contentDescription = "Close", tint = NavyTextPrimary, modifier = Modifier.size(16.dp))
                                     }
                                 }
                             }
                         }
                     } else if (isVideoRoomKeptInBackground && currentScreen != Screen.LIVE_VIDEO_ROOM) {
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = WineRedMedium),
+                            colors = CardDefaults.cardColors(containerColor = SkyBlueHeader),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 8.dp, vertical = 2.dp)
-                                .border(1.dp, MetallicGold, RoundedCornerShape(12.dp))
+                                .border(1.dp, BrightCyanAccent, RoundedCornerShape(12.dp))
                         ) {
                             Row(
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -196,18 +192,18 @@ fun FinalDestinyApp(repository: AppRepository) {
                                     Icon(Icons.Default.Videocam, contentDescription = null, tint = LiveIndicatorGreen, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Column {
-                                        Text("🔴 Video Stream Active (Keep Mode)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = LightGold)
-                                        Text("Host: ${videoRoom.hostUser.name} | Tap to Re-enter ↩", fontSize = 9.sp, color = MetallicGold)
+                                        Text("🔴 Video Stream Active (Keep Mode)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = NavyTextPrimary)
+                                        Text("Host: ${videoRoom.hostUser.name} | Tap to Re-enter ↩", fontSize = 9.sp, color = SkyBluePrimary)
                                     }
                                 }
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Button(
                                         onClick = { currentScreen = Screen.LIVE_VIDEO_ROOM },
-                                        colors = ButtonDefaults.buttonColors(containerColor = MetallicGold),
+                                        colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary),
                                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                                         modifier = Modifier.height(26.dp)
                                     ) {
-                                        Text("Open ↩", fontSize = 10.sp, color = WineRedDark, fontWeight = FontWeight.Bold)
+                                        Text("Open ↩", fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Bold)
                                     }
                                     Spacer(modifier = Modifier.width(4.dp))
                                     IconButton(
@@ -217,7 +213,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                                         },
                                         modifier = Modifier.size(24.dp)
                                     ) {
-                                        Icon(Icons.Default.Close, contentDescription = "Close", tint = LightGold, modifier = Modifier.size(16.dp))
+                                        Icon(Icons.Default.Close, contentDescription = "Close", tint = NavyTextPrimary, modifier = Modifier.size(16.dp))
                                     }
                                 }
                             }
@@ -226,26 +222,26 @@ fun FinalDestinyApp(repository: AppRepository) {
 
                     // BOTTOM NAVIGATION BAR
                     NavigationBar(
-                        containerColor = CardBackground,
-                        contentColor = MetallicGold,
+                        containerColor = SkyBlueCardBg,
+                        contentColor = SkyBluePrimary,
                         modifier = Modifier
                             .navigationBarsPadding()
                             .fillMaxWidth()
                             .height(68.dp)
                             .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-                            .border(1.dp, CrimsonVelvet, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+                            .border(1.dp, SkyBlueBorder, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
                     ) {
                         NavigationBarItem(
                             selected = currentScreen == Screen.PRIMARY_DASHBOARD,
                             onClick = { currentScreen = Screen.PRIMARY_DASHBOARD },
-                            icon = { Icon(Icons.Default.Dashboard, contentDescription = "Dashboard", tint = if (currentScreen == Screen.PRIMARY_DASHBOARD) MetallicGold else LightGold.copy(0.6f)) },
-                            label = { Text("Home", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.PRIMARY_DASHBOARD) MetallicGold else LightGold.copy(0.6f)) }
+                            icon = { Icon(Icons.Default.Dashboard, contentDescription = "Dashboard", tint = if (currentScreen == Screen.PRIMARY_DASHBOARD) SkyBluePrimary else SlateTextSecondary) },
+                            label = { Text("Home", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.PRIMARY_DASHBOARD) SkyBluePrimary else SlateTextSecondary) }
                         )
                         NavigationBarItem(
                             selected = currentScreen == Screen.DISCOVER_SWIPE,
                             onClick = { currentScreen = Screen.DISCOVER_SWIPE },
-                            icon = { Icon(Icons.Default.Favorite, contentDescription = "Discover", tint = if (currentScreen == Screen.DISCOVER_SWIPE) MetallicGold else LightGold.copy(0.6f)) },
-                            label = { Text("Discover", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.DISCOVER_SWIPE) MetallicGold else LightGold.copy(0.6f)) }
+                            icon = { Icon(Icons.Default.Favorite, contentDescription = "Discover", tint = if (currentScreen == Screen.DISCOVER_SWIPE) SkyBluePrimary else SlateTextSecondary) },
+                            label = { Text("Discover", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.DISCOVER_SWIPE) SkyBluePrimary else SlateTextSecondary) }
                         )
                         NavigationBarItem(
                             selected = currentScreen == Screen.LIVE_AUDIO_ROOM,
@@ -253,8 +249,8 @@ fun FinalDestinyApp(repository: AppRepository) {
                                 isAudioRoomKeptInBackground = false
                                 currentScreen = Screen.LIVE_AUDIO_ROOM
                             },
-                            icon = { Icon(Icons.Default.Mic, contentDescription = "Audio Live", tint = if (currentScreen == Screen.LIVE_AUDIO_ROOM) MetallicGold else LightGold.copy(0.6f)) },
-                            label = { Text("Audio Room", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.LIVE_AUDIO_ROOM) MetallicGold else LightGold.copy(0.6f)) }
+                            icon = { Icon(Icons.Default.Mic, contentDescription = "Audio Live", tint = if (currentScreen == Screen.LIVE_AUDIO_ROOM) SkyBluePrimary else SlateTextSecondary) },
+                            label = { Text("Audio Room", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.LIVE_AUDIO_ROOM) SkyBluePrimary else SlateTextSecondary) }
                         )
                         NavigationBarItem(
                             selected = currentScreen == Screen.LIVE_VIDEO_ROOM,
@@ -262,20 +258,20 @@ fun FinalDestinyApp(repository: AppRepository) {
                                 isVideoRoomKeptInBackground = false
                                 currentScreen = Screen.LIVE_VIDEO_ROOM
                             },
-                            icon = { Icon(Icons.Default.Videocam, contentDescription = "Video Live", tint = if (currentScreen == Screen.LIVE_VIDEO_ROOM) MetallicGold else LightGold.copy(0.6f)) },
-                            label = { Text("Video Live", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.LIVE_VIDEO_ROOM) MetallicGold else LightGold.copy(0.6f)) }
+                            icon = { Icon(Icons.Default.Videocam, contentDescription = "Video Live", tint = if (currentScreen == Screen.LIVE_VIDEO_ROOM) SkyBluePrimary else SlateTextSecondary) },
+                            label = { Text("Video Live", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.LIVE_VIDEO_ROOM) SkyBluePrimary else SlateTextSecondary) }
                         )
                         NavigationBarItem(
                             selected = currentScreen == Screen.VIP_STORE,
                             onClick = { currentScreen = Screen.VIP_STORE },
-                            icon = { Icon(Icons.Default.Storefront, contentDescription = "VIP Store", tint = if (currentScreen == Screen.VIP_STORE) MetallicGold else LightGold.copy(0.6f)) },
-                            label = { Text("VIP Store", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.VIP_STORE) MetallicGold else LightGold.copy(0.6f)) }
+                            icon = { Icon(Icons.Default.Storefront, contentDescription = "VIP Store", tint = if (currentScreen == Screen.VIP_STORE) SkyBluePrimary else SlateTextSecondary) },
+                            label = { Text("VIP Store", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.VIP_STORE) SkyBluePrimary else SlateTextSecondary) }
                         )
                         NavigationBarItem(
                             selected = currentScreen == Screen.USER_PROFILE,
                             onClick = { currentScreen = Screen.USER_PROFILE },
-                            icon = { Icon(Icons.Default.Person, contentDescription = "Profile", tint = if (currentScreen == Screen.USER_PROFILE) MetallicGold else LightGold.copy(0.6f)) },
-                            label = { Text("Profile", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.USER_PROFILE) MetallicGold else LightGold.copy(0.6f)) }
+                            icon = { Icon(Icons.Default.Person, contentDescription = "Profile", tint = if (currentScreen == Screen.USER_PROFILE) SkyBluePrimary else SlateTextSecondary) },
+                            label = { Text("Profile", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.USER_PROFILE) SkyBluePrimary else SlateTextSecondary) }
                         )
                     }
                 }
@@ -312,7 +308,8 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onNavigateToHostPortal = { currentScreen = Screen.CREATOR_MONETIZATION },
                     onNavigateToVipStore = { currentScreen = Screen.VIP_STORE },
                     onNavigateToSecondaryFeed = { currentScreen = Screen.SECONDARY_FEED },
-                    onNavigateToProfile = { currentScreen = Screen.USER_PROFILE }
+                    onNavigateToProfile = { currentScreen = Screen.USER_PROFILE },
+                    onNavigateToAboutUs = { currentScreen = Screen.ABOUT_US }
                 )
 
                 Screen.USER_PROFILE -> UserProfileScreen(
@@ -322,6 +319,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onNavigateToSecondaryFeed = { currentScreen = Screen.SECONDARY_FEED },
                     onNavigateToMonetization = { currentScreen = Screen.CREATOR_MONETIZATION },
                     onNavigateToDating = { currentScreen = Screen.FINAL_DESTINY_DATING },
+                    onNavigateToAboutUs = { currentScreen = Screen.ABOUT_US },
                     onLogOut = { currentScreen = Screen.AUTH_SPLASH },
                     onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
                 )
@@ -333,6 +331,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onOpenNotifications = { showNotificationModal = true },
                     onLikePost = { postId -> repository.toggleLikePost(postId) },
                     onPublishPost = { caption, mediaUri -> repository.postMoment(caption, mediaUri) },
+                    onPublishReel = { caption, mediaUri -> repository.postReelVideo(caption, mediaUri) },
                     onTipPost = { currentScreen = Screen.VIP_STORE },
                     onAddStory = { mediaUri -> repository.addStory(mediaUri) },
                     onAddComment = { postId, text -> repository.addCommentToPost(postId, text) },
@@ -419,8 +418,22 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onDismissMatchModal = { repository.dismissMatchModal() },
                     onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
                 )
+
+                Screen.ABOUT_US -> AboutUsScreen(
+                    onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
+                )
             }
         }
+    }
+
+    if (showMonetizationPopup && (currentScreen == Screen.PRIMARY_DASHBOARD || currentScreen == Screen.SECONDARY_FEED)) {
+        MonetizationAnnouncementModal(
+            onDismiss = { showMonetizationPopup = false },
+            onStartCreating = {
+                showMonetizationPopup = false
+                currentScreen = Screen.SECONDARY_FEED
+            }
+        )
     }
 
     if (showPermissionModal) {

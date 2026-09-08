@@ -75,7 +75,7 @@ class AppRepository {
     )
     val storyTrays: StateFlow<List<StoryItem>> = _storyTrays.asStateFlow()
 
-    // Social Moments Feed
+    // Social Moments & Reels Feed
     private val _momentPosts = MutableStateFlow(
         listOf(
             MomentPost(
@@ -83,26 +83,62 @@ class AppRepository {
                 authorName = "Aria Rose",
                 authorHandle = "@AriaRose",
                 authorAvatar = "https://picsum.photos/100/100?random=20",
-                mediaUrl = "https://picsum.photos/600/400?random=30",
-                caption = "Sunset live streams hit different when we talk about real life & future dreams. Thank you everyone for joining my sofa room! ❤️✨",
+                mediaUrl = "https://picsum.photos/600/750?random=30",
+                caption = "Sunset vibes & soft acoustic music. Tell me your favorite song for tonight's sofa room! ❤️✨",
                 timestamp = "10 mins ago",
                 likesCount = 342,
                 commentsCount = 48,
                 giftTipsTotal = 1500,
-                isLiked = false
+                isLiked = false,
+                mediaType = MediaType.PHOTO
+            ),
+            MomentPost(
+                id = "m_reel1",
+                authorName = "Simran Verma",
+                authorHandle = "@Simran_V",
+                authorAvatar = "https://picsum.photos/100/100?random=22",
+                mediaUrl = "https://picsum.photos/540/960?random=88",
+                caption = "🎬 New Reel: Dance choreography to trending beats! Drop a 🔥 if you want a tutorial video on my channel! #DestinyReels #Monetize",
+                timestamp = "35 mins ago",
+                likesCount = 1480,
+                commentsCount = 210,
+                giftTipsTotal = 4500,
+                isLiked = true,
+                mediaType = MediaType.REEL_VIDEO,
+                videoDuration = "0:45",
+                viewsCount = 12400
+            ),
+            MomentPost(
+                id = "m_sp1",
+                authorName = "Nykaa Fashion",
+                authorHandle = "@NykaaFashion",
+                authorAvatar = "https://picsum.photos/100/100?random=99",
+                mediaUrl = "https://picsum.photos/600/750?random=77",
+                caption = "✨ Collab Highlight: Get up to 50% OFF on festive collection for Final Destiny creators! Use code DESTINY50 at checkout.",
+                timestamp = "1 hour ago",
+                likesCount = 2100,
+                commentsCount = 85,
+                giftTipsTotal = 0,
+                isLiked = false,
+                mediaType = MediaType.PHOTO,
+                isSponsored = true,
+                sponsorName = "Nykaa Official Brand Collab",
+                ctaText = "Shop Collection 🛍️",
+                ctaUrl = "https://finaldestiny.app"
             ),
             MomentPost(
                 id = "m2",
                 authorName = "Dark Devil",
                 authorHandle = "@DarkDevil",
                 authorAvatar = "https://picsum.photos/100/100?random=1",
-                mediaUrl = "https://picsum.photos/600/400?random=31",
+                mediaUrl = "https://picsum.photos/600/750?random=31",
                 caption = "Late night acoustic jam in Room #2088! Hosted 10-mic sofa session with amazing creators 🎸🔥",
                 timestamp = "2 hours ago",
                 likesCount = 890,
                 commentsCount = 112,
                 giftTipsTotal = 3200,
-                isLiked = true
+                isLiked = true,
+                mediaType = MediaType.PHOTO
             )
         )
     )
@@ -320,16 +356,39 @@ class AppRepository {
             authorName = user.name,
             authorHandle = user.handle,
             authorAvatar = user.profilePictureUri ?: "https://picsum.photos/100/100?random=1",
-            mediaUrl = "https://picsum.photos/600/400?random=99",
+            mediaUrl = "https://picsum.photos/600/750?random=99",
             caption = caption,
             timestamp = "Just now",
             likesCount = 1,
             commentsCount = 0,
             giftTipsTotal = 0,
             isLiked = true,
-            mediaUri = mediaUri
+            mediaUri = mediaUri,
+            mediaType = MediaType.PHOTO
         )
         _momentPosts.value = listOf(newPost) + _momentPosts.value
+    }
+
+    fun postReelVideo(caption: String, mediaUri: String? = null) {
+        val user = _currentUser.value
+        val newReel = MomentPost(
+            id = "reel_${System.currentTimeMillis()}",
+            authorName = user.name,
+            authorHandle = user.handle,
+            authorAvatar = user.profilePictureUri ?: "https://picsum.photos/100/100?random=1",
+            mediaUrl = "https://picsum.photos/540/960?random=105",
+            caption = caption,
+            timestamp = "Just now",
+            likesCount = 1,
+            commentsCount = 0,
+            giftTipsTotal = 0,
+            isLiked = true,
+            mediaUri = mediaUri,
+            mediaType = MediaType.REEL_VIDEO,
+            videoDuration = "0:30",
+            viewsCount = 1
+        )
+        _momentPosts.value = listOf(newReel) + _momentPosts.value
     }
 
     fun addStory(mediaUri: String) {

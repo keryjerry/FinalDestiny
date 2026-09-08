@@ -40,7 +40,8 @@ fun PrimaryDashboardScreen(
     onNavigateToHostPortal: () -> Unit,
     onNavigateToVipStore: () -> Unit,
     onNavigateToSecondaryFeed: () -> Unit,
-    onNavigateToProfile: () -> Unit = {}
+    onNavigateToProfile: () -> Unit = {},
+    onNavigateToAboutUs: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var showSettingsModal by remember { mutableStateOf(false) }
@@ -131,11 +132,11 @@ fun PrimaryDashboardScreen(
 
         // INSTAGRAM MOMENTS & REELS FEED BANNER (TAP OR SWIPE LEFT TO OPEN)
         Card(
-            colors = CardDefaults.cardColors(containerColor = WineRedMedium),
+            colors = CardDefaults.cardColors(containerColor = SkyBlueHeader),
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, MetallicGold, RoundedCornerShape(16.dp))
+                .border(1.dp, BrightCyanAccent, RoundedCornerShape(16.dp))
                 .clickable { onNavigateToSecondaryFeed() }
         ) {
             Row(
@@ -149,11 +150,41 @@ fun PrimaryDashboardScreen(
                     Text("📸", fontSize = 20.sp)
                     Spacer(modifier = Modifier.width(8.dp))
                     Column {
-                        Text("Destiny Live Moment Feed", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = LightGold)
-                        Text("Swipe Left 👈 or Tap to view live feeds", fontSize = 10.sp, color = MetallicGold)
+                        Text("Destiny Live Moment Feed", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = NavyTextPrimary)
+                        Text("Swipe Left 👈 or Tap to view live reels & moments", fontSize = 10.sp, color = SkyBluePrimary)
                     }
                 }
-                Text("Open Feed ➔", fontSize = 11.sp, color = MetallicGold, fontWeight = FontWeight.Bold)
+                Text("Open Feed ➔", fontSize = 11.sp, color = SkyBluePrimary, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // ABOUT US & CREATOR MONETIZATION PROGRAM BANNER
+        Card(
+            colors = CardDefaults.cardColors(containerColor = SkyBlueCardBg),
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, SkyBlueBorder, RoundedCornerShape(16.dp))
+                .clickable { onNavigateToAboutUs() }
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("🚀", fontSize = 20.sp)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text("About Final Destiny & Monetization", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = NavyTextPrimary)
+                        Text("View Creator Program, Payouts & Guidelines", fontSize = 10.sp, color = SlateTextSecondary)
+                    }
+                }
+                Icon(Icons.Default.ChevronRight, contentDescription = "Open", tint = SkyBluePrimary)
             }
         }
 

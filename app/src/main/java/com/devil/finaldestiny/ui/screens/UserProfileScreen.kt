@@ -74,6 +74,7 @@ fun UserProfileScreen(
     onNavigateToSecondaryFeed: () -> Unit = {},
     onNavigateToMonetization: () -> Unit = {},
     onNavigateToDating: () -> Unit = {},
+    onNavigateToAboutUs: () -> Unit = {},
     onLogOut: () -> Unit,
     onBack: () -> Unit
 ) {

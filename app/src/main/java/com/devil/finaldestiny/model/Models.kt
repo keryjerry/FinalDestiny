@@ -36,6 +36,8 @@ data class SwipeCard(
     val isMatched: Boolean = false
 )
 
+enum class MediaType { PHOTO, REEL_VIDEO }
+
 data class MomentComment(
     val senderName: String,
     val text: String,
@@ -59,7 +61,14 @@ data class MomentPost(
         MomentComment("Stanbra", "Love this post! ❤️", "5m ago"),
         MomentComment("Simran", "Amazing vibes! 🔥", "2m ago")
     ),
-    val mediaUri: String? = null
+    val mediaUri: String? = null,
+    val mediaType: MediaType = MediaType.PHOTO,
+    val isSponsored: Boolean = false,
+    val sponsorName: String? = null,
+    val ctaText: String? = null,
+    val ctaUrl: String? = null,
+    val videoDuration: String? = "0:30",
+    val viewsCount: Int = 1420
 )
 
 data class StoryItem(
