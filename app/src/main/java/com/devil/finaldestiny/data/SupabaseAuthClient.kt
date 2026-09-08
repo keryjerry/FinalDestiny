@@ -103,12 +103,29 @@ object SupabaseAuthClient {
         onResult(true, null)
     }
 
+    fun getOrCreateUserId(context: Context): String {
+        val prefs = context.getSharedPreferences("destiny_auth_prefs", Context.MODE_PRIVATE)
+        var storedId = prefs.getString("unique_user_id", null)
+        if (storedId.isNull_or_blank_custom()) {
+            val randomId = "u_" + java.util.UUID.randomUUID().toString().replace("-", "").take(8)
+            prefs.edit().putString("unique_user_id", randomId).apply()
+            storedId = randomId
+        }
+        return storedId ?: ("u_" + java.util.UUID.randomUUID().toString().replace("-", "").take(8))
+    }
+
+    private fun String?.isNull_or_blank_custom(): Boolean = this == null || this.trim().isEmpty()
+
     fun getSessionToken(): String? = currentSessionToken
     fun getUserEmail(): String? = currentUserEmail
 
-    fun signOut() {
+    fun signOut(context: Context? = null) {
         currentSessionToken = null
         currentUserEmail = null
         isAuthenticated = false
+        if (context != null) {
+            val prefs = context.getSharedPreferences("destiny_auth_prefs", Context.MODE_PRIVATE)
+            prefs.edit().remove("unique_user_id").apply()
+        }
     }
 }

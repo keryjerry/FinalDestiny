@@ -60,6 +60,7 @@ class MainActivity : ComponentActivity(), PaymentResultWithDataListener {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+        repository.initializeUserSession(this)
         enableEdgeToEdge()
         setContent {
             FinalDestinyTheme {

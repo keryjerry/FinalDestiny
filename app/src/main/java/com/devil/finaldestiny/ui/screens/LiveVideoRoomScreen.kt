@@ -312,14 +312,14 @@ fun LiveVideoRoomScreen(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // MAIN VIDEO STAGE (REAL LIVE SURFACEVIEW CAMERA / FIXED ERROR-FREE YOUTUBE PLAYER)
+        // MAIN VIDEO STAGE (INSTAGRAM LIVE STYLE IMMERSIVE 9:16 TALL VIDEO STREAM)
         Card(
             colors = CardDefaults.cardColors(containerColor = WineRedDark),
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(24.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .height(210.dp)
-                .border(1.5.dp, MetallicGold, RoundedCornerShape(20.dp))
+                .height(480.dp)
+                .border(2.dp, MetallicGold, RoundedCornerShape(24.dp))
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 if (isVisionBlackoutTriggered) {
@@ -337,7 +337,7 @@ fun LiveVideoRoomScreen(
                     }
                 } else if (isCameraActive) {
                     if (hasCameraPermission) {
-                        // REAL CAMERA PREVIEW STREAM SURFACEVIEW
+                        // REAL CAMERA PREVIEW STREAM SURFACEVIEW WITH 9:16 CENTER_CROP ASPECT SCALING
                         AndroidView(
                             factory = { surfaceContext ->
                                 SurfaceView(surfaceContext).apply {
@@ -349,6 +349,21 @@ fun LiveVideoRoomScreen(
                                                 val camId = getFrontCameraId()
                                                 camera = Camera.open(camId)
                                                 camera?.setDisplayOrientation(90)
+
+                                                // Set optimal 16:9 preview resolution for natural face proportions
+                                                val params = camera?.parameters
+                                                val sizes = params?.supportedPreviewSizes
+                                                if (!sizes.isNullOrEmpty()) {
+                                                    val optimal = sizes.minByOrNull {
+                                                        val r = it.width.toFloat() / it.height.toFloat()
+                                                        kotlin.math.abs(r - (16f / 9f))
+                                                    }
+                                                    if (optimal != null) {
+                                                        params?.setPreviewSize(optimal.width, optimal.height)
+                                                        camera?.parameters = params
+                                                    }
+                                                }
+
                                                 camera?.setPreviewDisplay(holder)
                                                 camera?.startPreview()
                                             } catch (e: Exception) {
@@ -592,146 +607,7 @@ fun LiveVideoRoomScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
 
-        // 10-GUEST VIDEO SOFA TILES WITH INTERACTIVE CAM & MIC CONTROLS
-        Row(
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("10-GUEST VIDEO SOFA TILES", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MetallicGold, letterSpacing = 1.sp)
-            Text("(Tap tile to toggle Cam/Mic)", fontSize = 9.sp, color = LightGold.copy(0.7f))
-        }
-        Spacer(modifier = Modifier.height(6.dp))
-
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(5),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(155.dp)
-        ) {
-            items(room.seats) { seat ->
-                var seatCamActive by remember { mutableStateOf(seat.seatIndex <= 4) }
-                var seatMicActive by remember { mutableStateOf(!seat.isMuted) }
-
-                Box(
-                    modifier = Modifier
-                        .width(64.dp)
-                        .height(72.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(if (seatCamActive) Color(0xFF1E293B) else Color(0x992A0510))
-                        .border(1.dp, if (seatCamActive) LiveIndicatorGreen else MetallicGold, RoundedCornerShape(14.dp))
-                        .clickable { selectedSeatForMediaControls = seat },
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (seat.userProfile != null) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center,
-                            modifier = Modifier.padding(2.dp)
-                        ) {
-                            Text(if (seatCamActive) "🎥" else "📷", fontSize = 14.sp)
-                            Text(
-                                text = seat.userProfile.name,
-                                fontSize = 9.sp,
-                                color = LightGold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text(if (seatCamActive) "Cam" else "Off", fontSize = 8.sp, color = if (seatCamActive) LiveIndicatorGreen else HeartRed)
-                                Text(if (seatMicActive) "🎙️" else "🔇", fontSize = 8.sp)
-                            }
-                        }
-                    } else {
-                        Icon(Icons.Default.Add, contentDescription = "Empty", tint = LightGold.copy(0.4f), modifier = Modifier.size(16.dp))
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // PERSONAL MIC MUTE & MASTER APP AUDIO VOLUME CONTROL BAR
-        Card(
-            colors = CardDefaults.cardColors(containerColor = WineRedMedium),
-            shape = RoundedCornerShape(14.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, MetallicGold.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
-                .padding(8.dp)
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Personal Mic Mute/Unmute
-                Button(
-                    onClick = {
-                        isPersonalMicMuted = !isPersonalMicMuted
-                        Toast.makeText(
-                            context,
-                            if (isPersonalMicMuted) "🔇 Your Mic Muted" else "🎙️ Your Mic Active",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isPersonalMicMuted) HeartRed else LiveIndicatorGreen
-                    ),
-                    modifier = Modifier.weight(1f).height(36.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isPersonalMicMuted) Icons.Default.MicOff else Icons.Default.Mic,
-                        contentDescription = null,
-                        tint = WineRedDark,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = if (isPersonalMicMuted) "My Mic MUTED 🔇" else "My Mic ACTIVE 🎙️",
-                        color = WineRedDark,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                // Master App Volume Toggle
-                Button(
-                    onClick = {
-                        isMasterAppAudioMuted = !isMasterAppAudioMuted
-                        Toast.makeText(
-                            context,
-                            if (isMasterAppAudioMuted) "🔇 ALL ROOM AUDIO MUTED" else "🔊 Room Audio Unmuted",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isMasterAppAudioMuted) HeartRed else MetallicGold
-                    ),
-                    modifier = Modifier.weight(1f).height(36.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isMasterAppAudioMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                        contentDescription = null,
-                        tint = WineRedDark,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = if (isMasterAppAudioMuted) "Audio MUTED 🔇" else "Audio ON 🔊",
-                        color = WineRedDark,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
 
         Spacer(modifier = Modifier.height(10.dp))
 

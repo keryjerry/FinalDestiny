@@ -1,5 +1,6 @@
 package com.devil.finaldestiny.data
 
+import android.content.Context
 import com.devil.finaldestiny.model.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,29 +12,40 @@ class AppRepository {
     private val _currentUser = MutableStateFlow(
         UserProfile(
             id = "u101",
-            handle = "@DarkDevil",
-            name = "Dark Devil",
-            age = 25,
-            bio = "Loving music, late night live talks & genuine connections ✨",
+            handle = "@User_101",
+            name = "Destiny User",
+            age = 24,
+            bio = "Loving live talks & genuine connections ✨",
             gender = Gender.MALE,
             photos = listOf(
-                "https://picsum.photos/400/600?random=1",
-                "https://picsum.photos/400/600?random=2",
-                "https://picsum.photos/400/600?random=3"
+                "https://picsum.photos/400/600?random=1"
             ),
             verifiedStatus = true,
-            followerCount = 145, // >= 100 organic followers required
-            followingCount = 32,
-            vipLevel = 5, // Anti-Kick Shield enabled
-            exp = 6500,
-            coins = 12500,
-            diamonds = 8900,
-            relationshipIntent = "Serious Relationship & Marriage",
-            lifestyleTags = listOf("Romantic", "Singer", "Foodie", "Tech Enthusiast"),
+            followerCount = 0,
+            followingCount = 0,
+            vipLevel = 1,
+            exp = 100,
+            coins = 500,
+            diamonds = 100,
+            relationshipIntent = "Meaningful Connections",
+            lifestyleTags = listOf("Music 🎵", "Travel ✈️"),
             isHost = true
         )
     )
     val currentUser: StateFlow<UserProfile> = _currentUser.asStateFlow()
+
+    fun initializeUserSession(context: Context) {
+        val uniqueId = SupabaseAuthClient.getOrCreateUserId(context)
+        val shortId = uniqueId.takeLast(6).uppercase()
+        val current = _currentUser.value
+        if (current.id == "u101" || current.handle == "@DarkDevil") {
+            _currentUser.value = current.copy(
+                id = uniqueId,
+                name = "User_$shortId",
+                handle = "@User_$shortId"
+            )
+        }
+    }
 
     // Creator Studio Analytics State
     private val _creatorAnalytics = MutableStateFlow(CreatorAnalytics())

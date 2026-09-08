@@ -390,7 +390,12 @@ fun SecondaryDashboardScreen(
                                 .background(NavyTextPrimary)
                                 .border(1.dp, SkyBlueBorder, RoundedCornerShape(14.dp))
                         ) {
-                            if (localBitmap != null) {
+                            if (isReel && !post.mediaUri.isNullOrEmpty()) {
+                                ExoVideoPlayerView(
+                                    videoUri = post.mediaUri,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else if (localBitmap != null) {
                                 Image(
                                     bitmap = localBitmap,
                                     contentDescription = "Uploaded Media",
@@ -809,4 +814,39 @@ private fun rememberLoadedImage(context: Context, uriString: String?): ImageBitm
             }
         }
     }
+}
+
+@OptIn(androidx.media3.common.util.UnstableApi::class)
+@Composable
+private fun ExoVideoPlayerView(
+    videoUri: String,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val exoPlayer = remember(videoUri) {
+        androidx.media3.exoplayer.ExoPlayer.Builder(context).build().apply {
+            val mediaItem = androidx.media3.common.MediaItem.fromUri(Uri.parse(videoUri))
+            setMediaItem(mediaItem)
+            repeatMode = androidx.media3.common.Player.REPEAT_MODE_ONE
+            playWhenReady = true
+            prepare()
+        }
+    }
+
+    DisposableEffect(exoPlayer) {
+        onDispose {
+            exoPlayer.release()
+        }
+    }
+
+    androidx.compose.ui.viewinterop.AndroidView(
+        factory = { ctx ->
+            androidx.media3.ui.PlayerView(ctx).apply {
+                player = exoPlayer
+                useController = false
+                resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            }
+        },
+        modifier = modifier
+    )
 }
