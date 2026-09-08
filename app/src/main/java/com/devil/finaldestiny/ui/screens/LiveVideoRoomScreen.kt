@@ -9,9 +9,6 @@ import android.hardware.Camera
 import android.net.Uri
 import android.view.SurfaceHolder
 import android.view.SurfaceView
-import android.webkit.WebChromeClient
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -23,20 +20,13 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.automirrored.filled.VolumeOff
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -55,26 +45,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.devil.finaldestiny.model.*
 import com.devil.finaldestiny.ui.components.ProfileAvatarView
 import com.devil.finaldestiny.ui.theme.*
-
-private fun extractYoutubeVideoId(rawUrl: String): String {
-    val cleanUrl = rawUrl.trim()
-    if (cleanUrl.isEmpty()) return "aUa0amEcCac"
-
-    // Regex matching standard video URLs, shorts, live streams, embeds, and shortened links
-    val regex = Regex("""(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts|live)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})""", RegexOption.IGNORE_CASE)
-    val match = regex.find(cleanUrl)
-    if (match != null && match.groupValues.size > 1) {
-        return match.groupValues[1]
-    }
-
-    // Fallback: If user directly pasted an 11-char ID
-    val simpleId = cleanUrl.split("?", "&", "#", "/", " ").firstOrNull()?.trim() ?: ""
-    if (simpleId.length in 8..15) {
-        return simpleId
-    }
-
-    return "aUa0amEcCac"
-}
 
 @Suppress("DEPRECATION")
 private fun getFrontCameraId(): Int {
@@ -107,23 +77,17 @@ fun LiveVideoRoomScreen(
     onKeepRoom: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val scrollState = rememberScrollState()
 
-    var isCameraActive by remember { mutableStateOf(false) }
+    var isCameraActive by remember { mutableStateOf(true) }
     var hasCameraPermission by remember { mutableStateOf(false) }
-    var youtubeUrlInput by remember { mutableStateOf("https://youtu.be/aUa0amEcCac") }
-    var activeVideoId by remember { mutableStateOf("aUa0amEcCac") }
-    var loadedVideoId by remember { mutableStateOf<String?>(null) }
     var showGiftSheet by remember { mutableStateOf(false) }
     var showThemePicker by remember { mutableStateOf(false) }
     var showLeaveRoomDialog by remember { mutableStateOf(false) }
     var showHostProfileSettings by remember { mutableStateOf(false) }
-    var selectedSeatForMediaControls by remember { mutableStateOf<SofaSeat?>(null) }
     var chatInput by remember { mutableStateOf("") }
 
-    // PERSONAL MIC MUTE & APP MASTER VOLUME CONTROLS
+    // PERSONAL MIC MUTE CONTROL
     var isPersonalMicMuted by remember { mutableStateOf(false) }
-    var isMasterAppAudioMuted by remember { mutableStateOf(false) }
 
     // Dynamic Host Profile State
     var hostDisplayName by remember { mutableStateOf(room.hostUser.name) }
@@ -144,7 +108,7 @@ fun LiveVideoRoomScreen(
         hasCameraPermission = isGranted
         if (isGranted) {
             isCameraActive = true
-            Toast.makeText(context, "🎥 Live Camera Access Granted!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "🎥 Live Camera Feed Active!", Toast.LENGTH_SHORT).show()
         } else {
             Toast.makeText(context, "⚠️ Camera Permission Required to Stream", Toast.LENGTH_SHORT).show()
         }
@@ -171,617 +135,496 @@ fun LiveVideoRoomScreen(
         }
     }
 
-    Column(
+    // Auto-request permission on launch if camera is active
+    LaunchedEffect(Unit) {
+        cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+    }
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(selectedTheme.brush)
-            .verticalScroll(scrollState)
-            .padding(10.dp)
     ) {
-        // CLEAN ACHAT-STYLE HOST HEADER BAR WITH BACK / EXIT & AVATAR SETTINGS
-        Card(
-            colors = CardDefaults.cardColors(containerColor = CardBackground),
-            shape = RoundedCornerShape(20.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, MetallicGold.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
-                .padding(8.dp)
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Left Side: Back Arrow Button & Host Avatar (Clickable to change profile pic)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = { showLeaveRoomDialog = true },
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(CircleShape)
-                            .background(WineRedMedium)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back / Exit Room",
-                            tint = MetallicGold,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(6.dp))
-
-                    // Host Avatar (Renders Host Photo & Clickable for Profile Picture Settings)
-                    ProfileAvatarView(
-                        name = room.hostUser.name,
-                        profilePictureUri = customHostAvatarUri?.toString() ?: room.hostUser.profilePictureUri,
-                        gender = room.hostUser.gender,
-                        size = 44.dp,
-                        showBorder = true,
-                        borderColor = MetallicGold,
-                        modifier = Modifier.clickable { showHostProfileSettings = true }
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Host Profile Info
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = hostDisplayName,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = LightGold
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("✓", fontSize = 11.sp, color = VerifiedBlue, fontWeight = FontWeight.Bold)
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "👥 $hostFollowersCount Followers",
-                                fontSize = 9.sp,
-                                color = LightGold.copy(alpha = 0.8f)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Box(
-                                modifier = Modifier
-                                    .clip(CircleShape)
-                                    .background(LiveIndicatorGreen.copy(alpha = 0.2f))
-                                    .padding(horizontal = 6.dp, vertical = 1.dp)
-                            ) {
-                                Text(
-                                    text = "👁️ ${room.viewerCount}",
-                                    fontSize = 9.sp,
-                                    color = LiveIndicatorGreen,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Right Side: Action Buttons (+ Follow, Theme Picker, Exit Icon)
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Button(
-                        onClick = {
-                            isFollowingHost = !isFollowingHost
-                            if (isFollowingHost) {
-                                hostFollowersCount += 1
-                                Toast.makeText(context, "❤️ You followed $hostDisplayName!", Toast.LENGTH_SHORT).show()
-                            } else {
-                                hostFollowersCount -= 1
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isFollowingHost) WineRedMedium else MetallicGold
-                        ),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                        modifier = Modifier.height(30.dp)
-                    ) {
-                        Text(
-                            text = if (isFollowingHost) "✓ Following" else "+ Follow",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isFollowingHost) LightGold else WineRedDark
-                        )
-                    }
-
-                    IconButton(
-                        onClick = { showThemePicker = true },
-                        modifier = Modifier
-                            .size(30.dp)
-                            .clip(CircleShape)
-                            .background(WineRedMedium)
-                            .border(1.dp, MetallicGold, CircleShape)
-                    ) {
-                        Text("🎨", fontSize = 13.sp)
-                    }
-
-                    IconButton(
-                        onClick = { showLeaveRoomDialog = true },
-                        modifier = Modifier
-                            .size(30.dp)
-                            .clip(CircleShape)
-                            .background(CrimsonVelvet)
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Exit Room", tint = LightGold, modifier = Modifier.size(16.dp))
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // MAIN VIDEO STAGE (INSTAGRAM LIVE STYLE IMMERSIVE 9:16 TALL VIDEO STREAM)
-        Card(
-            colors = CardDefaults.cardColors(containerColor = WineRedDark),
-            shape = RoundedCornerShape(24.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(480.dp)
-                .border(2.dp, MetallicGold, RoundedCornerShape(24.dp))
-        ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                if (isVisionBlackoutTriggered) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("🚫 STREAM BLACKOUT TRIGGERED", color = HeartRed, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text("AI Vision Sentinel sampled unauthorized broadcast element.", color = LightGold, fontSize = 10.sp)
-                        }
-                    }
-                } else if (isCameraActive) {
-                    if (hasCameraPermission) {
-                        // REAL CAMERA PREVIEW STREAM SURFACEVIEW WITH 9:16 CENTER_CROP ASPECT SCALING
-                        AndroidView(
-                            factory = { surfaceContext ->
-                                SurfaceView(surfaceContext).apply {
-                                    holder.addCallback(object : SurfaceHolder.Callback {
-                                        var camera: Camera? = null
-
-                                        override fun surfaceCreated(holder: SurfaceHolder) {
-                                            try {
-                                                val camId = getFrontCameraId()
-                                                camera = Camera.open(camId)
-                                                camera?.setDisplayOrientation(90)
-
-                                                // Set optimal 16:9 preview resolution for natural face proportions
-                                                val params = camera?.parameters
-                                                val sizes = params?.supportedPreviewSizes
-                                                if (!sizes.isNullOrEmpty()) {
-                                                    val optimal = sizes.minByOrNull {
-                                                        val r = it.width.toFloat() / it.height.toFloat()
-                                                        kotlin.math.abs(r - (16f / 9f))
-                                                    }
-                                                    if (optimal != null) {
-                                                        params?.setPreviewSize(optimal.width, optimal.height)
-                                                        camera?.parameters = params
-                                                    }
-                                                }
-
-                                                camera?.setPreviewDisplay(holder)
-                                                camera?.startPreview()
-                                            } catch (e: Exception) {
-                                                e.printStackTrace()
-                                            }
-                                        }
-
-                                        override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {}
-
-                                        override fun surfaceDestroyed(holder: SurfaceHolder) {
-                                            try {
-                                                camera?.stopPreview()
-                                                camera?.release()
-                                                camera = null
-                                            } catch (e: Exception) {
-                                                e.printStackTrace()
-                                            }
-                                        }
-                                    })
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Black),
-                            contentAlignment = Alignment.Center
+        // 1. FULL SCREEN NATIVE 9:16 CAMERA STREAM OR PLACEHOLDER
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (isVisionBlackoutTriggered) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("🚫 STREAM BLACKOUT TRIGGERED", color = HeartRed, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text("AI Vision Sentinel sampled unauthorized broadcast element.", color = LightGold, fontSize = 12.sp)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = onRestoreSentinel,
+                            colors = ButtonDefaults.buttonColors(containerColor = MetallicGold)
                         ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(16.dp)) {
-                                Icon(Icons.Default.VideocamOff, contentDescription = null, tint = HeartRed, modifier = Modifier.size(44.dp))
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text("Camera Access Required to Stream", color = LightGold, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Button(
-                                    onClick = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) },
-                                    colors = ButtonDefaults.buttonColors(containerColor = MetallicGold)
-                                ) {
-                                    Text("Grant Camera Access 📷", color = WineRedDark, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                                }
-                            }
+                            Text("Restore Stream 🔄", color = WineRedDark, fontWeight = FontWeight.Bold)
                         }
                     }
-                } else {
-                    // HIGH PERFORMANCE STABLE YOUTUBE EMBED PLAYER
-                    AndroidView(
-                        factory = { webContext ->
-                            WebView(webContext).apply {
-                                layoutParams = android.view.ViewGroup.LayoutParams(
-                                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                                    android.view.ViewGroup.LayoutParams.MATCH_PARENT
-                                )
-                                setLayerType(android.view.View.LAYER_TYPE_HARDWARE, null)
-                                setBackgroundColor(android.graphics.Color.BLACK)
-                                settings.apply {
-                                    javaScriptEnabled = true
-                                    domStorageEnabled = true
-                                    databaseEnabled = true
-                                    loadWithOverviewMode = true
-                                    useWideViewPort = true
-                                    mediaPlaybackRequiresUserGesture = false
-                                    allowFileAccess = true
-                                    allowContentAccess = true
-                                    javaScriptCanOpenWindowsAutomatically = true
-                                    mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                                    userAgentString = "Mozilla/5.0 (Linux; Android 12; Pixel 6 Build/SQ3A.220705.004) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.5060.71 Mobile Safari/537.36"
-                                }
-                                webChromeClient = WebChromeClient()
-                                webViewClient = object : WebViewClient() {
-                                    @Suppress("DEPRECATION")
-                                    override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
-                                        return false
+                }
+            } else if (isCameraActive && hasCameraPermission) {
+                // REAL CAMERA PREVIEW STREAM SURFACEVIEW WITH 9:16 ASPECT FILL
+                AndroidView(
+                    factory = { surfaceContext ->
+                        SurfaceView(surfaceContext).apply {
+                            holder.addCallback(object : SurfaceHolder.Callback {
+                                var camera: Camera? = null
+
+                                override fun surfaceCreated(holder: SurfaceHolder) {
+                                    try {
+                                        val camId = getFrontCameraId()
+                                        camera = Camera.open(camId)
+                                        camera?.setDisplayOrientation(90)
+
+                                        val params = camera?.parameters
+                                        val sizes = params?.supportedPreviewSizes
+                                        if (!sizes.isNullOrEmpty()) {
+                                            val optimal = sizes.minByOrNull {
+                                                val r = it.width.toFloat() / it.height.toFloat()
+                                                kotlin.math.abs(r - (16f / 9f))
+                                            }
+                                            if (optimal != null) {
+                                                params?.setPreviewSize(optimal.width, optimal.height)
+                                                camera?.parameters = params
+                                            }
+                                        }
+
+                                        camera?.setPreviewDisplay(holder)
+                                        camera?.startPreview()
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
                                     }
                                 }
+
+                                override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {}
+
+                                override fun surfaceDestroyed(holder: SurfaceHolder) {
+                                    try {
+                                        camera?.stopPreview()
+                                        camera?.release()
+                                        camera = null
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
+                                }
+                            })
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                // CAMERA OFF / PERMISSION REQUIRED PLACEHOLDER
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color(0xFF0B1017)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(24.dp)
+                    ) {
+                        Surface(
+                            shape = CircleShape,
+                            color = WineRedMedium,
+                            modifier = Modifier.size(80.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = if (!hasCameraPermission) Icons.Default.VideocamOff else Icons.Default.Videocam,
+                                    contentDescription = null,
+                                    tint = MetallicGold,
+                                    modifier = Modifier.size(40.dp)
+                                )
                             }
-                        },
-                        update = { webView ->
-                            if (loadedVideoId != activeVideoId) {
-                                loadedVideoId = activeVideoId
-                                val htmlContent = """
-                                    <!DOCTYPE html>
-                                    <html>
-                                    <body style="margin:0;padding:0;background-color:black;">
-                                        <iframe width="100%" height="100%" 
-                                            src="https://www.youtube.com/embed/$activeVideoId?autoplay=1&mute=0&controls=1&playsinline=1&enablejsapi=1&rel=0" 
-                                            frameborder="0" 
-                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                                            allowfullscreen>
-                                        </iframe>
-                                    </body>
-                                    </html>
-                                """.trimIndent()
-                                webView.loadDataWithBaseURL("https://www.youtube.com", htmlContent, "text/html", "utf-8", null)
-                            }
-                        },
-                        modifier = Modifier.fillMaxSize()
-                    )
+                        }
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            text = if (!hasCameraPermission) "Camera Access Required to Stream" else "Live Camera is Paused",
+                            color = LightGold,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Tap below to activate your live video feed",
+                            color = LightGold.copy(alpha = 0.7f),
+                            fontSize = 12.sp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = {
+                                if (!hasCameraPermission) {
+                                    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                                } else {
+                                    isCameraActive = true
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MetallicGold)
+                        ) {
+                            Text("Turn On Camera 📷", color = WineRedDark, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                    }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // STAGE BROADCAST & YOUTUBE LINK PLAY CONTROLS
-        Card(
-            colors = CardDefaults.cardColors(containerColor = CardBackground),
-            shape = RoundedCornerShape(16.dp),
+        // 2. FLOATING OVERLAY CONTENT (TOP BAR, FLOATING CONTROLS, CHAT & INPUT)
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, CrimsonVelvet, RoundedCornerShape(16.dp))
-                .padding(10.dp)
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // TOP HEADER BAR (HOST INFO, FOLLOW, THEME, EXIT)
+            Card(
+                colors = CardDefaults.cardColors(containerColor = Color(0xCC0F172A)),
+                shape = RoundedCornerShape(24.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, MetallicGold.copy(alpha = 0.5f), RoundedCornerShape(24.dp))
+            ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
-                    // Real Camera Stream Toggle
-                    Button(
+                    // Left: Back Arrow & Host Info
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = { showLeaveRoomDialog = true },
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(WineRedMedium)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Exit Room",
+                                tint = MetallicGold,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        ProfileAvatarView(
+                            name = room.hostUser.name,
+                            profilePictureUri = customHostAvatarUri?.toString() ?: room.hostUser.profilePictureUri,
+                            gender = room.hostUser.gender,
+                            size = 42.dp,
+                            showBorder = true,
+                            borderColor = MetallicGold,
+                            modifier = Modifier.clickable { showHostProfileSettings = true }
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = hostDisplayName,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("✓", fontSize = 11.sp, color = VerifiedBlue, fontWeight = FontWeight.Bold)
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "👥 $hostFollowersCount",
+                                    fontSize = 10.sp,
+                                    color = LightGold
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .background(LiveIndicatorGreen.copy(alpha = 0.3f))
+                                        .padding(horizontal = 6.dp, vertical = 1.dp)
+                                ) {
+                                    Text(
+                                        text = "🔴 LIVE ${room.viewerCount}",
+                                        fontSize = 9.sp,
+                                        color = LiveIndicatorGreen,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Right: Actions (+ Follow, Theme, Exit)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                isFollowingHost = !isFollowingHost
+                                if (isFollowingHost) {
+                                    hostFollowersCount += 1
+                                    Toast.makeText(context, "❤️ You followed $hostDisplayName!", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    hostFollowersCount -= 1
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isFollowingHost) WineRedMedium else MetallicGold
+                            ),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            Text(
+                                text = if (isFollowingHost) "✓ Following" else "+ Follow",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isFollowingHost) LightGold else WineRedDark
+                            )
+                        }
+
+                        IconButton(
+                            onClick = { showThemePicker = true },
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xAA1E293B))
+                                .border(1.dp, MetallicGold.copy(alpha = 0.6f), CircleShape)
+                        ) {
+                            Text("🎨", fontSize = 13.sp)
+                        }
+
+                        IconButton(
+                            onClick = { showLeaveRoomDialog = true },
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(CrimsonVelvet)
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Exit Room", tint = Color.White, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+            }
+
+            // FLOATING ACTION CONTROLS ON RIGHT SIDE (CAMERA TOGGLE, MIC MUTE, SENTINEL TEST)
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Cam Toggle Floating Button
+                    IconButton(
                         onClick = {
                             if (!isCameraActive) {
                                 if (hasCameraPermission) {
                                     isCameraActive = true
-                                    Toast.makeText(context, "🎥 Live Camera Feed Active!", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "🎥 Camera Feed Active!", Toast.LENGTH_SHORT).show()
                                 } else {
                                     cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                                 }
                             } else {
                                 isCameraActive = false
-                                Toast.makeText(context, "Camera Turned Off", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Camera Off", Toast.LENGTH_SHORT).show()
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isCameraActive) LiveIndicatorGreen else MetallicGold
-                        ),
                         modifier = Modifier
-                            .weight(1f)
-                            .height(40.dp)
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(if (isCameraActive) LiveIndicatorGreen else Color(0xAA1E293B))
+                            .border(1.dp, MetallicGold, CircleShape)
                     ) {
-                        Icon(Icons.Default.Videocam, contentDescription = null, tint = WineRedDark, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = if (isCameraActive) "Cam Active 🎥" else "Live Cam 📷",
-                            color = WineRedDark,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
+                        Icon(
+                            imageVector = if (isCameraActive) Icons.Default.Videocam else Icons.Default.VideocamOff,
+                            contentDescription = "Camera Toggle",
+                            tint = if (isCameraActive) WineRedDark else Color.White
                         )
                     }
 
-                    // Open Direct in YouTube App / Browser Button
-                    Button(
+                    // Mic Mute Floating Button
+                    IconButton(
                         onClick = {
-                            try {
-                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/watch?v=$activeVideoId"))
-                                context.startActivity(intent)
-                            } catch (e: Exception) {
-                                Toast.makeText(context, "Cannot open YouTube app", Toast.LENGTH_SHORT).show()
-                            }
+                            isPersonalMicMuted = !isPersonalMicMuted
+                            Toast.makeText(context, if (isPersonalMicMuted) "🎙️ Mic Muted" else "🎙️ Mic Unmuted", Toast.LENGTH_SHORT).show()
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = CrimsonVelvet),
                         modifier = Modifier
-                            .weight(1f)
-                            .height(40.dp)
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(if (isPersonalMicMuted) HeartRed else Color(0xAA1E293B))
+                            .border(1.dp, MetallicGold, CircleShape)
                     ) {
-                        Text("Open YouTube 📲", color = LightGold, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Icon(
+                            imageVector = if (isPersonalMicMuted) Icons.Default.MicOff else Icons.Default.Mic,
+                            contentDescription = "Mic Toggle",
+                            tint = Color.White
+                        )
+                    }
+
+                    // AI Vision Sentinel Floating Indicator
+                    IconButton(
+                        onClick = onTriggerSentinelTest,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(if (isVisionSentinelActive) WineRedMedium else Color(0xAA1E293B))
+                            .border(1.dp, MetallicGold, CircleShape)
+                    ) {
+                        Text("🛡️", fontSize = 18.sp)
+                    }
+                }
+            }
+
+            // BOTTOM SECTION: DIAMOND TARGET HUD, FLOATING LIVE CHAT & CHAT INPUT BAR
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // DIAMOND TARGET HUD BAR
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xCC0F172A)),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)) {
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("💎 Diamond Target: 18,900 / 20,000", fontSize = 11.sp, color = MetallicGold, fontWeight = FontWeight.Bold)
+                            Text("94.5%", fontSize = 10.sp, color = LiveIndicatorGreen, fontWeight = FontWeight.Bold)
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        LinearProgressIndicator(
+                            progress = { 0.945f },
+                            color = MetallicGold,
+                            trackColor = WineRedDark,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(4.dp)
+                                .clip(CircleShape)
+                        )
                     }
                 }
 
-                // YouTube URL Paste Input Field & Play Button
+                // FLOATING CHAT STREAM CONTAINER (INSTAGRAM LIVE STYLE OVERLAY)
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xAA000000)),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(160.dp)
+                        .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
+                        .padding(8.dp)
+                ) {
+                    LazyColumn(
+                        reverseLayout = true,
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        items(chatMessages.reversed()) { msg ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0x44000000))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = msg.senderName,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MetallicGold
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = msg.text,
+                                    fontSize = 11.sp,
+                                    color = Color.White,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // BOTTOM CHAT INPUT BAR WITH EXPLICIT BRIGHT WHITE TEXT & CONTRAST
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     OutlinedTextField(
-                        value = youtubeUrlInput,
-                        onValueChange = { youtubeUrlInput = it },
-                        placeholder = { Text("Paste YouTube Link...", color = LightGold.copy(0.5f), fontSize = 11.sp) },
+                        value = chatInput,
+                        onValueChange = { chatInput = it },
+                        placeholder = { Text("Say something in video room...", color = Color.LightGray, fontSize = 12.sp) },
                         colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedPlaceholderColor = Color.LightGray,
+                            unfocusedPlaceholderColor = Color.LightGray,
+                            focusedContainerColor = Color(0xDD1F2937),
+                            unfocusedContainerColor = Color(0xDD1F2937),
                             focusedBorderColor = MetallicGold,
-                            unfocusedBorderColor = DarkGold,
-                            focusedTextColor = LightGold,
-                            unfocusedTextColor = LightGold
+                            unfocusedBorderColor = Color(0x88D4AF37),
+                            cursorColor = Color.White
                         ),
                         singleLine = true,
-                        modifier = Modifier.weight(1f).height(48.dp)
+                        shape = RoundedCornerShape(24.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp)
                     )
+
                     Spacer(modifier = Modifier.width(6.dp))
-                    Button(
+
+                    IconButton(
                         onClick = {
-                            if (youtubeUrlInput.isNotBlank()) {
-                                isCameraActive = false
-                                val extractedId = extractYoutubeVideoId(youtubeUrlInput)
-                                activeVideoId = extractedId
-                                Toast.makeText(context, "🎬 Playing YouTube Video!", Toast.LENGTH_SHORT).show()
+                            if (chatInput.isNotBlank()) {
+                                onSendChatMessage(chatInput)
+                                chatInput = ""
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = MetallicGold),
-                        modifier = Modifier.height(48.dp)
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(CircleShape)
+                            .background(MetallicGold)
                     ) {
-                        Text("Play 🎬", color = WineRedDark, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = WineRedDark)
                     }
-                }
 
-                // QUICK PRESET YOUTUBE MUSIC & VIDEO BUTTONS
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    val presets = listOf(
-                        "🎵 Bollywood" to "https://youtu.be/aUa0amEcCac",
-                        "🎧 Lo-Fi Beats" to "https://www.youtube.com/watch?v=jfKfPfyJRdk",
-                        "🎬 Party DJ" to "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-                    )
+                    Spacer(modifier = Modifier.width(6.dp))
 
-                    presets.forEach { (label, url) ->
-                        FilterChip(
-                            selected = (youtubeUrlInput == url),
-                            onClick = {
-                                youtubeUrlInput = url
-                                isCameraActive = false
-                                activeVideoId = extractYoutubeVideoId(url)
-                                Toast.makeText(context, "▶️ Playing $label", Toast.LENGTH_SHORT).show()
-                            },
-                            label = { Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                containerColor = WineRedMedium,
-                                labelColor = LightGold,
-                                selectedContainerColor = MetallicGold,
-                                selectedLabelColor = WineRedDark
-                            ),
-                            border = FilterChipDefaults.filterChipBorder(
-                                enabled = true,
-                                selected = (youtubeUrlInput == url),
-                                borderColor = MetallicGold
-                            ),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-            }
-        }
-
-
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // LIVE DIAMOND COLLECTION HUD
-        Row(
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("💎 Live Diamond Target: 18,900 / 20,000", fontSize = 11.sp, color = MetallicGold, fontWeight = FontWeight.Bold)
-            Text("94.5%", fontSize = 10.sp, color = LiveIndicatorGreen, fontWeight = FontWeight.Bold)
-        }
-        Spacer(modifier = Modifier.height(4.dp))
-        LinearProgressIndicator(
-            progress = { 0.945f },
-            color = MetallicGold,
-            trackColor = WineRedDark,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(6.dp)
-                .clip(CircleShape)
-        )
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // VIDEO ROOM CHAT LOG
-        Text("LIVE CHAT STREAM & 1v1 CALLS", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Card(
-            colors = CardDefaults.cardColors(containerColor = CardBackgroundTransparent),
-            shape = RoundedCornerShape(14.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(130.dp)
-                .border(1.dp, CrimsonVelvet, RoundedCornerShape(14.dp))
-                .padding(8.dp)
-        ) {
-            LazyColumn(
-                reverseLayout = true,
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                items(chatMessages.reversed()) { msg ->
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
+                    IconButton(
+                        onClick = { showGiftSheet = true },
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(CircleShape)
+                            .background(CrimsonVelvet)
                     ) {
-                        Text(
-                            text = "${msg.senderName}: ${msg.text}",
-                            fontSize = 10.sp,
-                            color = LightGold,
-                            modifier = Modifier.weight(1f)
-                        )
-                        TextButton(
-                            onClick = {
-                                Toast.makeText(context, "📞 Initiating 1v1 Call with ${msg.senderName}...", Toast.LENGTH_SHORT).show()
-                            },
-                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
-                            modifier = Modifier.height(20.dp)
-                        ) {
-                            Text("📞 Call Invite", fontSize = 9.sp, color = MetallicGold)
-                        }
+                        Icon(Icons.Default.CardGiftcard, contentDescription = "Gift Store", tint = MetallicGold)
                     }
                 }
             }
         }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // BOTTOM CHAT INPUT BAR
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            OutlinedTextField(
-                value = chatInput,
-                onValueChange = { chatInput = it },
-                placeholder = { Text("Say something in video room...", color = LightGold.copy(0.5f), fontSize = 12.sp) },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MetallicGold,
-                    unfocusedBorderColor = DarkGold,
-                    focusedTextColor = LightGold,
-                    unfocusedTextColor = LightGold
-                ),
-                singleLine = true,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp)
-            )
-
-            Spacer(modifier = Modifier.width(6.dp))
-
-            IconButton(
-                onClick = {
-                    if (chatInput.isNotBlank()) {
-                        onSendChatMessage(chatInput)
-                        chatInput = ""
-                    }
-                },
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(MetallicGold)
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = WineRedDark)
-            }
-
-            Spacer(modifier = Modifier.width(6.dp))
-
-            IconButton(
-                onClick = { showGiftSheet = true },
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(CrimsonVelvet)
-            ) {
-                Icon(Icons.Default.CardGiftcard, contentDescription = "Gift Store", tint = MetallicGold)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
     }
 
-    // SEAT MEDIA CONTROLS MODAL (TOGGLE CAM / MIC FOR EACH GUEST SEAT)
-    if (selectedSeatForMediaControls != null) {
-        val seat = selectedSeatForMediaControls!!
-        AlertDialog(
-            onDismissRequest = { selectedSeatForMediaControls = null },
-            containerColor = CardBackground,
-            title = { Text("📹 Guest Seat #${seat.seatIndex} Media Controls", color = MetallicGold, fontSize = 16.sp) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (seat.userProfile != null) {
-                        Text("Guest: ${seat.userProfile.name} (VIP ${seat.userProfile.vipLevel})", fontSize = 12.sp, color = MetallicGold)
-                    }
-
-                    Button(
-                        onClick = {
-                            selectedSeatForMediaControls = null
-                            Toast.makeText(context, "📹 Toggled Camera Stream for Seat #${seat.seatIndex}", Toast.LENGTH_SHORT).show()
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = LiveIndicatorGreen),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Videocam, contentDescription = null, tint = WineRedDark)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Toggle Guest Camera 📹", color = WineRedDark, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    }
-
-                    Button(
-                        onClick = {
-                            selectedSeatForMediaControls = null
-                            Toast.makeText(context, "🎙️ Toggled Mic Access for Seat #${seat.seatIndex}", Toast.LENGTH_SHORT).show()
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = MetallicGold),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Mic, contentDescription = null, tint = WineRedDark)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Toggle Guest Microphone 🎙️", color = WineRedDark, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { selectedSeatForMediaControls = null }) {
-                    Text("Close", color = LightGold)
-                }
-            }
-        )
-    }
-
-    // KEEP / EXIT ROOM OPTIONS MODAL
+    // MODALS: EXIT ROOM DIALOG, HOST PROFILE SETTINGS, THEME PICKER, GIFT SHEET
     if (showLeaveRoomDialog) {
         AlertDialog(
             onDismissRequest = { showLeaveRoomDialog = false },
@@ -828,7 +671,6 @@ fun LiveVideoRoomScreen(
         )
     }
 
-    // HOST LIVE PROFILE & AVATAR SETTINGS MODAL
     if (showHostProfileSettings) {
         AlertDialog(
             onDismissRequest = { showHostProfileSettings = false },
@@ -842,7 +684,12 @@ fun LiveVideoRoomScreen(
                         value = hostDisplayName,
                         onValueChange = { hostDisplayName = it },
                         label = { Text("Host Display Name", color = LightGold, fontSize = 11.sp) },
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = MetallicGold, unfocusedBorderColor = DarkGold),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = MetallicGold,
+                            unfocusedBorderColor = DarkGold
+                        ),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -893,7 +740,6 @@ fun LiveVideoRoomScreen(
         )
     }
 
-    // ROOM THEME SELECTION MODAL
     if (showThemePicker) {
         AlertDialog(
             onDismissRequest = { showThemePicker = false },
@@ -945,7 +791,6 @@ fun LiveVideoRoomScreen(
         )
     }
 
-    // GIFT STORE SELECTOR MODAL SHEET
     if (showGiftSheet) {
         AlertDialog(
             onDismissRequest = { showGiftSheet = false },
