@@ -396,10 +396,10 @@ fun SplashScreen(
                                 strokeWidth = 2.5.dp
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Connecting to Supabase...", color = Color(0xFF0F172A), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("Connecting...", color = Color(0xFF0F172A), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         } else {
                             Text(
-                                text = if (isSignUpMode) "Register & Create Account 🚀" else "Sign In with Supabase 🔐",
+                                text = if (isSignUpMode) "Create Account 🚀" else "Sign In 🔐",
                                 color = Color(0xFF0F172A),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp

@@ -431,8 +431,8 @@ fun UserProfileScreen(
                         )
                         HorizontalDivider(color = CrimsonVelvet)
 
-                        ProfileDetailRow(label = "Registered Email 📧", value = SupabaseAuthClient.getUserEmail() ?: "Not connected")
-                        ProfileDetailRow(label = "Supabase Auth User ID 🆔", value = user.id)
+                        ProfileDetailRow(label = "Email 📧", value = SupabaseAuthClient.getUserEmail() ?: "Not connected")
+                        ProfileDetailRow(label = "User ID 🆔", value = user.id)
                         ProfileDetailRow(label = "About Me", value = user.bio.ifBlank { "No bio added yet." })
                         ProfileDetailRow(label = "Age & Gender", value = "${user.age} yrs • ${user.gender.name}")
                         ProfileDetailRow(label = "Dating Goal", value = user.relationshipIntent)
