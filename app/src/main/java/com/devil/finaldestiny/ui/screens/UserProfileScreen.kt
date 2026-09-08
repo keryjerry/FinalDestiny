@@ -50,6 +50,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.devil.finaldestiny.data.SupabaseAuthClient
 import com.devil.finaldestiny.model.Gender
 import com.devil.finaldestiny.model.UserProfile
 import com.devil.finaldestiny.ui.components.VipBadge
@@ -428,6 +429,8 @@ fun UserProfileScreen(
                         )
                         HorizontalDivider(color = CrimsonVelvet)
 
+                        ProfileDetailRow(label = "Registered Email 📧", value = SupabaseAuthClient.getUserEmail() ?: "Not connected")
+                        ProfileDetailRow(label = "Supabase Auth User ID 🆔", value = user.id)
                         ProfileDetailRow(label = "About Me", value = user.bio.ifBlank { "No bio added yet." })
                         ProfileDetailRow(label = "Age & Gender", value = "${user.age} yrs • ${user.gender.name}")
                         ProfileDetailRow(label = "Dating Goal", value = user.relationshipIntent)

@@ -303,6 +303,7 @@ fun FinalDestinyApp(repository: AppRepository) {
         ) {
             when (currentScreen) {
                 Screen.AUTH_SPLASH -> SplashScreen(
+                    repository = repository,
                     onLoginSuccess = { currentScreen = Screen.PRIMARY_DASHBOARD }
                 )
 

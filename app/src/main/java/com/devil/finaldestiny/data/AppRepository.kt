@@ -35,16 +35,42 @@ class AppRepository {
     val currentUser: StateFlow<UserProfile> = _currentUser.asStateFlow()
 
     fun initializeUserSession(context: Context) {
+        SupabaseAuthClient.init(context)
         val uniqueId = SupabaseAuthClient.getOrCreateUserId(context)
+        val email = SupabaseAuthClient.getUserEmail()
         val shortId = uniqueId.takeLast(6).uppercase()
         val current = _currentUser.value
-        if (current.id == "u101" || current.handle == "@DarkDevil") {
+
+        if (SupabaseAuthClient.isAuthenticated && !email.isNullOrBlank()) {
+            syncAuthenticatedUser(uniqueId, email)
+        } else if (current.id == "u101" || current.handle == "@DarkDevil") {
             _currentUser.value = current.copy(
                 id = uniqueId,
                 name = "User_$shortId",
                 handle = "@User_$shortId"
             )
         }
+    }
+
+    fun syncAuthenticatedUser(userId: String, email: String, displayName: String? = null) {
+        val cleanEmail = email.trim()
+        val handle = "@" + cleanEmail.substringBefore("@").replace(" ", "_")
+        val name = if (!displayName.isNullOrBlank()) displayName.trim() else cleanEmail.substringBefore("@").replace(".", " ")
+
+        val updatedUser = _currentUser.value.copy(
+            id = userId,
+            name = name,
+            handle = handle
+        )
+        _currentUser.value = updatedUser
+
+        // Real-Time Sync: Update host user state across active Audio and Video Rooms
+        _currentAudioRoom.value = _currentAudioRoom.value.copy(
+            hostUser = _currentAudioRoom.value.hostUser.copy(id = userId, name = name, handle = handle)
+        )
+        _currentVideoRoom.value = _currentVideoRoom.value.copy(
+            hostUser = _currentVideoRoom.value.hostUser.copy(id = userId, name = name, handle = handle)
+        )
     }
 
     // Creator Studio Analytics State
