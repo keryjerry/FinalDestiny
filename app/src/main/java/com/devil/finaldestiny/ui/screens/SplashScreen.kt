@@ -52,11 +52,9 @@ fun SplashScreen(
     val scrollState = rememberScrollState()
     val coroutineScope = rememberCoroutineScope()
 
-    var isSignUpMode by remember { mutableStateOf(false) }
-    var userName by remember { mutableStateOf("") }
     var userEmail by remember { mutableStateOf("") }
-    var userPassword by remember { mutableStateOf("") }
-    var isPasswordVisible by remember { mutableStateOf(false) }
+    var otpCode by remember { mutableStateOf("") }
+    var isOtpSent by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -176,60 +174,11 @@ fun SplashScreen(
                     .padding(16.dp)
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    // TAB SELECTOR: SIGN IN VS SIGN UP
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF0B2545))
-                            .padding(4.dp)
-                    ) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(36.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (!isSignUpMode) Color(0xFF38BDF8) else Color.Transparent)
-                                .clickable {
-                                    isSignUpMode = false
-                                    errorMessage = null
-                                }
-                        ) {
-                            Text(
-                                text = "Sign In",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                color = if (!isSignUpMode) Color(0xFF0F172A) else Color(0xFFBAE6FD)
-                            )
-                        }
-
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(36.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (isSignUpMode) Color(0xFFFACC15) else Color.Transparent)
-                                .clickable {
-                                    isSignUpMode = true
-                                    errorMessage = null
-                                }
-                        ) {
-                            Text(
-                                text = "Register / Sign Up",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp,
-                                color = if (isSignUpMode) Color(0xFF0F172A) else Color(0xFFBAE6FD)
-                            )
-                        }
-                    }
-
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.Shield, contentDescription = null, tint = Color(0xFF38BDF8))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (isSignUpMode) "Create Account" else "Account Login",
+                            text = if (isOtpSent) "Enter 6-Digit OTP" else "Secure Login",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFFFACC15)
@@ -256,29 +205,7 @@ fun SplashScreen(
                         }
                     }
 
-                    // Full Name Input (Only shown in Sign Up mode)
-                    if (isSignUpMode) {
-                        OutlinedTextField(
-                            value = userName,
-                            onValueChange = {
-                                userName = it
-                                errorMessage = null
-                            },
-                            label = { Text("Full Name / Display Name", color = Color(0xFFBAE6FD), fontSize = 12.sp) },
-                            leadingIcon = { Icon(Icons.Default.Person, contentDescription = null, tint = Color(0xFF38BDF8)) },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Color(0xFF38BDF8),
-                                unfocusedBorderColor = Color(0xFF0284C7),
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White
-                            ),
-                            singleLine = true,
-                            enabled = !isLoading,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-
-                    // Email Input Field
+                    // Email Input Field (Always shown, but disabled when OTP is sent)
                     OutlinedTextField(
                         value = userEmail,
                         onValueChange = {
@@ -294,39 +221,33 @@ fun SplashScreen(
                             unfocusedTextColor = Color.White
                         ),
                         singleLine = true,
-                        enabled = !isLoading,
+                        enabled = !isLoading && !isOtpSent,
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    // Password Input Field
-                    OutlinedTextField(
-                        value = userPassword,
-                        onValueChange = {
-                            userPassword = it
-                            errorMessage = null
-                        },
-                        label = { Text("Password", color = Color(0xFFBAE6FD), fontSize = 12.sp) },
-                        leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFF38BDF8)) },
-                        trailingIcon = {
-                            IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
-                                Icon(
-                                    imageVector = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    contentDescription = "Toggle Password Visibility",
-                                    tint = Color(0xFF38BDF8)
-                                )
-                            }
-                        },
-                        visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFF38BDF8),
-                            unfocusedBorderColor = Color(0xFF0284C7),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        ),
-                        singleLine = true,
-                        enabled = !isLoading,
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                    // OTP Input Field (Only shown when OTP is sent)
+                    if (isOtpSent) {
+                        OutlinedTextField(
+                            value = otpCode,
+                            onValueChange = {
+                                if (it.length <= 6) {
+                                    otpCode = it
+                                }
+                                errorMessage = null
+                            },
+                            label = { Text("6-Digit OTP Code", color = Color(0xFFBAE6FD), fontSize = 12.sp) },
+                            leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null, tint = Color(0xFF38BDF8)) },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFF38BDF8),
+                                unfocusedBorderColor = Color(0xFF0284C7),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            ),
+                            singleLine = true,
+                            enabled = !isLoading,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(4.dp))
 
@@ -338,42 +259,41 @@ fun SplashScreen(
                                 isLoading = true
                                 errorMessage = null
 
-                                if (isSignUpMode) {
-                                    val result = SupabaseAuthClient.signUpWithEmail(
+                                if (!isOtpSent) {
+                                    val result = SupabaseAuthClient.sendOtpToEmail(
                                         context = context,
-                                        name = userName,
-                                        email = userEmail,
-                                        pass = userPassword
+                                        email = userEmail
                                     )
                                     isLoading = false
 
                                     when (result) {
                                         is AuthResult.Success -> {
-                                            Toast.makeText(context, "🎉 Welcome to Final Destiny, ${result.email}!", Toast.LENGTH_SHORT).show()
-                                            repository?.syncAuthenticatedUser(result.uid, result.email, userName)
-                                            onLoginSuccess()
+                                            Toast.makeText(context, "📩 OTP Sent to $userEmail", Toast.LENGTH_SHORT).show()
+                                            isOtpSent = true
                                         }
                                         is AuthResult.Error -> {
-                                            Toast.makeText(context, "❌ Sign Up Failed: ${result.message}", Toast.LENGTH_LONG).show()
+                                            Toast.makeText(context, "❌ OTP Failed: ${result.message}", Toast.LENGTH_LONG).show()
                                             errorMessage = result.message
                                         }
                                     }
                                 } else {
-                                    val result = SupabaseAuthClient.signInWithEmail(
+                                    val result = SupabaseAuthClient.verifyEmailOtp(
                                         context = context,
                                         email = userEmail,
-                                        pass = userPassword
+                                        otp = otpCode
                                     )
                                     isLoading = false
 
                                     when (result) {
                                         is AuthResult.Success -> {
-                                            Toast.makeText(context, "✅ Signed in as ${result.email}", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, "✅ Verified and Logged In!", Toast.LENGTH_SHORT).show()
+                                            // The backend will create the profile automatically on verification if it's new.
+                                            // Since we don't have a name field anymore, we just pass null for the name and the repository will handle it.
                                             repository?.syncAuthenticatedUser(result.uid, result.email, null)
                                             onLoginSuccess()
                                         }
                                         is AuthResult.Error -> {
-                                            Toast.makeText(context, "❌ Login Failed: ${result.message}", Toast.LENGTH_LONG).show()
+                                            Toast.makeText(context, "❌ Verification Failed: ${result.message}", Toast.LENGTH_LONG).show()
                                             errorMessage = result.message
                                         }
                                     }
@@ -381,7 +301,7 @@ fun SplashScreen(
                             }
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isSignUpMode) Color(0xFFFACC15) else Color(0xFF38BDF8)
+                            containerColor = if (isOtpSent) Color(0xFFFACC15) else Color(0xFF38BDF8)
                         ),
                         shape = RoundedCornerShape(14.dp),
                         enabled = !isLoading,
@@ -396,10 +316,10 @@ fun SplashScreen(
                                 strokeWidth = 2.5.dp
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Connecting...", color = Color(0xFF0F172A), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text("Processing...", color = Color(0xFF0F172A), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                         } else {
                             Text(
-                                text = if (isSignUpMode) "Create Account 🚀" else "Sign In 🔐",
+                                text = if (isOtpSent) "Verify & Login 🚀" else "Send OTP 📩",
                                 color = Color(0xFF0F172A),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp

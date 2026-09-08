@@ -72,27 +72,21 @@ object SupabaseAuthClient {
     }
 
     /**
-     * Supabase GoTrue Password Authentication Call
-     * Endpoint: POST /auth/v1/token?grant_type=password
+     * Supabase GoTrue OTP Request Call
+     * Endpoint: POST /auth/v1/otp
      */
-    suspend fun signInWithEmail(
+    suspend fun sendOtpToEmail(
         context: Context,
-        email: String,
-        pass: String
+        email: String
     ): AuthResult = withContext(Dispatchers.IO) {
         val cleanEmail = email.trim()
-        if (cleanEmail.isBlank() || pass.isBlank()) {
-            Log.w(TAG, "Sign In rejected locally: Blank email or password.")
-            return@withContext AuthResult.Error("Please enter valid Email and Password.")
-        }
-        if (!cleanEmail.contains("@") || pass.length < 4) {
-            Log.w(TAG, "Sign In rejected locally: Invalid email format or short password.")
-            return@withContext AuthResult.Error("Invalid email format or password too short (min 4 characters).")
+        if (cleanEmail.isBlank() || !cleanEmail.contains("@")) {
+            return@withContext AuthResult.Error("Please enter a valid email address.")
         }
 
         try {
-            val endpoint = "${supabaseUrl.trimEnd('/')}/auth/v1/token?grant_type=password"
-            Log.d(TAG, "POST Sign In -> Endpoint: $endpoint | Target Email: $cleanEmail")
+            val endpoint = "${supabaseUrl.trimEnd('/')}/auth/v1/otp"
+            Log.d(TAG, "POST Send OTP -> Endpoint: $endpoint | Target Email: $cleanEmail")
             val url = URL(endpoint)
             val connection = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
@@ -106,7 +100,7 @@ object SupabaseAuthClient {
 
             val payload = JSONObject().apply {
                 put("email", cleanEmail)
-                put("password", pass)
+                put("create_user", true)
             }
 
             connection.outputStream.use { os ->
@@ -117,8 +111,67 @@ object SupabaseAuthClient {
             val stream = if (statusCode in 200..299) connection.inputStream else connection.errorStream
             val responseText = stream?.bufferedReader()?.use { it.readText() } ?: ""
 
-            Log.d(TAG, "Sign In HTTP Status Code: $statusCode")
-            Log.d(TAG, "Sign In Response Body: $responseText")
+            Log.d(TAG, "OTP Request HTTP Status Code: $statusCode")
+            Log.d(TAG, "OTP Request Response Body: $responseText")
+
+            if (statusCode in 200..299) {
+                return@withContext AuthResult.Success(uid = "", email = cleanEmail, token = "")
+            } else {
+                val errMsg = parseSupabaseError(responseText, statusCode)
+                Log.e(TAG, "OTP Request HTTP Error -> Status: $statusCode | Message: $errMsg")
+                return@withContext AuthResult.Error(errMsg)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "OTP Request Network Exception", e)
+            return@withContext AuthResult.Error("Network error. Please check your connection.")
+        }
+    }
+
+    /**
+     * Supabase GoTrue Verify OTP Call
+     * Endpoint: POST /auth/v1/verify?type=email
+     */
+    suspend fun verifyEmailOtp(
+        context: Context,
+        email: String,
+        otp: String
+    ): AuthResult = withContext(Dispatchers.IO) {
+        val cleanEmail = email.trim()
+        val cleanOtp = otp.trim()
+        if (cleanOtp.length != 6) {
+            return@withContext AuthResult.Error("Please enter a valid 6-digit OTP.")
+        }
+
+        try {
+            val endpoint = "${supabaseUrl.trimEnd('/')}/auth/v1/verify?type=email"
+            Log.d(TAG, "POST Verify OTP -> Endpoint: $endpoint | Target Email: $cleanEmail")
+            val url = URL(endpoint)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 8000
+                readTimeout = 8000
+                setRequestProperty("apikey", supabaseAnonKey)
+                setRequestProperty("Authorization", "Bearer $supabaseAnonKey")
+                setRequestProperty("Content-Type", "application/json")
+                doOutput = true
+            }
+
+            val payload = JSONObject().apply {
+                put("email", cleanEmail)
+                put("token", cleanOtp)
+                put("type", "email")
+            }
+
+            connection.outputStream.use { os ->
+                os.write(payload.toString().toByteArray(Charsets.UTF_8))
+            }
+
+            val statusCode = connection.responseCode
+            val stream = if (statusCode in 200..299) connection.inputStream else connection.errorStream
+            val responseText = stream?.bufferedReader()?.use { it.readText() } ?: ""
+
+            Log.d(TAG, "Verify OTP HTTP Status Code: $statusCode")
+            Log.d(TAG, "Verify OTP Response Body: $responseText")
 
             if (statusCode in 200..299) {
                 val json = JSONObject(responseText)
@@ -127,120 +180,26 @@ object SupabaseAuthClient {
                 val uid = userObj?.optString("id") ?: json.optString("id", "")
 
                 if (uid.isNotBlank()) {
-                    Log.d(TAG, "Sign In SUCCESS -> Real Supabase User UID: $uid | Email: $cleanEmail")
+                    Log.d(TAG, "Verify OTP SUCCESS -> Real Supabase User UID: $uid | Email: $cleanEmail")
                     saveAuthSession(context, uid, cleanEmail, token)
                     syncSupabaseProfile(uid, cleanEmail, null)
                     return@withContext AuthResult.Success(uid = uid, email = cleanEmail, token = token)
                 }
             } else {
                 val errMsg = parseSupabaseError(responseText, statusCode)
-                Log.e(TAG, "Sign In HTTP Error -> Status: $statusCode | Message: $errMsg")
-                if (statusCode == 400 && (errMsg.lowercase().contains("invalid") && !errMsg.lowercase().contains("api key"))) {
-                    return@withContext AuthResult.Error(errMsg)
-                }
+                Log.e(TAG, "Verify OTP HTTP Error -> Status: $statusCode | Message: $errMsg")
+                return@withContext AuthResult.Error(errMsg)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Sign In Network Exception", e)
+            Log.e(TAG, "Verify OTP Network Exception", e)
         }
 
         // Fallback for API key/server config issues: Generate valid UUID for user session
         val deterministicUuid = UUID.nameUUIDFromBytes("destiny_user_$cleanEmail".toByteArray(Charsets.UTF_8)).toString()
         val token = "sb-session-token-${System.currentTimeMillis()}"
-        Log.w(TAG, "Executing Sign In Fallback Session -> Deterministic UUID: $deterministicUuid")
+        Log.w(TAG, "Executing Verify OTP Fallback Session -> Deterministic UUID: $deterministicUuid")
         saveAuthSession(context, deterministicUuid, cleanEmail, token)
         syncSupabaseProfile(deterministicUuid, cleanEmail, null)
-        return@withContext AuthResult.Success(uid = deterministicUuid, email = cleanEmail, token = token)
-    }
-
-    /**
-     * Supabase GoTrue Registration Call
-     * Endpoint: POST /auth/v1/signup
-     */
-    suspend fun signUpWithEmail(
-        context: Context,
-        name: String,
-        email: String,
-        pass: String
-    ): AuthResult = withContext(Dispatchers.IO) {
-        val cleanEmail = email.trim()
-        val cleanName = name.trim()
-        if (cleanEmail.isBlank() || pass.isBlank()) {
-            Log.w(TAG, "Sign Up rejected locally: Blank email or password.")
-            return@withContext AuthResult.Error("Please enter valid Email and Password.")
-        }
-        if (!cleanEmail.contains("@") || pass.length < 4) {
-            Log.w(TAG, "Sign Up rejected locally: Invalid email format or short password.")
-            return@withContext AuthResult.Error("Invalid email format or password too short (min 4 characters).")
-        }
-
-        try {
-            val endpoint = "${supabaseUrl.trimEnd('/')}/auth/v1/signup"
-            Log.d(TAG, "POST Sign Up -> Endpoint: $endpoint | Email: $cleanEmail | Name: $cleanName")
-            val url = URL(endpoint)
-            val connection = (url.openConnection() as HttpURLConnection).apply {
-                requestMethod = "POST"
-                connectTimeout = 8000
-                readTimeout = 8000
-                setRequestProperty("apikey", supabaseAnonKey)
-                setRequestProperty("Authorization", "Bearer $supabaseAnonKey")
-                setRequestProperty("Content-Type", "application/json")
-                doOutput = true
-            }
-
-            val payload = JSONObject().apply {
-                put("email", cleanEmail)
-                put("password", pass)
-                put("data", JSONObject().apply {
-                    put("name", if (cleanName.isNotBlank()) cleanName else cleanEmail.substringBefore("@"))
-                })
-            }
-
-            connection.outputStream.use { os ->
-                os.write(payload.toString().toByteArray(Charsets.UTF_8))
-            }
-
-            val statusCode = connection.responseCode
-            val stream = if (statusCode in 200..299) connection.inputStream else connection.errorStream
-            val responseText = stream?.bufferedReader()?.use { it.readText() } ?: ""
-
-            Log.d(TAG, "Sign Up HTTP Status Code: $statusCode")
-            Log.d(TAG, "Sign Up Response Body: $responseText")
-
-            if (statusCode in 200..299) {
-                val json = JSONObject(responseText)
-                val userObj = json.optJSONObject("user")
-                val uid = userObj?.optString("id") ?: json.optString("id", "")
-                val rawToken = json.optString("access_token", "")
-
-                if (rawToken.isBlank()) {
-                    Log.w(TAG, "Sign Up succeeded but access_token is empty. Email confirmation may be required in Supabase dashboard settings.")
-                }
-
-                val token = if (rawToken.isNotBlank()) rawToken else "sb-signup-session-$uid"
-
-                if (uid.isNotBlank()) {
-                    Log.d(TAG, "Sign Up SUCCESS -> Real Supabase User UID: $uid | Email: $cleanEmail")
-                    saveAuthSession(context, uid, cleanEmail, token)
-                    syncSupabaseProfile(uid, cleanEmail, cleanName)
-                    return@withContext AuthResult.Success(uid = uid, email = cleanEmail, token = token)
-                }
-            } else {
-                val errMsg = parseSupabaseError(responseText, statusCode)
-                Log.e(TAG, "Sign Up HTTP Error -> Status: $statusCode | Message: $errMsg")
-                if (statusCode == 400 && (errMsg.lowercase().contains("already") || errMsg.lowercase().contains("exists"))) {
-                    return@withContext AuthResult.Error(errMsg)
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Sign Up Network Exception", e)
-        }
-
-        // Fallback for API key/server config issues: Generate valid UUID for user session
-        val deterministicUuid = UUID.nameUUIDFromBytes("destiny_user_$cleanEmail".toByteArray(Charsets.UTF_8)).toString()
-        val token = "sb-session-token-${System.currentTimeMillis()}"
-        Log.w(TAG, "Executing Sign Up Fallback Session -> Deterministic UUID: $deterministicUuid")
-        saveAuthSession(context, deterministicUuid, cleanEmail, token)
-        syncSupabaseProfile(deterministicUuid, cleanEmail, cleanName)
         return@withContext AuthResult.Success(uid = deterministicUuid, email = cleanEmail, token = token)
     }
 
