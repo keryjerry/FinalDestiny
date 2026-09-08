@@ -85,7 +85,7 @@ fun AboutUsScreen(
                             .border(2.dp, BrightCyanAccent, RoundedCornerShape(18.dp))
                     ) {
                         Image(
-                            painter = painterResource(id = R.drawable.app_logo),
+                            painter = painterResource(id = R.mipmap.ic_launcher),
                             contentDescription = "Final Destiny Logo",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()

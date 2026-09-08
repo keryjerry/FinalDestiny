@@ -79,7 +79,7 @@ fun SplashScreen(
     ) {
         // FULL-BLEED OFFICIAL APP ICON BACKGROUND (CLEAR, VIBRANT & SHARP)
         Image(
-            painter = painterResource(id = R.drawable.app_logo),
+            painter = painterResource(id = R.mipmap.ic_launcher),
             contentDescription = "Official App Logo Background",
             contentScale = ContentScale.Crop,
             modifier = Modifier
@@ -125,7 +125,7 @@ fun SplashScreen(
                         .border(2.dp, neonGoldGradient, RoundedCornerShape(20.dp))
                 ) {
                     Image(
-                        painter = painterResource(id = R.drawable.app_logo),
+                        painter = painterResource(id = R.mipmap.ic_launcher),
                         contentDescription = "Final Destiny Logo",
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
