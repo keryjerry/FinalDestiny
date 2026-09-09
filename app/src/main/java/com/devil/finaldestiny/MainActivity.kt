@@ -238,7 +238,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                         }
                     }
 
-                    // BOTTOM NAVIGATION BAR
+                    // MODERN 4-TAB CLEAN BOTTOM NAVIGATION BAR
                     NavigationBar(
                         containerColor = SkyBlueCardBg,
                         contentColor = SkyBluePrimary,
@@ -250,16 +250,16 @@ fun FinalDestinyApp(repository: AppRepository) {
                             .border(1.dp, SkyBlueBorder, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
                     ) {
                         NavigationBarItem(
-                            selected = currentScreen == Screen.PRIMARY_DASHBOARD,
-                            onClick = { currentScreen = Screen.PRIMARY_DASHBOARD },
-                            icon = { Icon(Icons.Default.Dashboard, contentDescription = "Dashboard", tint = if (currentScreen == Screen.PRIMARY_DASHBOARD) SkyBluePrimary else SlateTextSecondary) },
-                            label = { Text("Home", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.PRIMARY_DASHBOARD) SkyBluePrimary else SlateTextSecondary) }
+                            selected = currentScreen == Screen.SECONDARY_FEED || currentScreen == Screen.PRIMARY_DASHBOARD,
+                            onClick = { currentScreen = Screen.SECONDARY_FEED },
+                            icon = { Icon(Icons.Default.Home, contentDescription = "Home", tint = if (currentScreen == Screen.SECONDARY_FEED || currentScreen == Screen.PRIMARY_DASHBOARD) SkyBluePrimary else SlateTextSecondary) },
+                            label = { Text("Home", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.SECONDARY_FEED || currentScreen == Screen.PRIMARY_DASHBOARD) SkyBluePrimary else SlateTextSecondary) }
                         )
                         NavigationBarItem(
                             selected = currentScreen == Screen.DISCOVER_SWIPE,
                             onClick = { currentScreen = Screen.DISCOVER_SWIPE },
-                            icon = { Icon(Icons.Default.Favorite, contentDescription = "Discover", tint = if (currentScreen == Screen.DISCOVER_SWIPE) SkyBluePrimary else SlateTextSecondary) },
-                            label = { Text("Discover", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.DISCOVER_SWIPE) SkyBluePrimary else SlateTextSecondary) }
+                            icon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = if (currentScreen == Screen.DISCOVER_SWIPE) SkyBluePrimary else SlateTextSecondary) },
+                            label = { Text("Search", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.DISCOVER_SWIPE) SkyBluePrimary else SlateTextSecondary) }
                         )
                         NavigationBarItem(
                             selected = currentScreen == Screen.LIVE_AUDIO_ROOM,
@@ -267,23 +267,8 @@ fun FinalDestinyApp(repository: AppRepository) {
                                 isAudioRoomKeptInBackground = false
                                 currentScreen = Screen.LIVE_AUDIO_ROOM
                             },
-                            icon = { Icon(Icons.Default.Mic, contentDescription = "Audio Live", tint = if (currentScreen == Screen.LIVE_AUDIO_ROOM) SkyBluePrimary else SlateTextSecondary) },
-                            label = { Text("Audio Room", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.LIVE_AUDIO_ROOM) SkyBluePrimary else SlateTextSecondary) }
-                        )
-                        NavigationBarItem(
-                            selected = currentScreen == Screen.LIVE_VIDEO_ROOM,
-                            onClick = {
-                                isVideoRoomKeptInBackground = false
-                                currentScreen = Screen.LIVE_VIDEO_ROOM
-                            },
-                            icon = { Icon(Icons.Default.Videocam, contentDescription = "Video Live", tint = if (currentScreen == Screen.LIVE_VIDEO_ROOM) SkyBluePrimary else SlateTextSecondary) },
-                            label = { Text("Video Live", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.LIVE_VIDEO_ROOM) SkyBluePrimary else SlateTextSecondary) }
-                        )
-                        NavigationBarItem(
-                            selected = currentScreen == Screen.VIP_STORE,
-                            onClick = { currentScreen = Screen.VIP_STORE },
-                            icon = { Icon(Icons.Default.Storefront, contentDescription = "VIP Store", tint = if (currentScreen == Screen.VIP_STORE) SkyBluePrimary else SlateTextSecondary) },
-                            label = { Text("VIP Store", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.VIP_STORE) SkyBluePrimary else SlateTextSecondary) }
+                            icon = { Icon(Icons.Default.Chat, contentDescription = "Messages", tint = if (currentScreen == Screen.LIVE_AUDIO_ROOM) SkyBluePrimary else SlateTextSecondary) },
+                            label = { Text("Messages", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.LIVE_AUDIO_ROOM) SkyBluePrimary else SlateTextSecondary) }
                         )
                         NavigationBarItem(
                             selected = currentScreen == Screen.USER_PROFILE,
@@ -346,6 +331,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                 )
 
                 Screen.SECONDARY_FEED -> SecondaryDashboardScreen(
+                    user = user,
                     storyTrays = storyTrays,
                     momentPosts = momentPosts,
                     notifications = notifications,
@@ -357,6 +343,10 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onAddStory = { mediaUri -> repository.addStory(mediaUri) },
                     onAddComment = { postId, text -> repository.addCommentToPost(postId, text) },
                     onToggleFollowAuthor = { postId -> repository.toggleFollowPostAuthor(postId) },
+                    onStartLiveStream = {
+                        isVideoRoomKeptInBackground = false
+                        currentScreen = Screen.LIVE_VIDEO_ROOM
+                    },
                     onRefresh = { repository.refreshMomentsAndReels() },
                     onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
                 )

@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Videocam
@@ -44,24 +45,23 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material.icons.filled.Person
 import com.devil.finaldestiny.model.AppNotification
 import com.devil.finaldestiny.model.MediaType
 import com.devil.finaldestiny.model.MomentComment
 import com.devil.finaldestiny.model.MomentPost
 import com.devil.finaldestiny.model.StoryItem
-import com.devil.finaldestiny.ui.components.NotificationBellButton
+import com.devil.finaldestiny.model.UserProfile
 import com.devil.finaldestiny.ui.components.ProfileAvatarView
 import com.devil.finaldestiny.ui.theme.*
 import com.devil.finaldestiny.utils.TimeUtils
 
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SecondaryDashboardScreen(
+    user: UserProfile = UserProfile(),
     storyTrays: List<StoryItem>,
     momentPosts: List<MomentPost>,
     notifications: List<AppNotification> = emptyList(),
@@ -73,6 +73,7 @@ fun SecondaryDashboardScreen(
     onAddStory: (String) -> Unit = {},
     onAddComment: (String, String) -> Unit = { _, _ -> },
     onToggleFollowAuthor: (String) -> Unit = {},
+    onStartLiveStream: () -> Unit = {},
     onRefresh: suspend () -> Unit = {},
     onBack: () -> Unit = {}
 ) {
@@ -84,6 +85,10 @@ fun SecondaryDashboardScreen(
     var isReelUploadMode by remember { mutableStateOf(false) }
     var showCommentsSheetForPost by remember { mutableStateOf<MomentPost?>(null) }
     var activeStoryView by remember { mutableStateOf<StoryItem?>(null) }
+
+    // Eligibility & Warning Dialog States for Go Live
+    var showNotEligibleDialog by remember { mutableStateOf(false) }
+    var showCommunityGuidelinesDialog by remember { mutableStateOf(false) }
 
     var isUploadingMedia by remember { mutableStateOf(false) }
     var uploadProgressPercentage by remember { mutableFloatStateOf(0f) }
@@ -144,21 +149,19 @@ fun SecondaryDashboardScreen(
             .background(SkyBlueBgLight)
     ) {
         LazyColumn(
-            contentPadding = PaddingValues(12.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            contentPadding = PaddingValues(bottom = 80.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxSize()
         ) {
-            // UPLOAD PROGRESS SUMMARY BAR (STICKY TOP BANNER)
+            // UPLOAD PROGRESS SUMMARY BANNER (STICKY TOP BANNER FOR BOTH PHOTOS & VIDEOS)
             if (isUploadingMedia) {
                 item {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .border(1.dp, Color(0xFF38BDF8), RoundedCornerShape(14.dp))
+                        shape = RoundedCornerShape(0.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
+                        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
                             Row(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
@@ -180,7 +183,7 @@ fun SecondaryDashboardScreen(
                                 progress = { uploadProgressPercentage },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(6.dp)
+                                    .height(5.dp)
                                     .clip(RoundedCornerShape(3.dp)),
                                 color = Color(0xFF38BDF8),
                                 trackColor = Color(0xFF1E293B)
@@ -190,230 +193,154 @@ fun SecondaryDashboardScreen(
                 }
             }
 
-            // TOP FEED HEADER & REEL UPLOAD BAR
+            // TOP BAR HEADER: INSTAGRAM BRAND LOGO & HEART NOTIFICATION BELL
             item {
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = SkyBlueCardBg),
-                    shape = RoundedCornerShape(16.dp),
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, SkyBlueBorder, RoundedCornerShape(16.dp))
-                        .padding(10.dp)
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(
-                                    onClick = onBack,
-                                    modifier = Modifier
-                                        .size(34.dp)
-                                        .clip(CircleShape)
-                                        .background(SkyBlueHeader)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                        contentDescription = "Back",
-                                        tint = NavyTextPrimary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column {
-                                    Text(
-                                        text = "📸 DESTINY LIVE MOMENTS & REELS",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = NavyTextPrimary,
-                                        letterSpacing = 0.5.sp
-                                    )
-                                    Text("Reels, Collabs & Monetized Moments", fontSize = 10.sp, color = SlateTextSecondary)
-                                }
-                            }
+                    Text(
+                        text = "Final Destiny",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = NavyTextPrimary,
+                        letterSpacing = (-0.5).sp
+                    )
 
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    // Top-Right Heart Icon for Notifications
+                    Box(contentAlignment = Alignment.TopEnd) {
+                        IconButton(
+                            onClick = onOpenNotifications,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(SkyBlueHeader)
+                        ) {
+                            Icon(
+                                imageVector = if (notifications.any { !it.isRead }) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                contentDescription = "Social Notifications",
+                                tint = HeartRed,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        if (notifications.any { !it.isRead }) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(HeartRed)
+                                    .border(1.5.dp, Color.White, CircleShape)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // INSTAGRAM-STYLE STORIES TRAY
+            item {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Current User Profile Story Item with '+' Badge
+                    item {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.clickable { storyMediaLauncher.launch("*/*") }
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.size(64.dp)
                             ) {
-                                NotificationBellButton(
-                                    notifications = notifications,
-                                    onClick = onOpenNotifications
+                                ProfileAvatarView(
+                                    name = user.name.ifBlank { "You" },
+                                    profilePictureUri = user.profilePictureUri,
+                                    size = 60.dp,
+                                    showBorder = true,
+                                    borderColor = SkyBluePrimary
                                 )
 
-                                IconButton(
-                                    onClick = {
-                                        isReelUploadMode = false
-                                        showCreatePostDialog = true
-                                    },
+                                // '+' Badge Overlay at Bottom-Right
+                                Box(
+                                    contentAlignment = Alignment.Center,
                                     modifier = Modifier
-                                        .size(34.dp)
+                                        .size(20.dp)
+                                        .align(Alignment.BottomEnd)
                                         .clip(CircleShape)
-                                        .background(SkyBluePrimary)
+                                        .background(Color(0xFF2563EB))
+                                        .border(1.5.dp, Color.White, CircleShape)
                                 ) {
-                                    Icon(Icons.Default.Add, contentDescription = "Create", tint = Color.White, modifier = Modifier.size(20.dp))
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = "Add Media Story",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(14.dp)
+                                    )
                                 }
                             }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text("Your story", fontSize = 10.sp, color = NavyTextPrimary, fontWeight = FontWeight.Bold)
                         }
+                    }
 
-                        // REEL UPLOAD ACTION BUTTON
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
+                    // Active Followers / Friends Stories List
+                    items(storyTrays) { story ->
+                        val storyImageBitmap = rememberLoadedImage(context, story.mediaUri)
+                        val relativeTime = TimeUtils.formatTimestamp(story.timestamp, story.createdAtEpochMs)
+
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.clickable { activeStoryView = story }
                         ) {
-                            Button(
-                                onClick = {
-                                    isReelUploadMode = true
-                                    showCreatePostDialog = true
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = BrightCyanAccent),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.weight(1f).height(36.dp)
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(60.dp)
+                                    .clip(CircleShape)
+                                    .background(SkyBlueBgLight)
+                                    .border(
+                                        width = 2.5.dp,
+                                        brush = if (story.isViewed) Brush.linearGradient(listOf(Color.LightGray, Color.Gray)) else storyRingGradient,
+                                        shape = CircleShape
+                                    )
                             ) {
-                                Icon(Icons.Default.Videocam, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Upload Reel / Video 🎬", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                if (storyImageBitmap != null) {
+                                    Image(
+                                        bitmap = storyImageBitmap,
+                                        contentDescription = story.authorName,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                } else {
+                                    Text(text = story.authorName.take(1).uppercase(), fontSize = 20.sp, color = SkyBluePrimary, fontWeight = FontWeight.Bold)
+                                }
                             }
-
-                            Button(
-                                onClick = {
-                                    isReelUploadMode = false
-                                    showCreatePostDialog = true
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = SkyBlueHeader),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.weight(1f).height(36.dp)
-                            ) {
-                                Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = SkyBluePrimary, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Post Photo 📸", color = NavyTextPrimary, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(story.authorName, fontSize = 10.sp, color = NavyTextPrimary, maxLines = 1, fontWeight = FontWeight.SemiBold)
+                            Text(relativeTime, fontSize = 9.sp, color = SlateTextSecondary, maxLines = 1)
                         }
                     }
                 }
             }
 
-            // INSTAGRAM-STYLE DESTINY STORIES CAROUSEL
-            item {
-                Column {
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(text = "✨ 24h Destiny Stories", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = NavyTextPrimary)
-                        Text(text = "Tap to View", fontSize = 11.sp, color = SkyBluePrimary, fontWeight = FontWeight.SemiBold)
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        // Current User Profile Story Item with '+' Badge (Bottom-Right)
-                        item {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.clickable { storyMediaLauncher.launch("*/*") }
-                            ) {
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier.size(64.dp)
-                                ) {
-                                    Box(
-                                        contentAlignment = Alignment.Center,
-                                        modifier = Modifier
-                                            .size(60.dp)
-                                            .clip(CircleShape)
-                                            .background(SkyBlueHeader)
-                                            .border(2.dp, storyRingGradient, CircleShape)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Person,
-                                            contentDescription = "Your Story Profile Avatar",
-                                            tint = SkyBluePrimary,
-                                            modifier = Modifier.size(32.dp)
-                                        )
-                                    }
-
-                                    // '+' Badge at Bottom-Right
-                                    Box(
-                                        contentAlignment = Alignment.Center,
-                                        modifier = Modifier
-                                            .size(20.dp)
-                                            .align(Alignment.BottomEnd)
-                                            .clip(CircleShape)
-                                            .background(Color(0xFF2563EB))
-                                            .border(1.5.dp, Color.White, CircleShape)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Add,
-                                            contentDescription = "Add Media Story",
-                                            tint = Color.White,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text("Your Story", fontSize = 10.sp, color = NavyTextPrimary, fontWeight = FontWeight.Bold)
-                                Text("Add New", fontSize = 9.sp, color = SlateTextSecondary)
-                            }
-                        }
-
-                        // Active Friend / Follower Stories List with Avatar, Name & Relative Time
-                        items(storyTrays) { story ->
-                            val storyImageBitmap = rememberLoadedImage(context, story.mediaUri)
-                            val relativeTime = TimeUtils.formatTimestamp(story.timestamp, story.createdAtEpochMs)
-
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.clickable { activeStoryView = story }
-                            ) {
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier
-                                        .size(60.dp)
-                                        .clip(CircleShape)
-                                        .background(SkyBlueBgLight)
-                                        .border(
-                                            width = 2.5.dp,
-                                            brush = if (story.isViewed) Brush.linearGradient(listOf(Color.LightGray, Color.Gray)) else storyRingGradient,
-                                            shape = CircleShape
-                                        )
-                                ) {
-                                    if (storyImageBitmap != null) {
-                                        Image(
-                                            bitmap = storyImageBitmap,
-                                            contentDescription = story.authorName,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    } else {
-                                        Text(text = story.authorName.take(1).uppercase(), fontSize = 20.sp, color = SkyBluePrimary, fontWeight = FontWeight.Bold)
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(story.authorName, fontSize = 10.sp, color = NavyTextPrimary, maxLines = 1, fontWeight = FontWeight.SemiBold)
-                                Text(relativeTime, fontSize = 9.sp, color = SlateTextSecondary, maxLines = 1)
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ACTION BUTTONS (DIRECTLY BELOW STORIES TRAY: 🎬 REEL & 🔴 GET LIVE)
+            // ACTION BUTTONS (DIRECTLY BELOW STORIES TRAY: 🎬 REEL & 🔴 GO LIVE)
             item {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp)
                 ) {
                     // 🎬 Reel Button: Gradient Blue #2563EB to Purple #7C3AED
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
                             .weight(1f)
-                            .height(44.dp)
+                            .height(42.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(
                                 Brush.horizontalGradient(
@@ -432,12 +359,12 @@ fun SecondaryDashboardScreen(
                         }
                     }
 
-                    // 🔴 Get Live Button: Gradient Red #E11D48 to Orange #F97316
+                    // 🔴 Go Live Button: Gradient Red #E11D48 to Orange #F97316 (With 500 Follower Check & Guidelines)
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
                             .weight(1f)
-                            .height(44.dp)
+                            .height(42.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(
                                 Brush.horizontalGradient(
@@ -445,196 +372,244 @@ fun SecondaryDashboardScreen(
                                 )
                             )
                             .clickable {
-                                Toast.makeText(context, "🔴 Launching Destiny Live Stream...", Toast.LENGTH_SHORT).show()
+                                if (user.followerCount < 500) {
+                                    showNotEligibleDialog = true
+                                } else {
+                                    showCommunityGuidelinesDialog = true
+                                }
                             }
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("🔴", fontSize = 14.sp)
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Get Live", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("Go Live", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                     }
                 }
             }
 
-            // DYNAMIC MOMENT & REEL POSTS FEED
+            // FULL-BLEED EDGE-TO-EDGE FEED POSTS
             items(momentPosts) { post ->
                 val localBitmap = rememberLoadedImage(context, post.mediaUri)
                 val isReel = post.mediaType == MediaType.REEL_VIDEO
                 val postRelativeTime = TimeUtils.formatTimestamp(post.timestamp, post.createdAtEpochMs)
 
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = SkyBlueCardBg),
-                    shape = RoundedCornerShape(20.dp),
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, SkyBlueBorder, RoundedCornerShape(20.dp))
-                        .padding(12.dp)
+                        .padding(bottom = 12.dp)
                 ) {
-                    Column {
-                        // AUTHOR HEADER WITH SPONSORED TAG & FOLLOW BUTTON
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                ProfileAvatarView(
-                                    name = post.authorName,
-                                    profilePictureUri = post.authorAvatar,
-                                    size = 40.dp,
-                                    showBorder = true,
-                                    borderColor = SkyBluePrimary
-                                )
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Column {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(post.authorName, fontWeight = FontWeight.Bold, color = NavyTextPrimary, fontSize = 14.sp)
-                                        Text(" ✓", fontSize = 10.sp, color = VerifiedBlue, fontWeight = FontWeight.Bold)
-                                    }
-                                    if (post.isSponsored) {
-                                        Text("✨ ${post.sponsorName ?: "Brand Partnership"}", fontSize = 10.sp, color = SkyBluePrimary, fontWeight = FontWeight.Bold)
-                                    } else {
-                                        Text("${post.authorHandle} • $postRelativeTime", fontSize = 10.sp, color = SlateTextSecondary)
-                                    }
+                    // AUTHOR HEADER (INSTAGRAM STYLE WITH HORIZONTAL PADDING)
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            ProfileAvatarView(
+                                name = post.authorName,
+                                profilePictureUri = post.authorAvatar,
+                                size = 38.dp,
+                                showBorder = true,
+                                borderColor = SkyBluePrimary
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(post.authorName, fontWeight = FontWeight.Bold, color = NavyTextPrimary, fontSize = 13.sp)
+                                    Text(" ✓", fontSize = 10.sp, color = VerifiedBlue, fontWeight = FontWeight.Bold)
+                                }
+                                if (post.isSponsored) {
+                                    Text("✨ ${post.sponsorName ?: "Brand Partnership"}", fontSize = 10.sp, color = SkyBluePrimary, fontWeight = FontWeight.Bold)
+                                } else {
+                                    Text("${post.authorHandle} • $postRelativeTime", fontSize = 10.sp, color = SlateTextSecondary)
                                 }
                             }
+                        }
 
-                            // Follow Button
-                            Button(
+                        // Follow Button
+                        Button(
+                            onClick = {
+                                onToggleFollowAuthor(post.id)
+                                Toast.makeText(
+                                    context,
+                                    if (post.isFollowingAuthor) "Unfollowed ${post.authorName}" else "❤️ Following ${post.authorName}!",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (post.isFollowingAuthor) SkyBlueHeader else SkyBluePrimary
+                            ),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                            modifier = Modifier.height(28.dp)
+                        ) {
+                            Text(
+                                text = if (post.isFollowingAuthor) "✓ Following" else "+ Follow",
+                                fontSize = 11.sp,
+                                color = if (post.isFollowingAuthor) NavyTextPrimary else Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    // FULL-BLEED MEDIA CONTAINER (0DP SIDE MARGINS TOUCHING SCREEN BORDERS)
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(if (isReel) 9f / 16f else 4f / 5f)
+                            .background(NavyTextPrimary)
+                    ) {
+                        if (isReel && !post.mediaUri.isNullOrEmpty()) {
+                            ExoVideoPlayerView(
+                                videoUri = post.mediaUri,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else if (localBitmap != null) {
+                            Image(
+                                bitmap = localBitmap,
+                                contentDescription = "Uploaded Media",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                Icon(
+                                    if (isReel) Icons.Default.Videocam else Icons.Default.PhotoLibrary,
+                                    contentDescription = null,
+                                    tint = BrightCyanAccent,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = if (isReel) "🎬 9:16 Vertical Reel Video" else "📸 4:5 Photo Post",
+                                    color = Color.White,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Monetized Creator Media Feed",
+                                    color = Color.White.copy(0.7f),
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+
+                        // OVERLAY BADGES FOR REELS
+                        if (isReel) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(54.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Black.copy(0.45f))
+                                    .border(1.dp, Color.White.copy(0.6f), CircleShape)
+                                    .clickable {
+                                        Toast.makeText(context, "▶️ Playing Reel Video...", Toast.LENGTH_SHORT).show()
+                                    }
+                            ) {
+                                Icon(Icons.Default.PlayArrow, contentDescription = "Play", tint = Color.White, modifier = Modifier.size(32.dp))
+                            }
+
+                            Row(
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .align(Alignment.TopCenter)
+                                    .padding(10.dp)
+                            ) {
+                                Surface(
+                                    color = Color.Black.copy(0.6f),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Text(
+                                        text = "🎬 REEL • ${post.videoDuration ?: "0:30"}",
+                                        color = Color.White,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+
+                                Surface(
+                                    color = Color.Black.copy(0.6f),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Text(
+                                        text = "👁️ ${post.viewsCount} views",
+                                        color = Color.White,
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // INTERACTIVE ENGAGEMENT BAR (PADDING 14.DP)
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(
                                 onClick = {
-                                    onToggleFollowAuthor(post.id)
+                                    onLikePost(post.id)
                                     Toast.makeText(
                                         context,
-                                        if (post.isFollowingAuthor) "Unfollowed ${post.authorName}" else "❤️ Following ${post.authorName}!",
+                                        if (post.isLiked) "Unliked Post" else "❤️ Loved & Liked Moment!",
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (post.isFollowingAuthor) SkyBlueHeader else SkyBluePrimary
-                                ),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                                modifier = Modifier.height(28.dp)
+                                modifier = Modifier.size(32.dp)
                             ) {
-                                Text(
-                                    text = if (post.isFollowingAuthor) "✓ Following" else "+ Follow",
-                                    fontSize = 11.sp,
-                                    color = if (post.isFollowingAuthor) NavyTextPrimary else Color.White,
-                                    fontWeight = FontWeight.Bold
+                                Icon(
+                                    imageVector = if (post.isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                    contentDescription = "Like",
+                                    tint = if (post.isLiked) HeartRed else NavyTextPrimary,
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("${post.likesCount}", fontSize = 12.sp, color = NavyTextPrimary, fontWeight = FontWeight.Bold)
+
+                            Spacer(modifier = Modifier.width(16.dp))
+
+                            IconButton(
+                                onClick = { showCommentsSheetForPost = post },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "Comments", tint = NavyTextPrimary, modifier = Modifier.size(22.dp))
+                            }
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("${post.commentsCount}", fontSize = 12.sp, color = NavyTextPrimary, fontWeight = FontWeight.Bold)
                         }
 
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        // DYNAMIC ASPECT RATIO CONTAINER (4:5 PHOTO vs 9:16 REEL VIDEO)
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .aspectRatio(if (isReel) 9f / 16f else 4f / 5f)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(NavyTextPrimary)
-                                .border(1.dp, SkyBlueBorder, RoundedCornerShape(14.dp))
+                        Button(
+                            onClick = { onTipPost(post) },
+                            colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                            modifier = Modifier.height(28.dp)
                         ) {
-                            if (isReel && !post.mediaUri.isNullOrEmpty()) {
-                                ExoVideoPlayerView(
-                                    videoUri = post.mediaUri,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            } else if (localBitmap != null) {
-                                Image(
-                                    bitmap = localBitmap,
-                                    contentDescription = "Uploaded Media",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            } else {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    modifier = Modifier.padding(16.dp)
-                                ) {
-                                    Icon(
-                                        if (isReel) Icons.Default.Videocam else Icons.Default.PhotoLibrary,
-                                        contentDescription = null,
-                                        tint = BrightCyanAccent,
-                                        modifier = Modifier.size(48.dp)
-                                    )
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Text(
-                                        text = if (isReel) "🎬 9:16 Vertical Reel Video" else "📸 4:5 Photo Post",
-                                        color = Color.White,
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = "Monetized Creator Media Feed",
-                                        color = Color.White.copy(0.7f),
-                                        fontSize = 11.sp
-                                    )
-                                }
-                            }
-
-                            // OVERLAY BADGES & CONTROLS FOR REELS
-                            if (isReel) {
-                                // Reel Play Button Center Overlay
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier
-                                        .size(54.dp)
-                                        .clip(CircleShape)
-                                        .background(Color.Black.copy(0.45f))
-                                        .border(1.dp, Color.White.copy(0.6f), CircleShape)
-                                        .clickable {
-                                            Toast.makeText(context, "▶️ Playing Reel Video...", Toast.LENGTH_SHORT).show()
-                                        }
-                                ) {
-                                    Icon(Icons.Default.PlayArrow, contentDescription = "Play", tint = Color.White, modifier = Modifier.size(32.dp))
-                                }
-
-                                // Reel Top Badges (Duration & Views)
-                                Row(
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .align(Alignment.TopCenter)
-                                        .padding(10.dp)
-                                ) {
-                                    Surface(
-                                        color = Color.Black.copy(0.6f),
-                                        shape = RoundedCornerShape(12.dp)
-                                    ) {
-                                        Text(
-                                            text = "🎬 REEL • ${post.videoDuration ?: "0:30"}",
-                                            color = Color.White,
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                        )
-                                    }
-
-                                    Surface(
-                                        color = Color.Black.copy(0.6f),
-                                        shape = RoundedCornerShape(12.dp)
-                                    ) {
-                                        Text(
-                                            text = "👁️ ${post.viewsCount} views",
-                                            color = Color.White,
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                        )
-                                    }
-                                }
-                            }
+                            Icon(Icons.Default.MonetizationOn, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Tip 💎 ${post.giftTipsTotal}", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
                         }
+                    }
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                    // CAPTION & SPONSORED BRAND CTA (PADDING 14.DP)
+                    Column(modifier = Modifier.padding(horizontal = 14.dp)) {
+                        Text(text = post.caption, fontSize = 13.sp, color = NavyTextPrimary, fontWeight = FontWeight.Normal)
 
-                        // CAPTION
-                        Text(text = post.caption, fontSize = 13.sp, color = NavyTextPrimary, fontWeight = FontWeight.Medium)
-
-                        // SPONSORED BRAND COLLAB CTA BUTTON
                         if (post.isSponsored) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Button(
@@ -650,59 +625,18 @@ fun SecondaryDashboardScreen(
                                 Text(post.ctaText ?: "Visit Brand Partner 🛍️", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                             }
                         }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        // INTERACTIVE ENGAGEMENT BAR
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(
-                                    onClick = {
-                                        onLikePost(post.id)
-                                        Toast.makeText(
-                                            context,
-                                            if (post.isLiked) "Unliked Post" else "❤️ Loved & Liked Moment!",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = if (post.isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                        contentDescription = "Like",
-                                        tint = if (post.isLiked) HeartRed else SlateTextSecondary
-                                    )
-                                }
-                                Text("${post.likesCount}", fontSize = 12.sp, color = NavyTextPrimary, fontWeight = FontWeight.Bold)
-
-                                Spacer(modifier = Modifier.width(14.dp))
-
-                                IconButton(onClick = { showCommentsSheetForPost = post }) {
-                                    Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "Comments", tint = SlateTextSecondary, modifier = Modifier.size(20.dp))
-                                }
-                                Text("${post.commentsCount}", fontSize = 12.sp, color = NavyTextPrimary, fontWeight = FontWeight.Bold)
-                            }
-
-                            Button(
-                                onClick = { onTipPost(post) },
-                                colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                modifier = Modifier.height(30.dp)
-                            ) {
-                                Icon(Icons.Default.MonetizationOn, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Tip 💎 ${post.giftTipsTotal}", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                            }
-                        }
                     }
+
+                    HorizontalDivider(
+                        color = SkyBlueBorder,
+                        thickness = 0.5.dp,
+                        modifier = Modifier.padding(top = 14.dp)
+                    )
                 }
             }
         }
 
-        // FLOATING ACTION BUTTON
+        // FLOATING ACTION BUTTON FOR QUICK POSTING
         FloatingActionButton(
             onClick = {
                 isReelUploadMode = false
@@ -718,7 +652,78 @@ fun SecondaryDashboardScreen(
         }
     }
 
-    // CREATE POST OR REEL DIALOG
+    // 1. LIVE STREAM NOT ELIGIBLE DIALOG (< 500 FOLLOWERS)
+    if (showNotEligibleDialog) {
+        AlertDialog(
+            onDismissRequest = { showNotEligibleDialog = false },
+            containerColor = SkyBlueCardBg,
+            title = {
+                Text(
+                    text = "Live Stream Not Eligible",
+                    color = NavyTextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            },
+            text = {
+                Text(
+                    text = "You need at least 500 followers to go live on Final Destiny. Keep creating content and growing your community!",
+                    color = SlateTextSecondary,
+                    fontSize = 13.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showNotEligibleDialog = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary)
+                ) {
+                    Text("OK", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
+    // 2. COMMUNITY GUIDELINES & MODERATION WARNING DIALOG (>= 500 FOLLOWERS)
+    if (showCommunityGuidelinesDialog) {
+        AlertDialog(
+            onDismissRequest = { showCommunityGuidelinesDialog = false },
+            containerColor = SkyBlueCardBg,
+            title = {
+                Text(
+                    text = "Community Guidelines Warning",
+                    color = NavyTextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            },
+            text = {
+                Text(
+                    text = "No vulgarity, nudity, or hate speech allowed. Violating streams will result in immediate termination and permanent account suspension/ban.",
+                    color = SlateTextSecondary,
+                    fontSize = 13.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showCommunityGuidelinesDialog = false
+                        Toast.makeText(context, "🔴 Camera & Audio Permissions Granted - Starting Stream...", Toast.LENGTH_SHORT).show()
+                        onStartLiveStream()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE11D48))
+                ) {
+                    Text("Agree & Proceed", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCommunityGuidelinesDialog = false }) {
+                    Text("Cancel", color = SlateTextSecondary)
+                }
+            }
+        )
+    }
+
+    // CREATE POST OR REEL DIALOG (TRIGGERS PROGRESS TRACKING FOR BOTH PHOTOS & VIDEOS)
     if (showCreatePostDialog) {
         AlertDialog(
             onDismissRequest = { showCreatePostDialog = false },
@@ -798,15 +803,30 @@ fun SecondaryDashboardScreen(
                 Button(
                     onClick = {
                         if (captionInput.isNotBlank() || selectedMediaUri != null) {
-                            if (isReelUploadMode) {
-                                onPublishReel(captionInput.ifBlank { "New Reel Video! 🎬" }, selectedMediaUri)
-                            } else {
-                                onPublishPost(captionInput.ifBlank { "Shared a new moment!" }, selectedMediaUri)
-                            }
+                            val caption = captionInput.ifBlank { if (isReelUploadMode) "New Reel Video! 🎬" else "Shared a new moment!" }
+                            val mediaUri = selectedMediaUri
+                            val isReel = isReelUploadMode
+
                             captionInput = ""
                             selectedMediaUri = null
                             showCreatePostDialog = false
-                            Toast.makeText(context, if (isReelUploadMode) "✨ Reel Video Published to Feed!" else "✨ Moment Published to Feed!", Toast.LENGTH_SHORT).show()
+
+                            coroutineScope.launch {
+                                isUploadingMedia = true
+                                uploadStatusText = if (isReel) "Uploading Reel Video..." else "Uploading Photo..."
+                                for (p in 1..10) {
+                                    uploadProgressPercentage = p / 10f
+                                    kotlinx.coroutines.delay(140)
+                                }
+                                if (isReel) {
+                                    onPublishReel(caption, mediaUri)
+                                } else {
+                                    onPublishPost(caption, mediaUri)
+                                }
+                                isUploadingMedia = false
+                                uploadProgressPercentage = 0f
+                                Toast.makeText(context, if (isReel) "✨ Reel Video Published to Feed!" else "✨ Moment Published to Feed!", Toast.LENGTH_SHORT).show()
+                            }
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary)
