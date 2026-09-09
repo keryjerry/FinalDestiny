@@ -810,7 +810,7 @@ fun SecondaryDashboardScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .wrapContentHeight()
-                            .background(Color.White)
+                            .background(SkyBlueCardBg)
                             .padding(horizontal = 14.dp, vertical = 6.dp)
                     ) {
                         // ENGAGEMENT ICONS BAR (Heart, Comment, Repost, Send DM, Bookmark)

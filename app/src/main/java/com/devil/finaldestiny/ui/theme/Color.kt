@@ -3,11 +3,11 @@ package com.devil.finaldestiny.ui.theme
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
-// BRIGHT SKY BLUE PALETTE
-val SkyBlueBgLight = Color(0xFFF0F7FF)        // Airy light sky background
-val SkyBlueHeader = Color(0xFFE1F0FF)         // Soft sky header fill
-val SkyBlueCardBg = Color(0xFFFFFFFF)         // Crisp white card surface
-val SkyBlueBorder = Color(0xFFBBE0FF)         // Modern soft cyan/sky border
+// BRIGHT SKY BLUE PALETTE (OFF-WHITE EYE-FRIENDLY SURFACES)
+val SkyBlueBgLight = Color(0xFFF4F6FB)        // Soothing off-white canvas background
+val SkyBlueHeader = Color(0xFFE4EEF8)         // Soft sky header fill
+val SkyBlueCardBg = Color(0xFFFAFBFD)         // Eye-friendly off-white card surface
+val SkyBlueBorder = Color(0xFFD0E2F0)         // Modern soft border
 val SkyBluePrimary = Color(0xFF0077B6)        // Rich sky blue for primary buttons
 val BrightCyanAccent = Color(0xFF00B4D8)      // Vibrant sky cyan accent
 val SoftSkyAccent = Color(0xFF90E0EF)        // Soft sky glow
@@ -32,7 +32,7 @@ val GoldGradientEnd = BrightCyanAccent
 
 // Surface & Card Colors
 val CardBackground = SkyBlueCardBg
-val CardBackgroundTransparent = Color(0xF5FFFFFF)
+val CardBackgroundTransparent = Color(0xF5FAFBFD)
 val SurfaceDark = SkyBlueBgLight
 val GlassmorphismOverlay = Color(0x3300B4D8)
 val SeatVelvetBg = Color(0xFFE3F2FD)
