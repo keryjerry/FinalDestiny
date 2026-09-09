@@ -44,6 +44,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.Person
 import com.devil.finaldestiny.model.AppNotification
 import com.devil.finaldestiny.model.MediaType
 import com.devil.finaldestiny.model.MomentComment
@@ -52,6 +53,7 @@ import com.devil.finaldestiny.model.StoryItem
 import com.devil.finaldestiny.ui.components.NotificationBellButton
 import com.devil.finaldestiny.ui.components.ProfileAvatarView
 import com.devil.finaldestiny.ui.theme.*
+import com.devil.finaldestiny.utils.TimeUtils
 
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
@@ -83,6 +85,10 @@ fun SecondaryDashboardScreen(
     var showCommentsSheetForPost by remember { mutableStateOf<MomentPost?>(null) }
     var activeStoryView by remember { mutableStateOf<StoryItem?>(null) }
 
+    var isUploadingMedia by remember { mutableStateOf(false) }
+    var uploadProgressPercentage by remember { mutableFloatStateOf(0f) }
+    var uploadStatusText by remember { mutableStateOf("Uploading media...") }
+
     var captionInput by remember { mutableStateOf("") }
     var selectedMediaUri by remember { mutableStateOf<String?>(null) }
     var commentInputText by remember { mutableStateOf("") }
@@ -97,13 +103,23 @@ fun SecondaryDashboardScreen(
         }
     }
 
-    // Launcher for adding a Story
+    // Launcher for adding a Story (supports BOTH Photos and Videos */*)
     val storyMediaLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            onAddStory(it.toString())
-            Toast.makeText(context, "✨ 24h Story Posted!", Toast.LENGTH_SHORT).show()
+            coroutineScope.launch {
+                isUploadingMedia = true
+                uploadStatusText = "Uploading 24h Story..."
+                for (p in 1..10) {
+                    uploadProgressPercentage = p / 10f
+                    kotlinx.coroutines.delay(120)
+                }
+                onAddStory(it.toString())
+                isUploadingMedia = false
+                uploadProgressPercentage = 0f
+                Toast.makeText(context, "✨ 24h Story Posted!", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -132,6 +148,48 @@ fun SecondaryDashboardScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp),
             modifier = Modifier.fillMaxSize()
         ) {
+            // UPLOAD PROGRESS SUMMARY BAR (STICKY TOP BANNER)
+            if (isUploadingMedia) {
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, Color(0xFF38BDF8), RoundedCornerShape(14.dp))
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Row(
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        color = Color(0xFF38BDF8),
+                                        strokeWidth = 2.dp
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(uploadStatusText, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                                }
+                                Text("${(uploadProgressPercentage * 100).toInt()}%", color = Color(0xFFFACC15), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
+                            LinearProgressIndicator(
+                                progress = { uploadProgressPercentage },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp)),
+                                color = Color(0xFF38BDF8),
+                                trackColor = Color(0xFF1E293B)
+                            )
+                        }
+                    }
+                }
+            }
+
             // TOP FEED HEADER & REEL UPLOAD BAR
             item {
                 Card(
@@ -237,7 +295,7 @@ fun SecondaryDashboardScreen(
                 }
             }
 
-            // DESTINY STORIES CAROUSEL
+            // INSTAGRAM-STYLE DESTINY STORIES CAROUSEL
             item {
                 Column {
                     Row(
@@ -248,33 +306,65 @@ fun SecondaryDashboardScreen(
                         Text(text = "✨ 24h Destiny Stories", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = NavyTextPrimary)
                         Text(text = "Tap to View", fontSize = 11.sp, color = SkyBluePrimary, fontWeight = FontWeight.SemiBold)
                     }
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        // My Story Add Button
+                        // Current User Profile Story Item with '+' Badge (Bottom-Right)
                         item {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.clickable { storyMediaLauncher.launch("*/*") }
+                            ) {
                                 Box(
                                     contentAlignment = Alignment.Center,
-                                    modifier = Modifier
-                                        .size(62.dp)
-                                        .clip(CircleShape)
-                                        .background(SkyBlueHeader)
-                                        .border(2.dp, storyRingGradient, CircleShape)
-                                        .clickable { storyMediaLauncher.launch("image/*") }
+                                    modifier = Modifier.size(64.dp)
                                 ) {
-                                    Icon(Icons.Default.Add, contentDescription = "Add Story", tint = SkyBluePrimary, modifier = Modifier.size(28.dp))
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier
+                                            .size(60.dp)
+                                            .clip(CircleShape)
+                                            .background(SkyBlueHeader)
+                                            .border(2.dp, storyRingGradient, CircleShape)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Person,
+                                            contentDescription = "Your Story Profile Avatar",
+                                            tint = SkyBluePrimary,
+                                            modifier = Modifier.size(32.dp)
+                                        )
+                                    }
+
+                                    // '+' Badge at Bottom-Right
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier
+                                            .size(20.dp)
+                                            .align(Alignment.BottomEnd)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF2563EB))
+                                            .border(1.5.dp, Color.White, CircleShape)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = "Add Media Story",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                    }
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text("Your Story", fontSize = 10.sp, color = NavyTextPrimary, fontWeight = FontWeight.SemiBold)
+                                Text("Your Story", fontSize = 10.sp, color = NavyTextPrimary, fontWeight = FontWeight.Bold)
+                                Text("Add New", fontSize = 9.sp, color = SlateTextSecondary)
                             }
                         }
 
-                        // Creator Stories List
+                        // Active Friend / Follower Stories List with Avatar, Name & Relative Time
                         items(storyTrays) { story ->
                             val storyImageBitmap = rememberLoadedImage(context, story.mediaUri)
+                            val relativeTime = TimeUtils.formatTimestamp(story.timestamp, story.createdAtEpochMs)
 
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -283,7 +373,7 @@ fun SecondaryDashboardScreen(
                                 Box(
                                     contentAlignment = Alignment.Center,
                                     modifier = Modifier
-                                        .size(62.dp)
+                                        .size(60.dp)
                                         .clip(CircleShape)
                                         .background(SkyBlueBgLight)
                                         .border(
@@ -300,12 +390,68 @@ fun SecondaryDashboardScreen(
                                             modifier = Modifier.fillMaxSize()
                                         )
                                     } else {
-                                        Text(text = story.authorName.take(1).uppercase(), fontSize = 22.sp, color = SkyBluePrimary, fontWeight = FontWeight.Bold)
+                                        Text(text = story.authorName.take(1).uppercase(), fontSize = 20.sp, color = SkyBluePrimary, fontWeight = FontWeight.Bold)
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text(story.authorName, fontSize = 10.sp, color = NavyTextPrimary, maxLines = 1)
+                                Text(story.authorName, fontSize = 10.sp, color = NavyTextPrimary, maxLines = 1, fontWeight = FontWeight.SemiBold)
+                                Text(relativeTime, fontSize = 9.sp, color = SlateTextSecondary, maxLines = 1)
                             }
+                        }
+                    }
+                }
+            }
+
+            // ACTION BUTTONS (DIRECTLY BELOW STORIES TRAY: 🎬 REEL & 🔴 GET LIVE)
+            item {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // 🎬 Reel Button: Gradient Blue #2563EB to Purple #7C3AED
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(44.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(Color(0xFF2563EB), Color(0xFF7C3AED))
+                                )
+                            )
+                            .clickable {
+                                isReelUploadMode = true
+                                showCreatePostDialog = true
+                            }
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("🎬", fontSize = 14.sp)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Reel", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                    }
+
+                    // 🔴 Get Live Button: Gradient Red #E11D48 to Orange #F97316
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(44.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors = listOf(Color(0xFFE11D48), Color(0xFFF97316))
+                                )
+                            )
+                            .clickable {
+                                Toast.makeText(context, "🔴 Launching Destiny Live Stream...", Toast.LENGTH_SHORT).show()
+                            }
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("🔴", fontSize = 14.sp)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Get Live", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
                     }
                 }
@@ -315,6 +461,7 @@ fun SecondaryDashboardScreen(
             items(momentPosts) { post ->
                 val localBitmap = rememberLoadedImage(context, post.mediaUri)
                 val isReel = post.mediaType == MediaType.REEL_VIDEO
+                val postRelativeTime = TimeUtils.formatTimestamp(post.timestamp, post.createdAtEpochMs)
 
                 Card(
                     colors = CardDefaults.cardColors(containerColor = SkyBlueCardBg),
@@ -348,7 +495,7 @@ fun SecondaryDashboardScreen(
                                     if (post.isSponsored) {
                                         Text("✨ ${post.sponsorName ?: "Brand Partnership"}", fontSize = 10.sp, color = SkyBluePrimary, fontWeight = FontWeight.Bold)
                                     } else {
-                                        Text("${post.authorHandle} • ${post.timestamp}", fontSize = 10.sp, color = SlateTextSecondary)
+                                        Text("${post.authorHandle} • $postRelativeTime", fontSize = 10.sp, color = SlateTextSecondary)
                                     }
                                 }
                             }

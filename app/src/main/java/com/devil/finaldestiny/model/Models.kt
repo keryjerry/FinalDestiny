@@ -68,7 +68,8 @@ data class MomentPost(
     val ctaText: String? = null,
     val ctaUrl: String? = null,
     val videoDuration: String? = "0:30",
-    val viewsCount: Int = 1420
+    val viewsCount: Int = 1420,
+    val createdAtEpochMs: Long = System.currentTimeMillis()
 )
 
 data class StoryItem(
@@ -78,7 +79,8 @@ data class StoryItem(
     val previewMedia: String,
     val timestamp: String,
     val isViewed: Boolean = false,
-    val mediaUri: String? = null
+    val mediaUri: String? = null,
+    val createdAtEpochMs: Long = System.currentTimeMillis()
 )
 
 data class SofaSeat(
