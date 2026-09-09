@@ -25,7 +25,16 @@ data class UserProfile(
     val relationshipIntent: String = "Serious Dating & Marriage",
     val lifestyleTags: List<String> = listOf("Travel", "Music", "Fitness", "Coffee Lover"),
     val isHost: Boolean = true,
-    val profilePictureUri: String? = null
+    val profilePictureUri: String? = null,
+    val accountType: String = "Creator",
+    val creatorCategory: String = "Digital creator",
+    val displayCategoryOnProfile: Boolean = true,
+    val payoutUpi: String = "creator@okaxis",
+    val minimumAge: Int = 0,
+    val brandedContentEnabled: Boolean = true,
+    val crosspostingEnabled: Boolean = false,
+    val trialReelsEnabled: Boolean = true,
+    val savedReplies: List<String> = listOf("Thanks for reaching out! ✨", "Check out my latest Reel!", "Collaborations: dm@finaldestiny.app")
 )
 
 data class SwipeCard(

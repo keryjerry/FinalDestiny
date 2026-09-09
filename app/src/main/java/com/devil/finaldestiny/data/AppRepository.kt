@@ -701,6 +701,49 @@ class AppRepository {
                 profilePictureUri = updatedProfile.profilePictureUri
             )
         )
+
+        // SYNC WITH SUPABASE BACKEND
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                val baseUrl = SupabaseAuthClient.supabaseUrl.trimEnd('/')
+                val anonKey = SupabaseAuthClient.supabaseAnonKey
+                val token = SupabaseAuthClient.getSessionToken() ?: anonKey
+                val myId = updatedProfile.id
+
+                val endpoint = "$baseUrl/rest/v1/profiles?id=eq.$myId"
+                val url = java.net.URL(endpoint)
+                val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+                    requestMethod = "PATCH"
+                    connectTimeout = 6000
+                    readTimeout = 6000
+                    setRequestProperty("apikey", anonKey)
+                    setRequestProperty("Authorization", "Bearer $token")
+                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("Prefer", "return=minimal")
+                    doOutput = true
+                }
+                val payload = org.json.JSONObject().apply {
+                    put("name", updatedProfile.name)
+                    put("bio", updatedProfile.bio)
+                    put("account_type", updatedProfile.accountType)
+                    put("creator_category", updatedProfile.creatorCategory)
+                    put("display_category_on_profile", updatedProfile.displayCategoryOnProfile)
+                    put("payout_upi", updatedProfile.payoutUpi)
+                    put("minimum_age", updatedProfile.minimumAge)
+                    put("branded_content_enabled", updatedProfile.brandedContentEnabled)
+                    put("crossposting_enabled", updatedProfile.crosspostingEnabled)
+                    put("trial_reels_enabled", updatedProfile.trialReelsEnabled)
+                    put("saved_replies", updatedProfile.savedReplies)
+                }
+                connection.outputStream.use { os ->
+                    os.write(payload.toString().toByteArray(Charsets.UTF_8))
+                }
+                val resCode = connection.responseCode
+                android.util.Log.d("[DestinyProfile]", "Supabase Profile Update PATCH -> Code $resCode")
+            } catch (e: Exception) {
+                android.util.Log.e("[DestinyProfile]", "Failed to update profile on Supabase", e)
+            }
+        }
     }
 
     suspend fun refreshDashboardData() {

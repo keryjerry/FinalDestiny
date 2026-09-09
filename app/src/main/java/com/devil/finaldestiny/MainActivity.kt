@@ -53,6 +53,8 @@ enum class Screen {
     VIP_STORE,
     CREATOR_MONETIZATION,
     USER_PROFILE,
+    CREATOR_HUB,
+    CREATOR_TOOLS,
     FINAL_DESTINY_DATING,
     ABOUT_US
 }
@@ -330,6 +332,8 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onNavigateToStore = { currentScreen = Screen.VIP_STORE },
                     onNavigateToSecondaryFeed = { currentScreen = Screen.SECONDARY_FEED },
                     onNavigateToMonetization = { currentScreen = Screen.CREATOR_MONETIZATION },
+                    onNavigateToCreatorHub = { currentScreen = Screen.CREATOR_HUB },
+                    onNavigateToCreatorTools = { currentScreen = Screen.CREATOR_TOOLS },
                     onNavigateToDating = { currentScreen = Screen.FINAL_DESTINY_DATING },
                     onNavigateToAboutUs = { currentScreen = Screen.ABOUT_US },
                     onLogOut = {
@@ -339,6 +343,20 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onRefresh = { repository.refreshUserProfile() },
                     onToggleFollowCandidate = { targetId, isFollowing -> repository.toggleFollowUser(targetId, isFollowing) },
                     onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
+                )
+
+                Screen.CREATOR_HUB -> CreatorHubScreen(
+                    user = user,
+                    onSaveUser = { updated -> repository.updateUserProfile(updated) },
+                    onNavigateToEditProfile = { currentScreen = Screen.USER_PROFILE },
+                    onNavigateToTools = { currentScreen = Screen.CREATOR_TOOLS },
+                    onBack = { currentScreen = Screen.USER_PROFILE }
+                )
+
+                Screen.CREATOR_TOOLS -> CreatorToolsScreen(
+                    user = user,
+                    onSaveUser = { updated -> repository.updateUserProfile(updated) },
+                    onBack = { currentScreen = Screen.USER_PROFILE }
                 )
 
                 Screen.SECONDARY_FEED -> SecondaryDashboardScreen(

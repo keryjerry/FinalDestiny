@@ -86,6 +86,8 @@ fun UserProfileScreen(
     onNavigateToStore: () -> Unit = {},
     onNavigateToSecondaryFeed: () -> Unit = {},
     onNavigateToMonetization: () -> Unit = {},
+    onNavigateToCreatorHub: () -> Unit = {},
+    onNavigateToCreatorTools: () -> Unit = {},
     onNavigateToDating: () -> Unit = {},
     onNavigateToAboutUs: () -> Unit = {},
     onLogOut: () -> Unit,
@@ -110,6 +112,9 @@ fun UserProfileScreen(
 
     var editName by remember(user) { mutableStateOf(user.name.ifBlank { "Dilshad_The mountain lover" }) }
     var editBio by remember(user) { mutableStateOf(user.bio.ifBlank { "I am traveling buddy .i love to travel 🧳😊" }) }
+    var editCategory by remember(user) { mutableStateOf(user.creatorCategory) }
+    var editDisplayCategory by remember(user) { mutableStateOf(user.displayCategoryOnProfile) }
+    var editAccountType by remember(user) { mutableStateOf(user.accountType) }
 
     var complaintCategory by remember { mutableStateOf("Billing & Payment") }
     var complaintDescription by remember { mutableStateOf("") }
@@ -405,11 +410,13 @@ fun UserProfileScreen(
                 }
 
                 // Category Tag
-                Text(
-                    text = "Digital creator",
-                    fontSize = 13.sp,
-                    color = Color(0xFF8E8E93)
-                )
+                if (user.displayCategoryOnProfile && user.creatorCategory.isNotBlank()) {
+                    Text(
+                        text = user.creatorCategory,
+                        fontSize = 13.sp,
+                        color = Color(0xFF8E8E93)
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(2.dp))
 
@@ -505,22 +512,66 @@ fun UserProfileScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
             ) {
-                // Professional Dashboard Light Card
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF2F2F7)),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onNavigateToMonetization() }
-                        .padding(bottom = 8.dp)
-                ) {
-                    Column(
+                // Professional Dashboard vs Personal Account Banner
+                if (user.accountType == "Creator" || user.accountType == "Professional") {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF2F2F7)),
+                        shape = RoundedCornerShape(8.dp),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 10.dp)
+                            .clickable { onNavigateToCreatorHub() }
+                            .padding(bottom = 8.dp)
                     ) {
-                        Text("Professional dashboard", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                        Text("207 views in the last 30 days.", fontSize = 12.sp, color = Color(0xFF8E8E93))
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 10.dp)
+                        ) {
+                            Column {
+                                Text("Professional dashboard", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                                Text("207 views in the last 30 days.", fontSize = 12.sp, color = Color(0xFF8E8E93))
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Button(
+                                    onClick = { onNavigateToCreatorTools() },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3897F0)),
+                                    shape = RoundedCornerShape(6.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                    modifier = Modifier.height(28.dp)
+                                ) {
+                                    Text("Tools", fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF0FDF4)),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                val updated = user.copy(accountType = "Creator")
+                                onSaveProfile(updated)
+                                Toast.makeText(context, "✨ Switched to Professional Creator Account!", Toast.LENGTH_SHORT).show()
+                            }
+                            .padding(bottom = 8.dp)
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 10.dp)
+                        ) {
+                            Column {
+                                Text("Switch to Professional Account", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
+                                Text("Get insights, category badge, and creator tools.", fontSize = 11.sp, color = Color(0xFF15803D))
+                            }
+                            Text("Switch >", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
+                        }
                     }
                 }
 
@@ -600,9 +651,64 @@ fun UserProfileScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
 
+                        // Category Selector
+                        Text("Category", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            val categories = listOf("Digital creator", "AI Creator", "Digital Marketer", "Video Creator", "Gamer", "Entrepreneur")
+                            items(categories) { cat ->
+                                FilterChip(
+                                    selected = (editCategory == cat),
+                                    onClick = { editCategory = if (editCategory == cat) "" else cat },
+                                    label = { Text(cat, fontSize = 12.sp) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = Color(0xFF3897F0),
+                                        selectedLabelColor = Color.White
+                                    )
+                                )
+                            }
+                        }
+
+                        // Display Category Toggle
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Display category on profile", fontSize = 13.sp, color = Color.Black)
+                            Switch(
+                                checked = editDisplayCategory,
+                                onCheckedChange = { editDisplayCategory = it }
+                            )
+                        }
+
+                        // Account Type Switcher
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column {
+                                Text("Account Type", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                                Text("Current: $editAccountType", fontSize = 12.sp, color = Color.Gray)
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    editAccountType = if (editAccountType == "Personal") "Creator" else "Personal"
+                                }
+                            ) {
+                                Text(if (editAccountType == "Personal") "Switch to Creator" else "Switch to Personal", fontSize = 12.sp)
+                            }
+                        }
+
                         Button(
                             onClick = {
-                                val updated = user.copy(name = editName, bio = editBio)
+                                val updated = user.copy(
+                                    name = editName,
+                                    bio = editBio,
+                                    creatorCategory = editCategory,
+                                    displayCategoryOnProfile = editDisplayCategory,
+                                    accountType = editAccountType
+                                )
                                 onSaveProfile(updated)
                                 isEditing = false
                                 Toast.makeText(context, "✅ Profile Changes Saved!", Toast.LENGTH_SHORT).show()
