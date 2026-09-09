@@ -38,16 +38,27 @@ object SupabaseAuthClient {
         val token = prefs.getString("session_token", null)
         val uid = prefs.getString("unique_user_id", null)
         val email = prefs.getString("user_email", null)
+        val createdAt = prefs.getLong("session_created_at", 0L)
+        val thirtyDaysMs = 30L * 24 * 60 * 60 * 1000
 
-        if (!token.isNull_or_blank_custom() && !uid.isNull_or_blank_custom()) {
+        val isNonExpired = createdAt == 0L || (System.currentTimeMillis() - createdAt) < thirtyDaysMs
+
+        if (!token.isNull_or_blank_custom() && !uid.isNull_or_blank_custom() && isNonExpired) {
             currentSessionToken = token
             currentUserId = uid
             currentUserEmail = email
             isAuthenticated = true
-            Log.d(TAG, "Restored active session -> User UID: $uid, Email: $email")
+            Log.d(TAG, "Restored active persistent session -> User UID: $uid, Email: $email")
         } else {
-            Log.d(TAG, "No active auth session found in SharedPreferences.")
+            Log.d(TAG, "No active or valid auth session found in SharedPreferences.")
         }
+    }
+
+    fun hasValidSession(context: Context): Boolean {
+        if (!isAuthenticated) {
+            init(context)
+        }
+        return isAuthenticated && !currentSessionToken.isNull_or_blank_custom() && !currentUserId.isNull_or_blank_custom()
     }
 
     /**
@@ -237,6 +248,7 @@ object SupabaseAuthClient {
             .putString("unique_user_id", uid)
             .putString("user_email", email)
             .putString("session_token", token)
+            .putLong("session_created_at", System.currentTimeMillis())
             .apply()
 
         Log.d(TAG, "Session persisted to SharedPreferences -> UID: $uid | Email: $email")
@@ -307,6 +319,7 @@ object SupabaseAuthClient {
                 .remove("unique_user_id")
                 .remove("user_email")
                 .remove("session_token")
+                .remove("session_created_at")
                 .apply()
         }
     }

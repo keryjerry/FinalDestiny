@@ -94,7 +94,14 @@ class MainActivity : ComponentActivity(), PaymentResultWithDataListener {
 @Composable
 fun FinalDestinyApp(repository: AppRepository) {
     val context = LocalContext.current
-    var currentScreen by remember { mutableStateOf(Screen.AUTH_SPLASH) }
+    val initialScreen = remember(context) {
+        if (com.devil.finaldestiny.data.SupabaseAuthClient.hasValidSession(context)) {
+            Screen.PRIMARY_DASHBOARD
+        } else {
+            Screen.AUTH_SPLASH
+        }
+    }
+    var currentScreen by remember { mutableStateOf(initialScreen) }
     var showPermissionModal by remember { mutableStateOf(false) }
     var showMonetizationPopup by remember { mutableStateOf(true) }
 
@@ -325,7 +332,10 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onNavigateToMonetization = { currentScreen = Screen.CREATOR_MONETIZATION },
                     onNavigateToDating = { currentScreen = Screen.FINAL_DESTINY_DATING },
                     onNavigateToAboutUs = { currentScreen = Screen.ABOUT_US },
-                    onLogOut = { currentScreen = Screen.AUTH_SPLASH },
+                    onLogOut = {
+                        com.devil.finaldestiny.data.SupabaseAuthClient.signOut(context)
+                        currentScreen = Screen.AUTH_SPLASH
+                    },
                     onRefresh = { repository.refreshUserProfile() },
                     onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
                 )

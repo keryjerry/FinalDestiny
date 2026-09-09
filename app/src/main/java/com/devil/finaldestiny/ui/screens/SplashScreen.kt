@@ -59,6 +59,13 @@ fun SplashScreen(
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
+    LaunchedEffect(Unit) {
+        SupabaseAuthClient.init(context)
+        if (SupabaseAuthClient.isAuthenticated && SupabaseAuthClient.hasValidSession(context)) {
+            onLoginSuccess()
+        }
+    }
+
     // Vibrant Sky-Blue & Deep Sea Party Gradient
     val seaPartyGradient = Brush.verticalGradient(
         colors = listOf(
