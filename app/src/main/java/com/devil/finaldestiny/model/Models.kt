@@ -107,7 +107,17 @@ data class MomentPost(
     val collaboratorName: String? = "mohanshakti",
     val repostsCount: Int = 2327,
     val sharesCount: Int = 1969,
-    val isSaved: Boolean = false
+    val isSaved: Boolean = false,
+    val primaryCategory: String = "Entertainment",
+    val subCategories: List<String> = listOf("Dance", "Music", "Vlog"),
+    val hashtags: List<String> = listOf("#destiny", "#reels", "#viral"),
+    val keywords: List<String> = listOf("dance", "music", "trending", "vibes"),
+    val language: String = "en",
+    val region: String = "Global",
+    val audioTrackId: String? = null,
+    val qualityScore: Float = 0.85f,
+    val phash: String? = null,
+    val viralVelocity: Float = 1.0f
 )
 
 data class StoryItem(
@@ -118,7 +128,9 @@ data class StoryItem(
     val timestamp: String,
     val isViewed: Boolean = false,
     val mediaUri: String? = null,
-    val createdAtEpochMs: Long = System.currentTimeMillis()
+    val createdAtEpochMs: Long = System.currentTimeMillis(),
+    val primaryCategory: String = "General",
+    val authorId: String = "usr_author"
 )
 
 data class SofaSeat(
@@ -317,4 +329,38 @@ data class CreatorAnalytics(
         CreatorMilestoneAlert("m2", "🔥 Reel Viral Alert", "'Dance Choreography' reached 45,000 views!", "2h ago"),
         CreatorMilestoneAlert("m3", "📈 Audience Spurt", "+35 Followers joined from your recent live audio stream!", "5h ago")
     )
+)
+
+enum class EventType {
+    LIKE, COMMENT, SHARE, SAVE_BOOKMARK, PROFILE_VISIT, STORY_VIEW, STORY_REPLY, FOLLOW,
+    DWELL, WATCH_COMPLETE, REWATCH_LOOP, FAST_SKIP, NOT_INTERESTED, SEARCH_QUERY
+}
+
+data class TelemetryEvent(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val userId: String,
+    val postId: String,
+    val eventType: EventType,
+    val dwellTimeMs: Long = 0L,
+    val scrollSpeed: Float = 0.0f,
+    val completionRate: Float = 0.0f,
+    val dropOffTimestamp: Float = 0.0f,
+    val timestampMs: Long = System.currentTimeMillis()
+)
+
+data class UserInterestVector(
+    val userId: String,
+    val categoryAffinities: Map<String, Float> = emptyMap(),
+    val tagAffinities: Map<String, Float> = emptyMap(),
+    val audioAffinities: Map<String, Float> = emptyMap(),
+    val creatorAffinities: Map<String, Float> = emptyMap(),
+    val lastUpdatedMs: Long = System.currentTimeMillis()
+)
+
+data class RecommendedUser(
+    val userProfile: UserProfile,
+    val mutualFollowersCount: Int = 3,
+    val sharedInterests: List<String> = listOf("Music", "Travel"),
+    val intimacyScore: Float = 0.75f,
+    val matchReason: String = "3 mutual friends & shared love for Music"
 )

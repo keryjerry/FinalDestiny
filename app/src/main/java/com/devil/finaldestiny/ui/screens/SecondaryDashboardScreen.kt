@@ -54,8 +54,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.devil.finaldestiny.data.SupabaseAuthClient
+import com.devil.finaldestiny.engine.intelligence.CoreIntelligenceEngine
 import com.devil.finaldestiny.model.AppNotification
 import com.devil.finaldestiny.model.AudioTrack
+import com.devil.finaldestiny.model.EventType
 import com.devil.finaldestiny.model.MediaType
 import com.devil.finaldestiny.model.MomentPost
 import com.devil.finaldestiny.model.StoryItem
@@ -670,6 +673,7 @@ fun SecondaryDashboardScreen(
                                     IconButton(
                                         onClick = {
                                             onLikePost(post.id)
+                                            CoreIntelligenceEngine.instance.recordInteraction("usr_me", post, EventType.LIKE)
                                             Toast.makeText(context, if (post.isLiked) "Unliked" else "❤️ Loved!", Toast.LENGTH_SHORT).show()
                                         },
                                         modifier = Modifier.size(28.dp)
@@ -686,7 +690,10 @@ fun SecondaryDashboardScreen(
                                 // ARROW 2: Comment Speech Bubble Icon (1,969)
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.clickable { showCommentsSheetForPost = post }
+                                    modifier = Modifier.clickable {
+                                        showCommentsSheetForPost = post
+                                        CoreIntelligenceEngine.instance.recordInteraction("usr_me", post, EventType.COMMENT)
+                                    }
                                 ) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.Comment,
@@ -707,6 +714,7 @@ fun SecondaryDashboardScreen(
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.clickable {
+                                        CoreIntelligenceEngine.instance.recordInteraction("usr_me", post, EventType.SHARE)
                                         Toast.makeText(context, "🔁 Reposted Reel to your feed!", Toast.LENGTH_SHORT).show()
                                     }
                                 ) {
@@ -727,7 +735,10 @@ fun SecondaryDashboardScreen(
 
                                 // ARROW 4: Direct Message / Send Paper Plane Icon
                                 IconButton(
-                                    onClick = { showDirectShareSheetForPost = post },
+                                    onClick = {
+                                        showDirectShareSheetForPost = post
+                                        CoreIntelligenceEngine.instance.recordInteraction("usr_me", post, EventType.SHARE)
+                                    },
                                     modifier = Modifier.size(28.dp)
                                 ) {
                                     Icon(
@@ -743,6 +754,7 @@ fun SecondaryDashboardScreen(
                             IconButton(
                                 onClick = {
                                     onToggleSavePost(post.id)
+                                    CoreIntelligenceEngine.instance.recordInteraction("usr_me", post, EventType.SAVE_BOOKMARK)
                                     Toast.makeText(context, if (post.isSaved) "Unsaved" else "📌 Saved to Profile!", Toast.LENGTH_SHORT).show()
                                 },
                                 modifier = Modifier.size(28.dp)

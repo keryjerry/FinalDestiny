@@ -1,6 +1,7 @@
 package com.devil.finaldestiny.data
 
 import android.content.Context
+import com.devil.finaldestiny.engine.intelligence.CoreIntelligenceEngine
 import com.devil.finaldestiny.model.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -695,5 +696,39 @@ class AppRepository {
             totalViews = _creatorAnalytics.value.totalViews + (100..500).random(),
             totalLikes = _creatorAnalytics.value.totalLikes + (10..50).random()
         )
+    }
+
+    // ================================================================================
+    // CORE INTELLIGENCE ENGINE INTEGRATION (RECOMMENDATION, RANKING & TELEMETRY)
+    // ================================================================================
+    fun getRankedHomeFeed(): List<MomentPost> {
+        val user = _currentUser.value
+        return CoreIntelligenceEngine.instance.getRankedHomeFeed(user.id, _momentPosts.value)
+    }
+
+    fun getRankedReelsFeed(): List<MomentPost> {
+        val user = _currentUser.value
+        val reelsOnly = _momentPosts.value.filter { it.mediaType == MediaType.REEL_VIDEO }
+        return CoreIntelligenceEngine.instance.getRankedReelsFeed(user.id, reelsOnly)
+    }
+
+    fun getRankedStories(): List<StoryItem> {
+        val user = _currentUser.value
+        return CoreIntelligenceEngine.instance.getRankedStories(user.id, _storyTrays.value)
+    }
+
+    fun getPeopleYouMayKnow(): List<RecommendedUser> {
+        val user = _currentUser.value
+        val candidates = listOf(
+            UserProfile(id = "usr_ananya", name = "Ananya Roy", handle = "@Ananya_Roy", followerCount = 420, lifestyleTags = listOf("Music 🎵", "Dance 💃")),
+            UserProfile(id = "usr_aarav", name = "Aarav Sharma", handle = "@Aarav_Sharma", followerCount = 890, lifestyleTags = listOf("Travel ✈️", "Fitness 💪")),
+            UserProfile(id = "usr_simran", name = "Simran Kaur", handle = "@Simran_Vibes", followerCount = 1250, lifestyleTags = listOf("Music 🎵", "Coffee ☕"))
+        )
+        return CoreIntelligenceEngine.instance.getPeopleYouMayKnow(user, candidates)
+    }
+
+    fun logTelemetryInteraction(post: MomentPost, eventType: EventType) {
+        val user = _currentUser.value
+        CoreIntelligenceEngine.instance.recordInteraction(user.id, post, eventType)
     }
 }
