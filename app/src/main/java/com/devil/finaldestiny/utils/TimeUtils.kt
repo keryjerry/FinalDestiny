@@ -72,4 +72,10 @@ object TimeUtils {
 
         return clean
     }
+
+    fun formatIsoTimestamp(epochMs: Long = System.currentTimeMillis()): String {
+        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
+        sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
+        return sdf.format(java.util.Date(epochMs))
+    }
 }

@@ -97,7 +97,7 @@ fun SecondaryDashboardScreen(
     notifications: List<AppNotification> = emptyList(),
     onOpenNotifications: () -> Unit = {},
     onLikePost: (String) -> Unit,
-    onPublishPost: (
+    onPublishPost: suspend (
         caption: String,
         mediaUri: String?,
         isAiGenerated: Boolean,
@@ -114,7 +114,7 @@ fun SecondaryDashboardScreen(
         promotionStatus: String,
         promotionBudget: Double
     ) -> Unit = { _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ -> },
-    onPublishReel: (
+    onPublishReel: suspend (
         caption: String,
         mediaUri: String?,
         audioTitle: String?,
@@ -1320,26 +1320,31 @@ fun SecondaryDashboardScreen(
                 selectedMediaUri = null
             },
             onPublish = { caption, mediaUri, audioTitle, audioArtist, audioUrl, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText, ctaLink, ctaLabel, isPaidPartnership, promotionStatus, promotionBudget ->
-                showCreatePostDialog = false
-                selectedMediaUri = null
-
                 coroutineScope.launch {
-                    isUploadingMedia = true
-                    uploadStatusText = if (isReelUploadMode) "Uploading Reel Video..." else "Uploading Moment Photo..."
-                    for (p in 1..10) {
-                        uploadProgressPercentage = p / 10f
-                        kotlinx.coroutines.delay(120)
-                    }
+                    try {
+                        isUploadingMedia = true
+                        uploadStatusText = if (isReelUploadMode) "Uploading Reel Video to Supabase..." else "Uploading Moment Photo to Supabase..."
+                        uploadProgressPercentage = 0.2f
 
-                    if (isReelUploadMode) {
-                        onPublishReel(caption, mediaUri, audioTitle, audioArtist, audioUrl, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText, ctaLink, ctaLabel, isPaidPartnership, promotionStatus, promotionBudget)
-                    } else {
-                        onPublishPost(caption, mediaUri, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText, ctaLink, ctaLabel, isPaidPartnership, promotionStatus, promotionBudget)
-                    }
+                        if (isReelUploadMode) {
+                            onPublishReel(caption, mediaUri, audioTitle, audioArtist, audioUrl, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText, ctaLink, ctaLabel, isPaidPartnership, promotionStatus, promotionBudget)
+                        } else {
+                            onPublishPost(caption, mediaUri, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText, ctaLink, ctaLabel, isPaidPartnership, promotionStatus, promotionBudget)
+                        }
 
-                    isUploadingMedia = false
-                    uploadProgressPercentage = 0f
-                    Toast.makeText(context, "✨ Published to Feed!", Toast.LENGTH_SHORT).show()
+                        uploadProgressPercentage = 1.0f
+                        kotlinx.coroutines.delay(200)
+                        isUploadingMedia = false
+                        uploadProgressPercentage = 0f
+                        showCreatePostDialog = false
+                        selectedMediaUri = null
+                        Toast.makeText(context, "✨ Post shared successfully!", Toast.LENGTH_LONG).show()
+                    } catch (e: Exception) {
+                        isUploadingMedia = false
+                        uploadProgressPercentage = 0f
+                        android.util.Log.e("PostUpload", "Failed to publish post to Supabase", e)
+                        Toast.makeText(context, "❌ Upload failed: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                    }
                 }
             }
         )

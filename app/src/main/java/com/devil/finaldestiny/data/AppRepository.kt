@@ -117,7 +117,10 @@ class AppRepository {
         }
     }
 
+    private var appContext: Context? = null
+
     fun initializeUserSession(context: Context) {
+        appContext = context.applicationContext
         SupabaseAuthClient.init(context)
         val uniqueId = SupabaseAuthClient.getOrCreateUserId(context)
         val email = SupabaseAuthClient.getUserEmail()
@@ -525,7 +528,8 @@ class AppRepository {
         _matchedCard.value = null
     }
 
-    fun postMoment(
+    suspend fun postMoment(
+        context: Context? = null,
         caption: String,
         mediaUri: String? = null,
         isAiGenerated: Boolean = false,
@@ -542,13 +546,25 @@ class AppRepository {
         promotionStatus: String = "none",
         promotionBudget: Double = 0.0
     ) {
+        val targetContext = context ?: appContext
         val user = _currentUser.value
+
+        var uploadedPublicUrl = mediaUri
+        if (targetContext != null && !mediaUri.isNullOrBlank()) {
+            try {
+                uploadedPublicUrl = SupabaseAuthClient.uploadMediaToSupabaseStorage(targetContext, mediaUri, "posts_media")
+            } catch (e: Exception) {
+                android.util.Log.e("[PostUpload]", "Storage Upload Exception", e)
+                throw e
+            }
+        }
+
         val newPost = MomentPost(
             id = "m_${System.currentTimeMillis()}",
             authorName = user.name,
             authorHandle = user.handle,
             authorAvatar = user.profilePictureUri ?: "https://picsum.photos/100/100?random=1",
-            mediaUrl = "https://picsum.photos/600/750?random=99",
+            mediaUrl = uploadedPublicUrl ?: "https://picsum.photos/600/750?random=99",
             caption = caption,
             timestamp = if (!scheduledAt.isNullOrBlank()) "Scheduled: $scheduledAt" else "Just now",
             likesCount = 1,
@@ -573,10 +589,21 @@ class AppRepository {
             promotionBudget = promotionBudget,
             isSponsored = isPaidPartnership || promotionStatus == "active"
         )
+
+        if (targetContext != null) {
+            try {
+                SupabaseAuthClient.insertPostToSupabase(targetContext, newPost)
+            } catch (e: Exception) {
+                android.util.Log.e("[PostUpload]", "Posts DB Insert Exception", e)
+                throw e
+            }
+        }
+
         _momentPosts.value = listOf(newPost) + _momentPosts.value
     }
 
-    fun postReelVideo(
+    suspend fun postReelVideo(
+        context: Context? = null,
         caption: String,
         mediaUri: String? = null,
         audioTitle: String? = "Susheela Raman • Ye Meera Deewanapan",
@@ -596,13 +623,25 @@ class AppRepository {
         promotionStatus: String = "none",
         promotionBudget: Double = 0.0
     ) {
+        val targetContext = context ?: appContext
         val user = _currentUser.value
+
+        var uploadedPublicUrl = mediaUri
+        if (targetContext != null && !mediaUri.isNullOrBlank()) {
+            try {
+                uploadedPublicUrl = SupabaseAuthClient.uploadMediaToSupabaseStorage(targetContext, mediaUri, "posts_media")
+            } catch (e: Exception) {
+                android.util.Log.e("[PostUpload]", "Storage Upload Exception", e)
+                throw e
+            }
+        }
+
         val newReel = MomentPost(
             id = "reel_${System.currentTimeMillis()}",
             authorName = user.name,
             authorHandle = user.handle,
             authorAvatar = user.profilePictureUri ?: "https://picsum.photos/100/100?random=1",
-            mediaUrl = "https://picsum.photos/540/960?random=105",
+            mediaUrl = uploadedPublicUrl ?: "https://picsum.photos/540/960?random=105",
             caption = caption,
             timestamp = if (!scheduledAt.isNullOrBlank()) "Scheduled: $scheduledAt" else "Just now",
             likesCount = 1,
@@ -632,6 +671,16 @@ class AppRepository {
             promotionBudget = promotionBudget,
             isSponsored = isPaidPartnership || promotionStatus == "active"
         )
+
+        if (targetContext != null) {
+            try {
+                SupabaseAuthClient.insertPostToSupabase(targetContext, newReel)
+            } catch (e: Exception) {
+                android.util.Log.e("[PostUpload]", "Reels DB Insert Exception", e)
+                throw e
+            }
+        }
+
         _momentPosts.value = listOf(newReel) + _momentPosts.value
     }
 

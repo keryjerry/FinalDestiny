@@ -10,6 +10,8 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
+import com.devil.finaldestiny.model.MomentPost
+import com.devil.finaldestiny.utils.TimeUtils
 
 sealed class AuthResult {
     data class Success(val uid: String, val email: String, val token: String) : AuthResult()
@@ -360,6 +362,164 @@ object SupabaseAuthClient {
         } catch (e: Exception) {
             Log.e(TAG, "Supabase RPC smart_ai_search failed", e)
             ""
+        }
+    }
+
+    /**
+     * Uploads media binary (Photo or Video) from Uri to Supabase Storage bucket 'posts_media'
+     */
+    suspend fun uploadMediaToSupabaseStorage(
+        context: Context,
+        mediaUriStr: String,
+        bucketName: String = "posts_media"
+    ): String = withContext(Dispatchers.IO) {
+        val cleanUri = mediaUriStr.trim()
+        if (cleanUri.isBlank()) {
+            throw IllegalArgumentException("Media URI cannot be empty.")
+        }
+        if (cleanUri.startsWith("http://") || cleanUri.startsWith("https://")) {
+            Log.d(TAG, "Media URI is already a remote URL: $cleanUri")
+            return@withContext cleanUri
+        }
+
+        Log.d(TAG, "Reading binary stream for URI: $cleanUri | Target Bucket: $bucketName")
+        val uri = Uri.parse(cleanUri)
+        val bytes = try {
+            context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                ?: throw IllegalArgumentException("Cannot open stream for Uri: $cleanUri")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to read binary bytes for $cleanUri", e)
+            throw Exception("Failed to read media file: ${e.localizedMessage}")
+        }
+
+        if (bytes.isEmpty()) {
+            throw Exception("Media file is empty (0 bytes).")
+        }
+
+        val isVideo = cleanUri.contains("video", ignoreCase = true) || cleanUri.endsWith(".mp4", ignoreCase = true)
+        val ext = if (isVideo) "mp4" else "jpg"
+        val mimeType = if (isVideo) "video/mp4" else "image/jpeg"
+        val uid = getUserId() ?: getOrCreateUserId(context)
+        val fileName = "post_${uid}_${System.currentTimeMillis()}.$ext"
+
+        val baseUrl = supabaseUrl.trimEnd('/')
+        val endpoint = "$baseUrl/storage/v1/object/$bucketName/$fileName"
+        Log.d(TAG, "POST /storage/v1/object/$bucketName/$fileName | Size: ${bytes.size} bytes | Mime: $mimeType")
+
+        val url = URL(endpoint)
+        val connection = (url.openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 30000
+            readTimeout = 30000
+            setRequestProperty("apikey", supabaseAnonKey)
+            setRequestProperty("Authorization", "Bearer ${currentSessionToken ?: supabaseAnonKey}")
+            setRequestProperty("Content-Type", mimeType)
+            setRequestProperty("x-upsert", "true")
+            doOutput = true
+        }
+
+        try {
+            connection.outputStream.use { os ->
+                os.write(bytes)
+            }
+
+            val resCode = connection.responseCode
+            val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
+            val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
+
+            Log.d(TAG, "Storage Upload Response Code: $resCode | Body: $resText")
+
+            if (resCode in 200..299) {
+                val publicUrl = "$baseUrl/storage/v1/object/public/$bucketName/$fileName"
+                Log.d(TAG, "Storage Upload SUCCESS -> Public URL: $publicUrl")
+                return@withContext publicUrl
+            } else {
+                val errMsg = parseSupabaseError(resText, resCode)
+                Log.e(TAG, "Storage Upload Failed -> Code $resCode | Error: $errMsg")
+                throw Exception("Storage upload failed (HTTP $resCode): $errMsg")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Storage Upload Exception", e)
+            throw Exception(e.localizedMessage ?: "Network error during media upload.")
+        }
+    }
+
+    /**
+     * Inserts row directly into Supabase table 'public.posts'
+     */
+    suspend fun insertPostToSupabase(
+        context: Context,
+        post: MomentPost
+    ): Boolean = withContext(Dispatchers.IO) {
+        val baseUrl = supabaseUrl.trimEnd('/')
+        val endpoint = "$baseUrl/rest/v1/posts"
+        val uid = getUserId() ?: getOrCreateUserId(context)
+
+        Log.d(TAG, "POST /rest/v1/posts -> Ingesting Post ID: ${post.id} for User UID: $uid")
+
+        val url = URL(endpoint)
+        val connection = (url.openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 15000
+            readTimeout = 15000
+            setRequestProperty("apikey", supabaseAnonKey)
+            setRequestProperty("Authorization", "Bearer ${currentSessionToken ?: supabaseAnonKey}")
+            setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            setRequestProperty("Prefer", "return=representation")
+            doOutput = true
+        }
+
+        val payload = JSONObject().apply {
+            put("id", post.id)
+            put("user_id", uid)
+            put("author_name", post.authorName)
+            put("author_handle", post.authorHandle)
+            put("author_avatar", post.authorAvatar)
+            put("caption", post.caption)
+            put("media_url", post.mediaUrl)
+            put("media_type", post.mediaType.name)
+            put("likes_count", post.likesCount)
+            put("comments_count", post.commentsCount)
+            put("gift_tips_total", post.giftTipsTotal)
+            put("is_ai_generated", post.isAiGenerated)
+            put("comments_disabled", post.commentsDisabled)
+            put("hide_likes", post.hideLikeCount)
+            put("hide_shares", post.hideShareCount)
+            put("scheduled_at", post.scheduledAt)
+            put("alt_text", post.altText)
+            put("applied_filter", post.appliedFilter)
+            put("overlay_text", post.overlayText)
+            put("cta_url", post.ctaUrl)
+            put("cta_label", post.ctaLabel)
+            put("is_paid_partnership", post.isPaidPartnership)
+            put("promotion_status", post.promotionStatus)
+            put("promotion_budget", post.promotionBudget)
+            put("is_sponsored", post.isSponsored)
+            put("created_at", TimeUtils.formatIsoTimestamp(System.currentTimeMillis()))
+        }
+
+        try {
+            connection.outputStream.use { os ->
+                os.write(payload.toString().toByteArray(Charsets.UTF_8))
+            }
+
+            val resCode = connection.responseCode
+            val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
+            val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
+
+            Log.d(TAG, "Posts DB Insert HTTP Response Code: $resCode | Body: $resText")
+
+            if (resCode in 200..299) {
+                Log.d(TAG, "Posts DB Insert SUCCESS")
+                return@withContext true
+            } else {
+                val errMsg = parseSupabaseError(resText, resCode)
+                Log.e(TAG, "Posts DB Insert Failed -> Code $resCode | Error: $errMsg")
+                throw Exception("Database insert failed (HTTP $resCode): $errMsg")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Posts DB Insert Exception", e)
+            throw Exception(e.localizedMessage ?: "Network error during post insert.")
         }
     }
 
