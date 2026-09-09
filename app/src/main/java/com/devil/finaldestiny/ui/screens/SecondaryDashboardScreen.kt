@@ -57,6 +57,18 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devil.finaldestiny.data.SupabaseAuthClient
@@ -203,9 +215,28 @@ fun SecondaryDashboardScreen(
         }
     }
 
-    val storyRingGradient = Brush.linearGradient(
-        colors = listOf(BrightCyanAccent, SkyBluePrimary, VerifiedBlue)
+    val infiniteTransition = rememberInfiniteTransition(label = "StoryRingRotation")
+    val storyRingRotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 3500, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "Rotation"
     )
+
+    val userStory = remember(storyTrays, user) {
+        storyTrays.firstOrNull {
+            it.authorId == user.id || (user.name.isNotBlank() && it.authorName.equals(user.name, ignoreCase = true))
+        }
+    }
+
+    val displayStoryTrays = remember(storyTrays, user) {
+        storyTrays.filter {
+            it.authorId != user.id && !(user.name.isNotBlank() && it.authorName.equals(user.name, ignoreCase = true))
+        }
+    }
 
     PullToRefreshBox(
         isRefreshing = isRefreshing,
@@ -340,21 +371,43 @@ fun SecondaryDashboardScreen(
                 ) {
                     // Current User Profile Story Item with '+' Badge
                     item {
+                        val userHasActiveStory = userStory != null
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clickable { storyMediaLauncher.launch("*/*") }
+                            modifier = Modifier.clickable {
+                                if (userHasActiveStory) {
+                                    activeStoryView = userStory
+                                } else {
+                                    storyMediaLauncher.launch("*/*")
+                                }
+                            }
                         ) {
                             Box(
                                 contentAlignment = Alignment.Center,
                                 modifier = Modifier.size(64.dp)
                             ) {
-                                ProfileAvatarView(
-                                    name = user.name.ifBlank { "You" },
-                                    profilePictureUri = user.profilePictureUri,
-                                    size = 60.dp,
-                                    showBorder = true,
-                                    borderColor = SkyBluePrimary
-                                )
+                                if (userStory != null) {
+                                    AnimatedFireStoryRing(
+                                        modifier = Modifier.fillMaxSize(),
+                                        isViewed = userStory.isViewed,
+                                        rotationAngle = storyRingRotation
+                                    ) {
+                                        ProfileAvatarView(
+                                            name = user.name.ifBlank { "You" },
+                                            profilePictureUri = user.profilePictureUri,
+                                            size = 56.dp,
+                                            showBorder = false
+                                        )
+                                    }
+                                } else {
+                                    ProfileAvatarView(
+                                        name = user.name.ifBlank { "You" },
+                                        profilePictureUri = user.profilePictureUri,
+                                        size = 60.dp,
+                                        showBorder = true,
+                                        borderColor = SkyBluePrimary
+                                    )
+                                }
 
                                 // '+' Badge Overlay at Bottom-Right
                                 Box(
@@ -365,6 +418,7 @@ fun SecondaryDashboardScreen(
                                         .clip(CircleShape)
                                         .background(Color(0xFF2563EB))
                                         .border(1.5.dp, Color.White, CircleShape)
+                                        .clickable { storyMediaLauncher.launch("*/*") }
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Add,
@@ -380,7 +434,7 @@ fun SecondaryDashboardScreen(
                     }
 
                     // Active Followers / Friends Stories List
-                    items(storyTrays) { story ->
+                    items(displayStoryTrays) { story ->
                         val storyImageBitmap = rememberLoadedImage(context, story.mediaUri)
                         val relativeTime = TimeUtils.formatTimestamp(story.timestamp, story.createdAtEpochMs)
 
@@ -388,27 +442,33 @@ fun SecondaryDashboardScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.clickable { activeStoryView = story }
                         ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .size(60.dp)
-                                    .clip(CircleShape)
-                                    .background(SkyBlueBgLight)
-                                    .border(
-                                        width = 2.5.dp,
-                                        brush = if (story.isViewed) Brush.linearGradient(listOf(Color.LightGray, Color.Gray)) else storyRingGradient,
-                                        shape = CircleShape
-                                    )
+                            AnimatedFireStoryRing(
+                                modifier = Modifier.size(64.dp),
+                                isViewed = story.isViewed,
+                                rotationAngle = storyRingRotation
                             ) {
-                                if (storyImageBitmap != null) {
-                                    Image(
-                                        bitmap = storyImageBitmap,
-                                        contentDescription = story.authorName,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier.fillMaxSize()
-                                    )
-                                } else {
-                                    Text(text = story.authorName.take(1).uppercase(), fontSize = 20.sp, color = SkyBluePrimary, fontWeight = FontWeight.Bold)
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape)
+                                        .background(SkyBlueBgLight)
+                                ) {
+                                    if (storyImageBitmap != null) {
+                                        Image(
+                                            bitmap = storyImageBitmap,
+                                            contentDescription = story.authorName,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        Text(
+                                            text = story.authorName.take(1).uppercase(),
+                                            fontSize = 20.sp,
+                                            color = SkyBluePrimary,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
                                 }
                             }
                             Spacer(modifier = Modifier.height(4.dp))
@@ -1451,4 +1511,66 @@ internal fun ExoVideoPlayerView(
         },
         modifier = modifier
     )
+}
+
+@Composable
+fun AnimatedFireStoryRing(
+    modifier: Modifier = Modifier,
+    isViewed: Boolean = false,
+    rotationAngle: Float = 0f,
+    strokeWidth: Dp = 2.4.dp,
+    gapPadding: Dp = 2.dp,
+    content: @Composable () -> Unit
+) {
+    val fireGradientColors = remember {
+        listOf(
+            Color(0xFFFF0844), // Deep Crimson Red
+            Color(0xFFFF6B00), // Fiery Solar Orange
+            Color(0xFFFFD60A), // Radiant Sun Gold
+            Color(0xFFFF453A), // Electric Coral
+            Color(0xFFFF0844)  // Deep Crimson Red (Loop Back)
+        )
+    }
+    val viewedColor = remember { Color(0xFF3A3A3C) }
+
+    val density = LocalDensity.current
+    val strokeWidthPx = remember(density, strokeWidth, isViewed) {
+        with(density) { (if (isViewed) 1.5.dp else strokeWidth).toPx() }
+    }
+    val totalPadding = if (isViewed) 3.5.dp else (strokeWidth + gapPadding)
+
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .drawWithCache {
+                val radius = (size.minDimension - strokeWidthPx) / 2f
+                val brush = if (isViewed) {
+                    SolidColor(viewedColor)
+                } else {
+                    Brush.sweepGradient(colors = fireGradientColors)
+                }
+
+                onDrawWithContent {
+                    if (isViewed) {
+                        drawCircle(
+                            brush = brush,
+                            radius = radius,
+                            style = Stroke(width = strokeWidthPx)
+                        )
+                    } else {
+                        rotate(rotationAngle) {
+                            drawCircle(
+                                brush = brush,
+                                radius = radius,
+                                style = Stroke(width = strokeWidthPx)
+                            )
+                        }
+                    }
+                    drawContent()
+                }
+            }
+            .padding(totalPadding)
+    ) {
+        content()
+    }
 }
