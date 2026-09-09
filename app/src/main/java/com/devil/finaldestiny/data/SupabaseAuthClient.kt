@@ -11,6 +11,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
 import com.devil.finaldestiny.model.MomentPost
+import com.devil.finaldestiny.model.UserProfile
 import com.devil.finaldestiny.utils.TimeUtils
 
 sealed class AuthResult {
@@ -600,6 +601,135 @@ object SupabaseAuthClient {
             Log.e(TAG, "Posts DB Insert Failed -> Code $resCode | Error: $errMsg")
             throw Exception("Database insert failed (HTTP $resCode): $errMsg")
         }
+    }
+
+    /**
+     * Fetches all real community posts ordered by newest first from Supabase 'public.posts'
+     */
+    suspend fun fetchPostsFromSupabase(): List<MomentPost> = withContext(Dispatchers.IO) {
+        val posts = mutableListOf<MomentPost>()
+        try {
+            val baseUrl = supabaseUrl.trimEnd('/')
+            val endpoint = "$baseUrl/rest/v1/posts?select=*&order=created_at.desc"
+            Log.d(TAG, "GET /rest/v1/posts -> Fetching real posts from Supabase")
+            val url = URL(endpoint)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 8000
+                readTimeout = 8000
+                setRequestProperty("apikey", supabaseAnonKey)
+                setRequestProperty("Authorization", "Bearer ${currentSessionToken ?: supabaseAnonKey}")
+                setRequestProperty("Accept", "application/json")
+            }
+
+            val resCode = connection.responseCode
+            val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
+            val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
+            Log.d(TAG, "Fetch Posts HTTP Code: $resCode | Response length: ${resText.length}")
+
+            if (resCode in 200..299 && resText.isNotBlank()) {
+                val jsonArray = org.json.JSONArray(resText)
+                for (i in 0 until jsonArray.length()) {
+                    val obj = jsonArray.getJSONObject(i)
+                    val id = obj.optString("id", "p_${System.currentTimeMillis()}_$i")
+                    val userId = obj.optString("user_id", "")
+                    val caption = obj.optString("caption", "")
+                    val mediaUrl = obj.optString("media_url", "")
+                    val ctaLink = obj.optString("cta_link", null).takeIf { !it.isNullOrBlank() && it != "null" }
+                    val ctaLabel = obj.optString("cta_label", null).takeIf { !it.isNullOrBlank() && it != "null" }
+                    val isPaidPartnership = obj.optBoolean("is_paid_partnership", false)
+                    val createdAt = obj.optString("created_at", "")
+
+                    if (mediaUrl.isBlank()) continue
+
+                    val isVideo = mediaUrl.endsWith(".mp4", ignoreCase = true) || mediaUrl.contains("video", ignoreCase = true)
+                    val mediaType = if (isVideo) com.devil.finaldestiny.model.MediaType.REEL_VIDEO else com.devil.finaldestiny.model.MediaType.PHOTO
+
+                    val authorName = obj.optString("author_name", if (userId.isNotBlank()) "User_${userId.takeLast(4)}" else "Destiny User")
+                    val authorHandle = obj.optString("author_handle", if (userId.isNotBlank()) "@User_${userId.takeLast(4)}" else "@destiny_user")
+                    val authorAvatar = obj.optString("author_avatar", "https://picsum.photos/200/200?random=$i")
+
+                    posts.add(
+                        MomentPost(
+                            id = id,
+                            authorName = authorName,
+                            authorHandle = authorHandle,
+                            authorAvatar = authorAvatar,
+                            mediaUrl = mediaUrl,
+                            caption = caption,
+                            timestamp = TimeUtils.formatTimestamp(createdAt),
+                            likesCount = obj.optInt("likes_count", 0),
+                            commentsCount = obj.optInt("comments_count", 0),
+                            giftTipsTotal = 0,
+                            mediaType = mediaType,
+                            ctaUrl = ctaLink,
+                            ctaText = ctaLabel,
+                            ctaLabel = ctaLabel,
+                            isPaidPartnership = isPaidPartnership
+                        )
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch posts from Supabase REST", e)
+        }
+        posts
+    }
+
+    /**
+     * Fetches public profiles from Supabase 'public.profiles' excluding current user
+     */
+    suspend fun fetchDiscoverProfilesFromSupabase(excludeUserId: String? = null): List<UserProfile> = withContext(Dispatchers.IO) {
+        val profiles = mutableListOf<UserProfile>()
+        try {
+            val baseUrl = supabaseUrl.trimEnd('/')
+            val queryParam = if (!excludeUserId.isNullOrBlank()) "?id=neq.$excludeUserId&select=*" else "?select=*"
+            val endpoint = "$baseUrl/rest/v1/profiles$queryParam"
+            Log.d(TAG, "GET /rest/v1/profiles -> Fetching discover profiles from Supabase")
+            val url = URL(endpoint)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 8000
+                readTimeout = 8000
+                setRequestProperty("apikey", supabaseAnonKey)
+                setRequestProperty("Authorization", "Bearer ${currentSessionToken ?: supabaseAnonKey}")
+                setRequestProperty("Accept", "application/json")
+            }
+
+            val resCode = connection.responseCode
+            val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
+            val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
+            Log.d(TAG, "Fetch Discover Profiles HTTP Code: $resCode")
+
+            if (resCode in 200..299 && resText.isNotBlank()) {
+                val jsonArray = org.json.JSONArray(resText)
+                for (i in 0 until jsonArray.length()) {
+                    val obj = jsonArray.getJSONObject(i)
+                    val id = obj.optString("id", "")
+                    if (id.isBlank() || id == excludeUserId) continue
+
+                    val name = obj.optString("name", "Destiny Member")
+                    val handle = obj.optString("handle", "@destiny_member")
+                    val bio = obj.optString("bio", "Loving live talks & genuine connections ✨")
+                    val avatarUrl = obj.optString("avatar_url", "").takeIf { !it.isNullOrBlank() && it != "null" }
+                    val accountType = obj.optString("account_type", "Personal")
+
+                    profiles.add(
+                        UserProfile(
+                            id = id,
+                            handle = handle,
+                            name = name,
+                            bio = bio,
+                            profilePictureUri = avatarUrl,
+                            accountType = accountType
+                        )
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch discover profiles from Supabase", e)
+        }
+        profiles
     }
 
     private fun String?.isNull_or_blank_custom(): Boolean = this == null || this.trim().isEmpty()

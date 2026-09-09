@@ -140,6 +140,10 @@ class AppRepository {
         }
 
         fetchProfileFromSupabase(uniqueId)
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            refreshMomentsAndReels()
+            refreshDiscoverMatches()
+        }
     }
 
     fun fetchProfileFromSupabase(userId: String) {
@@ -963,8 +967,37 @@ class AppRepository {
     }
 
     suspend fun refreshMomentsAndReels() {
-        kotlinx.coroutines.delay(800)
-        // Refresh posts & reels feed order / timestamps
+        try {
+            val remotePosts = SupabaseAuthClient.fetchPostsFromSupabase()
+            if (remotePosts.isNotEmpty()) {
+                val existing = _momentPosts.value
+                val combined = (remotePosts + existing).distinctBy { it.id }
+                _momentPosts.value = combined
+                android.util.Log.d("[DestinyPosts]", "Fetched ${remotePosts.size} remote posts from Supabase. Total feed count: ${combined.size}")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("[DestinyPosts]", "Failed to refresh moments and reels from Supabase", e)
+        }
+    }
+
+    suspend fun refreshDiscoverMatches() {
+        try {
+            val currentId = _currentUser.value.id
+            val remoteProfiles = SupabaseAuthClient.fetchDiscoverProfilesFromSupabase(currentId)
+            if (remoteProfiles.isNotEmpty()) {
+                val newCards = remoteProfiles.mapIndexed { index, profile ->
+                    SwipeCard(
+                        id = "c_remote_${profile.id}",
+                        profile = profile,
+                        distanceKm = (index * 2 + 1) % 15 + 1
+                    )
+                }
+                _swipeCards.value = (newCards + _swipeCards.value).distinctBy { it.profile.id }
+                android.util.Log.d("[DestinyDiscover]", "Fetched ${remoteProfiles.size} discover profiles from Supabase.")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("[DestinyDiscover]", "Failed to refresh discover profiles from Supabase", e)
+        }
     }
 
     suspend fun refreshUserProfile() {
