@@ -508,31 +508,12 @@ object SupabaseAuthClient {
         Log.d(TAG, "POST /rest/v1/posts -> Ingesting Post ID: ${post.id} for User UID: $uid")
 
         val payload = JSONObject().apply {
-            put("id", post.id)
             put("user_id", uid)
-            put("author_name", post.authorName)
-            put("author_handle", post.authorHandle)
-            put("author_avatar", post.authorAvatar)
             put("caption", post.caption)
             put("media_url", post.mediaUrl)
-            put("media_type", post.mediaType.name)
-            put("likes_count", post.likesCount)
-            put("comments_count", post.commentsCount)
-            put("gift_tips_total", post.giftTipsTotal)
-            put("is_ai_generated", post.isAiGenerated)
-            put("comments_disabled", post.commentsDisabled)
-            put("hide_likes", post.hideLikeCount)
-            put("hide_shares", post.hideShareCount)
-            put("scheduled_at", post.scheduledAt)
-            put("alt_text", post.altText)
-            put("applied_filter", post.appliedFilter)
-            put("overlay_text", post.overlayText)
-            put("cta_url", post.ctaUrl)
-            put("cta_label", post.ctaLabel)
+            put("cta_link", if (post.ctaUrl.isNullOrBlank()) JSONObject.NULL else post.ctaUrl)
+            put("cta_label", if (post.ctaLabel.isNullOrBlank()) JSONObject.NULL else post.ctaLabel)
             put("is_paid_partnership", post.isPaidPartnership)
-            put("promotion_status", post.promotionStatus)
-            put("promotion_budget", post.promotionBudget)
-            put("is_sponsored", post.isSponsored)
             put("created_at", TimeUtils.formatIsoTimestamp(System.currentTimeMillis()))
         }
 
@@ -544,8 +525,8 @@ object SupabaseAuthClient {
                 readTimeout = 15000
                 setRequestProperty("apikey", supabaseAnonKey)
                 setRequestProperty("Authorization", "Bearer $tokenToUse")
-                setRequestProperty("Content-Type", "application/json; charset=utf-8")
-                setRequestProperty("Prefer", "return=representation")
+                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("Prefer", "return=minimal")
                 doOutput = true
             }
             connection.outputStream.use { os ->

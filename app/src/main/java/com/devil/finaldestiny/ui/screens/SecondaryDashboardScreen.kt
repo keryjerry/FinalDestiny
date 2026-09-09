@@ -1338,7 +1338,7 @@ fun SecondaryDashboardScreen(
                         uploadProgressPercentage = 0f
                         showCreatePostDialog = false
                         selectedMediaUri = null
-                        Toast.makeText(context, "✨ Post shared successfully!", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, "Post shared successfully! 🚀", Toast.LENGTH_LONG).show()
                     } catch (e: Exception) {
                         isUploadingMedia = false
                         uploadProgressPercentage = 0f
