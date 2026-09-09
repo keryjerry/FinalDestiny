@@ -115,6 +115,16 @@ fun UserProfileScreen(
 
     val scrollState = rememberScrollState()
 
+    val visualMediaLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri: Uri? ->
+        uri?.let {
+            val updated = user.copy(profilePictureUri = it.toString(), verifiedStatus = true)
+            onSaveProfile(updated)
+            Toast.makeText(context, "📸 Media uploaded to Profile!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -195,7 +205,13 @@ fun UserProfileScreen(
             ) {
                 // Left: '+' Icon
                 IconButton(
-                    onClick = { showPhotoOptionsDialog = true },
+                    onClick = {
+                        try {
+                            visualMediaLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        } catch (e: Exception) {
+                            galleryLauncher.launch("image/*")
+                        }
+                    },
                     modifier = Modifier.size(28.dp)
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Create", tint = Color.Black, modifier = Modifier.size(28.dp))
@@ -514,7 +530,19 @@ fun UserProfileScreen(
 
                     Button(
                         onClick = {
-                            Toast.makeText(context, "🔗 Profile Link Copied to Clipboard!", Toast.LENGTH_SHORT).show()
+                            val shareUrl = "https://finaldestiny.app/user/${user.handle.removePrefix("@")}"
+                            val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                            val clipData = android.content.ClipData.newPlainText("Profile Link", shareUrl)
+                            clipboardManager?.setPrimaryClip(clipData)
+
+                            val sendIntent = android.content.Intent().apply {
+                                action = android.content.Intent.ACTION_SEND
+                                putExtra(android.content.Intent.EXTRA_TEXT, "Check out ${user.name}'s profile on Final Destiny: $shareUrl")
+                                type = "text/plain"
+                            }
+                            val shareIntent = android.content.Intent.createChooser(sendIntent, "Share Profile via")
+                            context.startActivity(shareIntent)
+                            Toast.makeText(context, "🔗 Profile link copied & Share Sheet launched!", Toast.LENGTH_SHORT).show()
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEFEFEF)),
                         shape = RoundedCornerShape(8.dp),
@@ -686,7 +714,11 @@ fun UserProfileScreen(
                                 .clip(CircleShape)
                                 .border(1.dp, Color(0xFFC7C7CC), CircleShape)
                                 .clickable {
-                                    Toast.makeText(context, "Create new story highlight", Toast.LENGTH_SHORT).show()
+                                    try {
+                                        visualMediaLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                    } catch (e: Exception) {
+                                        galleryLauncher.launch("image/*")
+                                    }
                                 }
                         ) {
                             Icon(Icons.Default.Add, contentDescription = "New Highlight", tint = Color.Black, modifier = Modifier.size(24.dp))

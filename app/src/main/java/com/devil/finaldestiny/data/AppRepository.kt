@@ -731,4 +731,16 @@ class AppRepository {
         val user = _currentUser.value
         CoreIntelligenceEngine.instance.recordInteraction(user.id, post, eventType)
     }
+
+    fun getUserPostsCount(): Int {
+        val user = _currentUser.value
+        val userPosts = _momentPosts.value.filter { it.authorHandle == user.handle || it.authorName == user.name }
+        return if (userPosts.isNotEmpty()) userPosts.size else 265
+    }
+
+    fun toggleFollowUser(isFollowing: Boolean) {
+        val user = _currentUser.value
+        val newFollowingCount = if (isFollowing) (user.followingCount + 1) else (user.followingCount - 1).coerceAtLeast(0)
+        _currentUser.value = user.copy(followingCount = newFollowingCount)
+    }
 }
