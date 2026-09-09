@@ -117,7 +117,15 @@ data class MomentPost(
     val audioTrackId: String? = null,
     val qualityScore: Float = 0.85f,
     val phash: String? = null,
-    val viralVelocity: Float = 1.0f
+    val viralVelocity: Float = 1.0f,
+    val isAiGenerated: Boolean = false,
+    val commentsDisabled: Boolean = false,
+    val hideLikeCount: Boolean = false,
+    val hideShareCount: Boolean = false,
+    val scheduledAt: String? = null,
+    val altText: String? = null,
+    val appliedFilter: String? = null,
+    val overlayText: String? = null
 )
 
 data class StoryItem(

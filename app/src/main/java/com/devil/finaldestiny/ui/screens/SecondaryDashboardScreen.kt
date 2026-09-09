@@ -1134,128 +1134,36 @@ fun SecondaryDashboardScreen(
         )
     }
 
-    // CREATE POST OR REEL DIALOG (WITH MUSIC ATTACH BUTTON FOR REELS)
+    // FULL-BLEED INSTAGRAM NEW POST COMPOSER SCREEN OVERLAY
     if (showCreatePostDialog) {
-        AlertDialog(
-            onDismissRequest = { showCreatePostDialog = false },
-            containerColor = SkyBlueCardBg,
-            title = { Text(if (isReelUploadMode) "🎬 Upload Reel / Short Video" else "📸 Share Photo Moment", color = NavyTextPrimary, fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        text = if (isReelUploadMode) "Select a 9:16 vertical video from your storage to publish on the Reel feed:" else "Select an image from your device storage to post on the feed:",
-                        fontSize = 12.sp,
-                        color = SlateTextSecondary
-                    )
+        InstagramNewPostScreen(
+            mediaUri = selectedMediaUri,
+            isReel = isReelUploadMode,
+            onBack = {
+                showCreatePostDialog = false
+                selectedMediaUri = null
+            },
+            onPublish = { caption, mediaUri, audioTitle, audioArtist, audioUrl, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText ->
+                showCreatePostDialog = false
+                selectedMediaUri = null
 
-                    OutlinedTextField(
-                        value = captionInput,
-                        onValueChange = { captionInput = it },
-                        label = { Text(if (isReelUploadMode) "Reel Title & Hashtags" else "Caption & Hashtags", color = SlateTextSecondary, fontSize = 12.sp) },
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = SkyBluePrimary, unfocusedBorderColor = SkyBlueBorder, focusedTextColor = NavyTextPrimary, unfocusedTextColor = NavyTextPrimary),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Button(
-                        onClick = { postMediaLauncher.launch(if (isReelUploadMode) "video/*" else "image/*") },
-                        colors = ButtonDefaults.buttonColors(containerColor = SkyBlueHeader),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(if (isReelUploadMode) Icons.Default.Videocam else Icons.Default.PhotoLibrary, contentDescription = null, tint = SkyBluePrimary)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (selectedMediaUri != null) "✓ Media Selected (Tap to Change)" else if (isReelUploadMode) "📁 Select Video from Storage" else "📁 Select Image from Storage",
-                            color = NavyTextPrimary,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                coroutineScope.launch {
+                    isUploadingMedia = true
+                    uploadStatusText = if (isReelUploadMode) "Uploading Reel Video..." else "Uploading Moment Photo..."
+                    for (p in 1..10) {
+                        uploadProgressPercentage = p / 10f
+                        kotlinx.coroutines.delay(120)
                     }
 
                     if (isReelUploadMode) {
-                        Button(
-                            onClick = { showMusicPickerSheet = true },
-                            colors = ButtonDefaults.buttonColors(containerColor = SkyBlueHeader),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Default.MusicNote, contentDescription = null, tint = SkyBluePrimary)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (selectedAudioTrack != null) "🎵 Audio: ${selectedAudioTrack!!.title}" else "🎵 Attach Music Track",
-                                color = NavyTextPrimary,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        onPublishReel(caption, mediaUri, audioTitle, audioArtist, audioUrl)
+                    } else {
+                        onPublishPost(caption, mediaUri)
                     }
 
-                    if (selectedMediaUri != null) {
-                        val previewBitmap = rememberLoadedImage(context, selectedMediaUri)
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(140.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(SkyBlueBgLight)
-                                .border(1.dp, SkyBlueBorder, RoundedCornerShape(12.dp))
-                        ) {
-                            if (previewBitmap != null) {
-                                Image(
-                                    bitmap = previewBitmap,
-                                    contentDescription = "Preview",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            } else {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(Icons.Default.Videocam, contentDescription = null, tint = SkyBluePrimary)
-                                    Text("🎬 Video Selected & Ready to Upload", color = NavyTextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (captionInput.isNotBlank() || selectedMediaUri != null) {
-                            val caption = captionInput.ifBlank { if (isReelUploadMode) "New Reel Video! 🎬" else "Shared a new moment!" }
-                            val mediaUri = selectedMediaUri
-                            val isReel = isReelUploadMode
-                            val track = selectedAudioTrack
-
-                            captionInput = ""
-                            selectedMediaUri = null
-                            selectedAudioTrack = null
-                            showCreatePostDialog = false
-
-                            coroutineScope.launch {
-                                isUploadingMedia = true
-                                uploadStatusText = if (isReel) "Uploading Reel Video & Audio..." else "Uploading Photo..."
-                                for (p in 1..10) {
-                                    uploadProgressPercentage = p / 10f
-                                    kotlinx.coroutines.delay(140)
-                                }
-                                if (isReel) {
-                                    onPublishReel(caption, mediaUri, track?.title ?: "Original Audio", track?.artist ?: user.name, track?.audioUrl)
-                                } else {
-                                    onPublishPost(caption, mediaUri)
-                                }
-                                isUploadingMedia = false
-                                uploadProgressPercentage = 0f
-                                Toast.makeText(context, if (isReel) "✨ Reel Video Published to Feed!" else "✨ Moment Published to Feed!", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary)
-                ) {
-                    Text(if (isReelUploadMode) "Publish Reel 🎬" else "Publish Moment 📸", color = Color.White, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showCreatePostDialog = false }) {
-                    Text("Cancel", color = SlateTextSecondary)
+                    isUploadingMedia = false
+                    uploadProgressPercentage = 0f
+                    Toast.makeText(context, "✨ Published to Feed!", Toast.LENGTH_SHORT).show()
                 }
             }
         )
@@ -1380,7 +1288,7 @@ fun SecondaryDashboardScreen(
 }
 
 @Composable
-private fun rememberLoadedImage(context: Context, uriString: String?): ImageBitmap? {
+internal fun rememberLoadedImage(context: Context, uriString: String?): ImageBitmap? {
     return remember(uriString) {
         if (uriString.isNullOrBlank()) null
         else {
