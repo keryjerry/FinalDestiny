@@ -122,10 +122,10 @@ fun FloatingGalaxyNavPill(
             horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 1. HOME ICON
+            // 1. HOME ICON (Primary Hub / Dashboard)
             GalaxyNavItem(
-                isSelected = currentScreen == Screen.SECONDARY_FEED || currentScreen == Screen.PRIMARY_DASHBOARD,
-                onClick = { onNavigate(Screen.SECONDARY_FEED) }
+                isSelected = currentScreen == Screen.PRIMARY_DASHBOARD,
+                onClick = { onNavigate(Screen.PRIMARY_DASHBOARD) }
             ) { isSelected ->
                 Icon(
                     imageVector = Icons.Default.Home,
@@ -135,15 +135,15 @@ fun FloatingGalaxyNavPill(
                 )
             }
 
-            // 2. REELS ICON
+            // 2. REELS / FEED ICON (Destiny Live Moment Feed)
             GalaxyNavItem(
-                isSelected = false,
+                isSelected = currentScreen == Screen.SECONDARY_FEED,
                 onClick = { onNavigate(Screen.SECONDARY_FEED) }
             ) { isSelected ->
                 Icon(
                     imageVector = Icons.Default.Movie,
                     contentDescription = "Reels",
-                    tint = Color(0xFF94A3B8),
+                    tint = if (isSelected) Color(0xFF38BDF8) else Color(0xFF94A3B8),
                     modifier = Modifier.size(24.dp)
                 )
             }

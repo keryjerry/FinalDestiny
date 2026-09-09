@@ -84,17 +84,18 @@ fun PrimaryDashboardScreen(
                     }
                 }
                 .verticalScroll(scrollState)
-                .padding(14.dp)
+                .padding(horizontal = 12.dp, vertical = 10.dp)
+                .padding(bottom = 32.dp)
         ) {
         // User Profile Header Card with Realtime Notification Bell
         Card(
             colors = CardDefaults.cardColors(containerColor = CardBackground),
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, CrimsonVelvet, RoundedCornerShape(20.dp))
+                .border(1.dp, CrimsonVelvet, RoundedCornerShape(16.dp))
                 .clickable { onNavigateToProfile() }
-                .padding(12.dp)
+                .padding(10.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -108,26 +109,26 @@ fun PrimaryDashboardScreen(
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(50.dp)
+                            .size(44.dp)
                             .clip(CircleShape)
                             .background(WineRedDark)
-                            .border(2.dp, MetallicGold, CircleShape)
+                            .border(1.5.dp, MetallicGold, CircleShape)
                     ) {
-                        Text(text = user.name.take(1).uppercase(), fontSize = 22.sp, color = MetallicGold, fontWeight = FontWeight.Bold)
+                        Text(text = user.name.take(1).uppercase(), fontSize = 18.sp, color = MetallicGold, fontWeight = FontWeight.Bold)
                     }
 
-                    Spacer(modifier = Modifier.width(10.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(text = user.name, fontWeight = FontWeight.Bold, color = LightGold, fontSize = 15.sp)
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(text = user.name, fontWeight = FontWeight.Bold, color = LightGold, fontSize = 14.sp)
+                            Spacer(modifier = Modifier.width(4.dp))
                             if (user.verifiedStatus) {
-                                Text(text = "🛡️", fontSize = 11.sp)
+                                Text(text = "🛡️", fontSize = 10.sp)
                             }
                         }
-                        Text(text = user.handle, fontSize = 11.sp, color = LightGold.copy(0.7f))
-                        Spacer(modifier = Modifier.height(3.dp))
+                        Text(text = user.handle, fontSize = 10.sp, color = LightGold.copy(0.7f))
+                        Spacer(modifier = Modifier.height(2.dp))
                         VipBadge(vipLevel = user.vipLevel)
                     }
                 }
@@ -135,7 +136,7 @@ fun PrimaryDashboardScreen(
                 // Top Right Action Controls: Notification Bell 🔔 & Settings ⚙️
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     NotificationBellButton(
                         notifications = notifications,
@@ -149,15 +150,15 @@ fun PrimaryDashboardScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         // INSTAGRAM MOMENTS & REELS FEED BANNER (TAP OR SWIPE LEFT TO OPEN)
         Card(
             colors = CardDefaults.cardColors(containerColor = SkyBlueHeader),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(14.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, BrightCyanAccent, RoundedCornerShape(16.dp))
+                .border(1.dp, BrightCyanAccent, RoundedCornerShape(14.dp))
                 .clickable { onNavigateToSecondaryFeed() }
         ) {
             Row(
@@ -165,10 +166,10 @@ fun PrimaryDashboardScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("📸", fontSize = 20.sp)
+                    Text("📸", fontSize = 18.sp)
                     Spacer(modifier = Modifier.width(8.dp))
                     Column {
                         Text("Destiny Live Moment Feed", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = NavyTextPrimary)
@@ -179,15 +180,15 @@ fun PrimaryDashboardScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         // ABOUT US & CREATOR MONETIZATION PROGRAM BANNER
         Card(
             colors = CardDefaults.cardColors(containerColor = SkyBlueCardBg),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(14.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, SkyBlueBorder, RoundedCornerShape(16.dp))
+                .border(1.dp, SkyBlueBorder, RoundedCornerShape(14.dp))
                 .clickable { onNavigateToAboutUs() }
         ) {
             Row(
@@ -195,10 +196,10 @@ fun PrimaryDashboardScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("🚀", fontSize = 20.sp)
+                    Text("🚀", fontSize = 18.sp)
                     Spacer(modifier = Modifier.width(8.dp))
                     Column {
                         Text("About Final Destiny & Monetization", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = NavyTextPrimary)
@@ -209,62 +210,62 @@ fun PrimaryDashboardScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         // QUICK METRICS SUMMARY
         Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
             Card(
                 colors = CardDefaults.cardColors(containerColor = CardBackground),
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.weight(1f).border(1.dp, CrimsonVelvet, RoundedCornerShape(14.dp)).padding(10.dp)
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.weight(1f).border(1.dp, CrimsonVelvet, RoundedCornerShape(12.dp)).padding(6.dp)
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                    Text("💰 Coins", fontSize = 10.sp, color = LightGold.copy(0.7f))
-                    Text("${user.coins}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
+                    Text("💰 Coins", fontSize = 9.sp, color = LightGold.copy(0.7f))
+                    Text("${user.coins}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
                 }
             }
 
             Card(
                 colors = CardDefaults.cardColors(containerColor = CardBackground),
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.weight(1f).border(1.dp, CrimsonVelvet, RoundedCornerShape(14.dp)).padding(10.dp)
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.weight(1f).border(1.dp, CrimsonVelvet, RoundedCornerShape(12.dp)).padding(6.dp)
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                    Text("💎 Diamonds", fontSize = 10.sp, color = LightGold.copy(0.7f))
-                    Text("${user.diamonds}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
+                    Text("💎 Diamonds", fontSize = 9.sp, color = LightGold.copy(0.7f))
+                    Text("${user.diamonds}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
                 }
             }
 
             Card(
                 colors = CardDefaults.cardColors(containerColor = CardBackground),
-                shape = RoundedCornerShape(14.dp),
-                modifier = Modifier.weight(1f).border(1.dp, CrimsonVelvet, RoundedCornerShape(14.dp)).padding(10.dp)
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.weight(1f).border(1.dp, CrimsonVelvet, RoundedCornerShape(12.dp)).padding(6.dp)
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                    Text("👥 Followers", fontSize = 10.sp, color = LightGold.copy(0.7f))
-                    Text("${user.followerCount}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = LightGold)
+                    Text("👥 Followers", fontSize = 9.sp, color = LightGold.copy(0.7f))
+                    Text("${user.followerCount}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = LightGold)
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         // CORE APPLICATION HUB CARDS
         Text("CORE APPLICATION HUBS", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MetallicGold, letterSpacing = 1.sp)
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
         // 1. Live Audio Sofa Room Hub
         Card(
             colors = CardDefaults.cardColors(containerColor = CardBackground),
-            shape = RoundedCornerShape(18.dp),
+            shape = RoundedCornerShape(14.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, MetallicGold, RoundedCornerShape(18.dp))
+                .border(1.dp, MetallicGold, RoundedCornerShape(14.dp))
                 .clickable { onNavigateToAudioRoom() }
-                .padding(14.dp)
+                .padding(10.dp)
         ) {
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -275,33 +276,33 @@ fun PrimaryDashboardScreen(
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(44.dp)
+                            .size(38.dp)
                             .clip(CircleShape)
                             .background(WineRedMedium)
                     ) {
-                        Icon(Icons.Default.Mic, contentDescription = null, tint = MetallicGold, modifier = Modifier.size(24.dp))
+                        Icon(Icons.Default.Mic, contentDescription = null, tint = MetallicGold, modifier = Modifier.size(20.dp))
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
                     Column {
-                        Text("10-Mic Red Velvet Audio Room", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = LightGold)
+                        Text("10-Mic Red Velvet Audio Room", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = LightGold)
                         Text("Achat Style Sofa Seats & MP3 Jukebox", fontSize = 10.sp, color = LightGold.copy(0.7f))
                     }
                 }
-                Text("Enter 🎙️", fontSize = 12.sp, color = MetallicGold, fontWeight = FontWeight.Bold)
+                Text("Enter 🎙️", fontSize = 11.sp, color = MetallicGold, fontWeight = FontWeight.Bold)
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         // 2. Video Broadcast & Co-Watching Stage
         Card(
             colors = CardDefaults.cardColors(containerColor = CardBackground),
-            shape = RoundedCornerShape(18.dp),
+            shape = RoundedCornerShape(14.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, CrimsonVelvet, RoundedCornerShape(18.dp))
+                .border(1.dp, CrimsonVelvet, RoundedCornerShape(14.dp))
                 .clickable { onNavigateToVideoRoom() }
-                .padding(14.dp)
+                .padding(10.dp)
         ) {
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -312,33 +313,33 @@ fun PrimaryDashboardScreen(
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(44.dp)
+                            .size(38.dp)
                             .clip(CircleShape)
                             .background(WineRedMedium)
                     ) {
-                        Icon(Icons.Default.Videocam, contentDescription = null, tint = LiveIndicatorGreen, modifier = Modifier.size(24.dp))
+                        Icon(Icons.Default.Videocam, contentDescription = null, tint = LiveIndicatorGreen, modifier = Modifier.size(20.dp))
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
                     Column {
-                        Text("HD Video Broadcast & YouTube Sync Stage", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = LightGold)
+                        Text("HD Video Broadcast & YouTube Sync Stage", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = LightGold)
                         Text("Live Cam Stream & YouTube Co-Watching", fontSize = 10.sp, color = LightGold.copy(0.7f))
                     }
                 }
-                Text("Watch 📹", fontSize = 12.sp, color = LiveIndicatorGreen, fontWeight = FontWeight.Bold)
+                Text("Watch 📹", fontSize = 11.sp, color = LiveIndicatorGreen, fontWeight = FontWeight.Bold)
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         // 3. Instagram Social Moments Feed Card
         Card(
             colors = CardDefaults.cardColors(containerColor = CardBackground),
-            shape = RoundedCornerShape(18.dp),
+            shape = RoundedCornerShape(14.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, CrimsonVelvet, RoundedCornerShape(18.dp))
+                .border(1.dp, CrimsonVelvet, RoundedCornerShape(14.dp))
                 .clickable { onNavigateToSecondaryFeed() }
-                .padding(14.dp)
+                .padding(10.dp)
         ) {
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -349,33 +350,33 @@ fun PrimaryDashboardScreen(
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(44.dp)
+                            .size(38.dp)
                             .clip(CircleShape)
                             .background(WineRedMedium)
                     ) {
-                        Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = MetallicGold, modifier = Modifier.size(24.dp))
+                        Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = MetallicGold, modifier = Modifier.size(20.dp))
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
                     Column {
-                        Text("Instagram Share Moments & Stories Feed", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = LightGold)
+                        Text("Instagram Share Moments & Stories Feed", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = LightGold)
                         Text("Post Images/Videos & Build Organic Followers", fontSize = 10.sp, color = LightGold.copy(0.7f))
                     }
                 }
-                Text("Explore 📸", fontSize = 12.sp, color = MetallicGold, fontWeight = FontWeight.Bold)
+                Text("Explore 📸", fontSize = 11.sp, color = MetallicGold, fontWeight = FontWeight.Bold)
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         // 4. Tinder 9:16 Swipe Match Portal
         Card(
             colors = CardDefaults.cardColors(containerColor = CardBackground),
-            shape = RoundedCornerShape(18.dp),
+            shape = RoundedCornerShape(14.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, CrimsonVelvet, RoundedCornerShape(18.dp))
+                .border(1.dp, CrimsonVelvet, RoundedCornerShape(14.dp))
                 .clickable { onNavigateToSwipe() }
-                .padding(14.dp)
+                .padding(10.dp)
         ) {
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -386,58 +387,58 @@ fun PrimaryDashboardScreen(
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(44.dp)
+                            .size(38.dp)
                             .clip(CircleShape)
                             .background(WineRedMedium)
                     ) {
-                        Icon(Icons.Default.Favorite, contentDescription = null, tint = HeartRed, modifier = Modifier.size(24.dp))
+                        Icon(Icons.Default.Favorite, contentDescription = null, tint = HeartRed, modifier = Modifier.size(20.dp))
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
+                    Spacer(modifier = Modifier.width(10.dp))
                     Column {
-                        Text("Discover Match Swipe Cards", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = LightGold)
+                        Text("Discover Match Swipe Cards", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = LightGold)
                         Text("Swipe Right for Match & Instant 1v1 Calls", fontSize = 10.sp, color = LightGold.copy(0.7f))
                     }
                 }
-                Text("Swipe ❤️", fontSize = 12.sp, color = HeartRed, fontWeight = FontWeight.Bold)
+                Text("Swipe ❤️", fontSize = 11.sp, color = HeartRed, fontWeight = FontWeight.Bold)
             }
         }
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         // 5. VIP Asset Store & Creator Monetization
         Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
             Card(
                 colors = CardDefaults.cardColors(containerColor = CardBackground),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(14.dp),
                 modifier = Modifier
                     .weight(1f)
-                    .border(1.dp, MetallicGold, RoundedCornerShape(16.dp))
+                    .border(1.dp, MetallicGold, RoundedCornerShape(14.dp))
                     .clickable { onNavigateToVipStore() }
-                    .padding(12.dp)
+                    .padding(10.dp)
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.Storefront, contentDescription = null, tint = MetallicGold, modifier = Modifier.size(28.dp))
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("VIP Store 👑", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
+                    Icon(Icons.Default.Storefront, contentDescription = null, tint = MetallicGold, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text("VIP Store 👑", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
                 }
             }
 
             Card(
                 colors = CardDefaults.cardColors(containerColor = CardBackground),
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(14.dp),
                 modifier = Modifier
                     .weight(1f)
-                    .border(1.dp, CrimsonVelvet, RoundedCornerShape(16.dp))
+                    .border(1.dp, CrimsonVelvet, RoundedCornerShape(14.dp))
                     .clickable { onNavigateToHostPortal() }
-                    .padding(12.dp)
+                    .padding(10.dp)
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.MonetizationOn, contentDescription = null, tint = LiveIndicatorGreen, modifier = Modifier.size(28.dp))
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("Creator Payouts 💵", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = LiveIndicatorGreen)
+                    Icon(Icons.Default.MonetizationOn, contentDescription = null, tint = LiveIndicatorGreen, modifier = Modifier.size(24.dp))
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text("Creator Payouts 💵", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = LiveIndicatorGreen)
                 }
             }
         }

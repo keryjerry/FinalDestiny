@@ -364,7 +364,8 @@ fun FinalDestinyApp(repository: AppRepository) {
                     analytics = creatorAnalytics,
                     onSubmitKyc = { aadhaar, pan, legalName -> repository.submitKycForm(aadhaar, pan, legalName) },
                     onRequestPayout = { amt, method, upiOrAccount -> repository.requestBankPayout(amt, method, upiOrAccount) },
-                    onRefresh = { repository.refreshCreatorAnalytics() }
+                    onRefresh = { repository.refreshCreatorAnalytics() },
+                    onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
                 )
 
                 Screen.FINAL_DESTINY_DATING -> FinalDestinyDatingScreen(
@@ -498,12 +499,14 @@ fun FinalDestinyApp(repository: AppRepository) {
                     }
                 }
 
-                FloatingGalaxyNavPill(
-                    currentScreen = currentScreen,
-                    user = user,
-                    unreadNotificationCount = notifications.count { !it.isRead },
-                    onNavigate = { destination -> currentScreen = destination }
-                )
+                if (currentScreen == Screen.SECONDARY_FEED) {
+                    FloatingGalaxyNavPill(
+                        currentScreen = currentScreen,
+                        user = user,
+                        unreadNotificationCount = notifications.count { !it.isRead },
+                        onNavigate = { destination -> currentScreen = destination }
+                    )
+                }
             }
         }
     }

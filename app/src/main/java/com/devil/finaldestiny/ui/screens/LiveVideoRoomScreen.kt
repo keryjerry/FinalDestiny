@@ -145,8 +145,8 @@ fun LiveVideoRoomScreen(
             .fillMaxSize()
             .background(selectedTheme.brush)
     ) {
-        // 1. FULL SCREEN NATIVE 9:16 CAMERA STREAM OR PLACEHOLDER
-        Box(modifier = Modifier.fillMaxSize()) {
+        // 1. TOP ~80% NATIVE 9:16 CAMERA STREAM VIEWPORT OR PLACEHOLDER
+        Box(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.80f)) {
             if (isVisionBlackoutTriggered) {
                 Box(
                     modifier = Modifier
@@ -522,14 +522,14 @@ fun LiveVideoRoomScreen(
                     }
                 }
 
-                // FLOATING CHAT STREAM CONTAINER (INSTAGRAM LIVE STYLE OVERLAY)
+                // FLOATING CHAT STREAM CONTAINER (INSTAGRAM LIVE STYLE OVERLAY - BOTTOM LEFT 70% WIDTH)
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xAA000000)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0x66000000)),
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .fillMaxWidth(0.70f)
                         .height(160.dp)
-                        .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(16.dp))
+                        .border(1.dp, Color.White.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
                         .padding(8.dp)
                 ) {
                     LazyColumn(

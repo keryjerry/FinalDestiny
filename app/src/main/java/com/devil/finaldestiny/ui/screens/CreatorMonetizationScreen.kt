@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -37,7 +38,8 @@ fun CreatorMonetizationScreen(
     analytics: CreatorAnalytics = CreatorAnalytics(),
     onSubmitKyc: (String, String, String) -> Unit,
     onRequestPayout: (Double, PaymentMethodType, String) -> String,
-    onRefresh: suspend () -> Unit = {}
+    onRefresh: suspend () -> Unit = {},
+    onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -75,64 +77,80 @@ fun CreatorMonetizationScreen(
         modifier = Modifier.fillMaxSize()
     ) {
         LazyColumn(
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
             modifier = Modifier
                 .fillMaxSize()
                 .background(PrimaryGradient)
         ) {
-            // CREATOR STUDIO TOP HEADER BAR
+            // CREATOR STUDIO COMPACT 56DP TOP HEADER BAR WITH BACK ARROW
             item {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(16.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(1.dp, MetallicGold.copy(0.7f), RoundedCornerShape(20.dp))
-                        .padding(14.dp)
+                        .height(56.dp)
+                        .border(1.dp, MetallicGold.copy(0.7f), RoundedCornerShape(16.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier
-                                        .size(42.dp)
-                                        .clip(CircleShape)
-                                        .background(WineRedMedium)
-                                        .border(1.5.dp, MetallicGold, CircleShape)
-                                ) {
-                                    Icon(Icons.Default.Analytics, contentDescription = null, tint = MetallicGold, modifier = Modifier.size(24.dp))
-                                }
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Column {
-                                    Text("📊 CREATOR STUDIO & ANALYTICS", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MetallicGold, letterSpacing = 0.5.sp)
-                                    Text("Velocity Metrics & Revenue Settlement", fontSize = 10.sp, color = LightGold)
-                                }
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(
+                                onClick = onBack,
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(CircleShape)
+                                    .background(WineRedMedium)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Back",
+                                    tint = MetallicGold,
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
 
-                            Card(
-                                colors = CardDefaults.cardColors(containerColor = LiveIndicatorGreen.copy(0.15f)),
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.border(1.dp, LiveIndicatorGreen, RoundedCornerShape(12.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(34.dp)
+                                    .clip(CircleShape)
+                                    .background(WineRedMedium)
+                                    .border(1.5.dp, MetallicGold, CircleShape)
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .clip(CircleShape)
-                                            .background(LiveIndicatorGreen)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("LIVE ANALYTICS", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = LiveIndicatorGreen)
-                                }
+                                Icon(Icons.Default.Analytics, contentDescription = null, tint = MetallicGold, modifier = Modifier.size(18.dp))
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text("📊 CREATOR STUDIO", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MetallicGold, letterSpacing = 0.5.sp)
+                                Text("Velocity & Revenue Settlement", fontSize = 9.sp, color = LightGold)
+                            }
+                        }
+
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = LiveIndicatorGreen.copy(0.15f)),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.border(1.dp, LiveIndicatorGreen, RoundedCornerShape(10.dp))
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(LiveIndicatorGreen)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("LIVE ANALYTICS", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = LiveIndicatorGreen)
                             }
                         }
                     }
@@ -700,18 +718,18 @@ private fun MetricVelocityCard(
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = CardBackground),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(14.dp),
         modifier = modifier
-            .border(1.dp, CrimsonVelvet, RoundedCornerShape(16.dp))
-            .padding(12.dp)
+            .border(1.dp, CrimsonVelvet, RoundedCornerShape(14.dp))
+            .padding(8.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, fontSize = 10.sp, color = LightGold.copy(0.7f))
-            Text(value, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
+            Text(value, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = if (isPositive) "↗ " else "↘ ",
-                    fontSize = 11.sp,
+                    fontSize = 10.sp,
                     color = if (isPositive) LiveIndicatorGreen else Color.Red
                 )
                 Text(
