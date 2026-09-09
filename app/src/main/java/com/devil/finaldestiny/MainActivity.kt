@@ -499,7 +499,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                     }
                 }
 
-                if (currentScreen == Screen.SECONDARY_FEED) {
+                if (currentScreen == Screen.PRIMARY_DASHBOARD || currentScreen == Screen.SECONDARY_FEED) {
                     FloatingGalaxyNavPill(
                         currentScreen = currentScreen,
                         user = user,

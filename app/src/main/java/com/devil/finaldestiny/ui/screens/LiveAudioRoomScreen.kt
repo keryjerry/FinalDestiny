@@ -123,6 +123,7 @@ fun LiveAudioRoomScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(selectedTheme.brush)
+            .statusBarsPadding()
             .padding(10.dp)
     ) {
         // CLEAN ACHAT-STYLE HOST HEADER BAR WITH BACK / EXIT & AVATAR SETTINGS
@@ -449,9 +450,10 @@ fun LiveAudioRoomScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
+                .heightIn(max = 140.dp)
                 .clip(RoundedCornerShape(14.dp))
-                .background(CardBackgroundTransparent)
-                .border(1.dp, CrimsonVelvet.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                .background(Color(0x33000000))
+                .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(14.dp))
                 .padding(8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
@@ -474,10 +476,14 @@ fun LiveAudioRoomScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // BOTTOM CHAT & GIFT ACTION BAR
+        // BOTTOM CHAT & GIFT ACTION BAR ANCHORED ABOVE SYSTEM NAV WITH IME KEYBOARD LIFT
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .imePadding()
+                .padding(bottom = 4.dp)
         ) {
             OutlinedTextField(
                 value = chatInput,

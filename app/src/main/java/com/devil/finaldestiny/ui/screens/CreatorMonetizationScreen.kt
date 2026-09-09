@@ -82,6 +82,7 @@ fun CreatorMonetizationScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(PrimaryGradient)
+                .statusBarsPadding()
         ) {
             // CREATOR STUDIO COMPACT 56DP TOP HEADER BAR WITH BACK ARROW
             item {

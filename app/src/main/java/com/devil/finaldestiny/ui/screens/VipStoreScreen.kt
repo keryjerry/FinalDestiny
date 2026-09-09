@@ -114,6 +114,7 @@ fun VipStoreScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(PrimaryGradient)
+                .statusBarsPadding()
                 .padding(14.dp)
         ) {
         // TOP HEADER BAR & DIAMOND BALANCE

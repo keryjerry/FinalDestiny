@@ -75,6 +75,7 @@ fun PrimaryDashboardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(PrimaryGradient)
+                .statusBarsPadding()
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures { _, dragAmount ->
                         // Swiping Left (negative dragAmount) navigates to Instagram Moments Feed!
@@ -85,7 +86,7 @@ fun PrimaryDashboardScreen(
                 }
                 .verticalScroll(scrollState)
                 .padding(horizontal = 12.dp, vertical = 10.dp)
-                .padding(bottom = 32.dp)
+                .padding(bottom = 90.dp)
         ) {
         // User Profile Header Card with Realtime Notification Bell
         Card(
@@ -331,44 +332,7 @@ fun PrimaryDashboardScreen(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // 3. Instagram Social Moments Feed Card
-        Card(
-            colors = CardDefaults.cardColors(containerColor = CardBackground),
-            shape = RoundedCornerShape(14.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, CrimsonVelvet, RoundedCornerShape(14.dp))
-                .clickable { onNavigateToSecondaryFeed() }
-                .padding(10.dp)
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(WineRedMedium)
-                    ) {
-                        Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = MetallicGold, modifier = Modifier.size(20.dp))
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
-                        Text("Instagram Share Moments & Stories Feed", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = LightGold)
-                        Text("Post Images/Videos & Build Organic Followers", fontSize = 10.sp, color = LightGold.copy(0.7f))
-                    }
-                }
-                Text("Explore 📸", fontSize = 11.sp, color = MetallicGold, fontWeight = FontWeight.Bold)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // 4. Tinder 9:16 Swipe Match Portal
+        // 3. Tinder 9:16 Swipe Match Portal
         Card(
             colors = CardDefaults.cardColors(containerColor = CardBackground),
             shape = RoundedCornerShape(14.dp),
