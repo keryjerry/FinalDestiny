@@ -138,6 +138,7 @@ fun SecondaryDashboardScreen(
     ) { uri: Uri? ->
         uri?.let {
             selectedMediaUri = it.toString()
+            showCreatePostDialog = true
             Toast.makeText(context, if (isReelUploadMode) "🎬 Reel Video Selected!" else "📸 Photo Selected!", Toast.LENGTH_SHORT).show()
         }
     }
@@ -400,7 +401,7 @@ fun SecondaryDashboardScreen(
                             )
                             .clickable {
                                 isReelUploadMode = true
-                                showCreatePostDialog = true
+                                postMediaLauncher.launch("video/*")
                             }
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -843,7 +844,7 @@ fun SecondaryDashboardScreen(
         FloatingActionButton(
             onClick = {
                 isReelUploadMode = false
-                showCreatePostDialog = true
+                postMediaLauncher.launch("image/*")
             },
             containerColor = SkyBluePrimary,
             contentColor = Color.White,
@@ -1034,7 +1035,7 @@ fun SecondaryDashboardScreen(
                         onClick = {
                             showAudioDetailSheetForPost = null
                             isReelUploadMode = true
-                            showCreatePostDialog = true
+                            postMediaLauncher.launch("video/*")
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary),
                         modifier = Modifier.fillMaxWidth()
