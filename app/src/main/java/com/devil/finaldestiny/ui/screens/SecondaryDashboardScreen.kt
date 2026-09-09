@@ -401,7 +401,7 @@ fun SecondaryDashboardScreen(
                             )
                             .clickable {
                                 isReelUploadMode = true
-                                postMediaLauncher.launch("video/*")
+                                postMediaLauncher.launch("*/*")
                             }
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1307,7 +1307,7 @@ internal fun rememberLoadedImage(context: Context, uriString: String?): ImageBit
 
 @OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
-private fun ExoVideoPlayerView(
+internal fun ExoVideoPlayerView(
     videoUri: String,
     modifier: Modifier = Modifier
 ) {

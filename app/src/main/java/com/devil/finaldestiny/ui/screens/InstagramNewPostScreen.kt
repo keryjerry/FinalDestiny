@@ -112,10 +112,11 @@ fun InstagramNewPostScreen(
     var globalTracks by remember { mutableStateOf<List<AudioTrack>>(emptyList()) }
     var isSearchingMusic by remember { mutableStateOf(false) }
 
-    // Photo Filters & Overlay State
+    // Photo Filters, Crop & Overlay State
     var selectedFilterIndex by remember { mutableIntStateOf(0) }
     var overlayTextValue by remember { mutableStateOf("") }
     var showOverlayTextDialog by remember { mutableStateOf(false) }
+    var cropAspectRatioLabel by remember { mutableStateOf("Aspect 9:16 (Full)") }
 
     val loadedBitmap = rememberLoadedImage(context, mediaUri)
 
@@ -247,13 +248,23 @@ fun InstagramNewPostScreen(
                     .height(260.dp)
                     .background(Color(0xFFF2F2F7))
             ) {
-                if (loadedBitmap != null) {
+                if (!mediaUri.isNullOrBlank() && (mediaUri.contains("video", ignoreCase = true) || isReel) && loadedBitmap == null) {
+                    ExoVideoPlayerView(
+                        videoUri = mediaUri,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else if (loadedBitmap != null) {
                     val filter = samplePhotoFilters[selectedFilterIndex].colorMatrix
                     Image(
                         bitmap = loadedBitmap,
                         contentDescription = "Media Preview",
                         contentScale = ContentScale.Crop,
                         colorFilter = if (filter != null) ColorFilter.colorMatrix(filter) else null,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else if (!mediaUri.isNullOrBlank()) {
+                    ExoVideoPlayerView(
+                        videoUri = mediaUri,
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
@@ -282,12 +293,25 @@ fun InstagramNewPostScreen(
                     }
                 }
 
-                // Top right tool buttons (Filter & Text Edit)
+                // Top right tool buttons (Crop & Aspect Ratio, Filter & Text Edit)
                 Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(12.dp)
                 ) {
+                    IconButton(
+                        onClick = {
+                            val ratios = listOf("Aspect 9:16 (Full)", "Aspect 4:5 (Standard)", "Aspect 1:1 (Square)")
+                            val nextRatio = ratios[(ratios.indexOf(cropAspectRatioLabel) + 1) % ratios.size]
+                            cropAspectRatioLabel = nextRatio
+                            Toast.makeText(context, "✂️ Crop: $nextRatio", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.size(36.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.5f))
+                    ) {
+                        Icon(Icons.Default.Crop, contentDescription = "Crop & Scale", tint = Color.White, modifier = Modifier.size(18.dp))
+                    }
+
                     IconButton(
                         onClick = { showOverlayTextDialog = true },
                         modifier = Modifier.size(36.dp).clip(CircleShape).background(Color.Black.copy(alpha = 0.5f))
