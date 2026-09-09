@@ -57,6 +57,16 @@ data class DirectMessageConversation(
     val isOnline: Boolean = true
 )
 
+data class AudioTrack(
+    val id: String,
+    val title: String,
+    val artist: String,
+    val albumCoverUrl: String? = null,
+    val audioUrl: String? = null,
+    val duration: String = "0:30",
+    val isSaved: Boolean = false
+)
+
 enum class MediaType { PHOTO, REEL_VIDEO }
 
 data class MomentComment(
@@ -90,7 +100,14 @@ data class MomentPost(
     val ctaUrl: String? = null,
     val videoDuration: String? = "0:30",
     val viewsCount: Int = 1420,
-    val createdAtEpochMs: Long = System.currentTimeMillis()
+    val createdAtEpochMs: Long = System.currentTimeMillis(),
+    val audioTitle: String? = "Susheela Raman • Ye Meera Deewanapan",
+    val audioArtist: String? = "Susheela Raman",
+    val audioUrl: String? = null,
+    val collaboratorName: String? = "mohanshakti",
+    val repostsCount: Int = 2327,
+    val sharesCount: Int = 1969,
+    val isSaved: Boolean = false
 )
 
 data class StoryItem(

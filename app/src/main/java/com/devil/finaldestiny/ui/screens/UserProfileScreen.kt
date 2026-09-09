@@ -130,7 +130,7 @@ fun UserProfileScreen(
         }
     }
 
-    val customAvatarBitmap = rememberLoadedImage(context, user.profilePictureUri)
+    val customAvatarBitmap = rememberProfileLoadedImage(context, user.profilePictureUri)
 
     // 3 PAGES OF MENU ITEMS BASED ON USER'S ATTACHED SCREENSHOTS
     val page1Items = listOf(
@@ -408,8 +408,65 @@ fun UserProfileScreen(
                     }
                 }
             }
+            }
 
             Spacer(modifier = Modifier.height(14.dp))
+
+            // DEDICATED "SAVED" POSTS GRID CARD (3x3 GRID OF BOOKMARKED POSTS)
+            Card(
+                colors = CardDefaults.cardColors(containerColor = CardBackground),
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, MetallicGold.copy(0.5f), RoundedCornerShape(20.dp))
+                    .padding(14.dp)
+            ) {
+                Column {
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("📌 Saved Moments & Reels", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
+                        Text("3x3 Grid", fontSize = 11.sp, color = LightGold.copy(0.7f))
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    val sampleSavedThumbnails = listOf(
+                        "https://picsum.photos/300/300?random=401",
+                        "https://picsum.photos/300/300?random=402",
+                        "https://picsum.photos/300/300?random=403",
+                        "https://picsum.photos/300/300?random=404",
+                        "https://picsum.photos/300/300?random=405",
+                        "https://picsum.photos/300/300?random=406"
+                    )
+
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(3),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(210.dp)
+                    ) {
+                        items(sampleSavedThumbnails) { uri ->
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .aspectRatio(1f)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(WineRedDark)
+                                    .border(1.dp, CrimsonVelvet, RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        onNavigateToSecondaryFeed()
+                                    }
+                            ) {
+                                Icon(Icons.Default.PhotoLibrary, contentDescription = "Saved Post", tint = MetallicGold, modifier = Modifier.size(24.dp))
+                            }
+                        }
+                    }
+                }
+            }
 
             if (!isEditing) {
                 // Profile Information Summary Card
@@ -559,7 +616,6 @@ fun UserProfileScreen(
             }
         }
     }
-}
 
     // FEEDBACK & COMPLAINT BOX DIALOG
     if (showComplaintModal) {
@@ -834,13 +890,13 @@ fun ProfileDetailRow(label: String, value: String) {
     }
 }
 
-private fun saveBitmapToCacheUri(context: Context, bitmap: Bitmap): Uri? {
+fun saveBitmapToCacheUri(context: Context, bitmap: Bitmap): Uri? {
     return try {
         val file = File(context.cacheBufferDir(), "selfie_${System.currentTimeMillis()}.jpg")
-        val stream = FileOutputStream(file)
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream)
-        stream.flush()
-        stream.close()
+        FileOutputStream(file).use { stream ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, stream)
+            stream.flush()
+        }
         Uri.fromFile(file)
     } catch (e: Exception) {
         e.printStackTrace()
@@ -848,14 +904,14 @@ private fun saveBitmapToCacheUri(context: Context, bitmap: Bitmap): Uri? {
     }
 }
 
-private fun Context.cacheBufferDir(): File {
+fun Context.cacheBufferDir(): File {
     val dir = File(cacheDir, "profile_photos")
     if (!dir.exists()) dir.mkdirs()
     return dir
 }
 
 @Composable
-private fun rememberLoadedImage(context: Context, uriString: String?): ImageBitmap? {
+fun rememberProfileLoadedImage(context: Context, uriString: String?): ImageBitmap? {
     return remember(uriString) {
         if (uriString.isNullOrBlank()) null
         else {

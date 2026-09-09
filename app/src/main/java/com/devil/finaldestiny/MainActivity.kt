@@ -338,11 +338,12 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onOpenNotifications = { currentScreen = Screen.NOTIFICATION },
                     onLikePost = { postId -> repository.toggleLikePost(postId) },
                     onPublishPost = { caption, mediaUri -> repository.postMoment(caption, mediaUri) },
-                    onPublishReel = { caption, mediaUri -> repository.postReelVideo(caption, mediaUri) },
+                    onPublishReel = { caption, mediaUri, audioTitle, audioArtist, audioUrl -> repository.postReelVideo(caption, mediaUri, audioTitle, audioArtist, audioUrl) },
                     onTipPost = { currentScreen = Screen.VIP_STORE },
                     onAddStory = { mediaUri -> repository.addStory(mediaUri) },
                     onAddComment = { postId, text -> repository.addCommentToPost(postId, text) },
                     onToggleFollowAuthor = { postId -> repository.toggleFollowPostAuthor(postId) },
+                    onToggleSavePost = { postId -> repository.toggleSavePost(postId) },
                     onStartLiveStream = {
                         isVideoRoomKeptInBackground = false
                         currentScreen = Screen.LIVE_VIDEO_ROOM

@@ -10,6 +10,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -21,15 +22,22 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Comment
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.NorthEast
 import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -40,14 +48,15 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devil.finaldestiny.model.AppNotification
+import com.devil.finaldestiny.model.AudioTrack
 import com.devil.finaldestiny.model.MediaType
-import com.devil.finaldestiny.model.MomentComment
 import com.devil.finaldestiny.model.MomentPost
 import com.devil.finaldestiny.model.StoryItem
 import com.devil.finaldestiny.model.UserProfile
@@ -68,11 +77,12 @@ fun SecondaryDashboardScreen(
     onOpenNotifications: () -> Unit = {},
     onLikePost: (String) -> Unit,
     onPublishPost: (String, String?) -> Unit,
-    onPublishReel: (String, String?) -> Unit = { _, _ -> },
+    onPublishReel: (String, String?, String?, String?, String?) -> Unit = { _, _, _, _, _ -> },
     onTipPost: (MomentPost) -> Unit,
     onAddStory: (String) -> Unit = {},
     onAddComment: (String, String) -> Unit = { _, _ -> },
     onToggleFollowAuthor: (String) -> Unit = {},
+    onToggleSavePost: (String) -> Unit = {},
     onStartLiveStream: () -> Unit = {},
     onRefresh: suspend () -> Unit = {},
     onBack: () -> Unit = {}
@@ -84,7 +94,28 @@ fun SecondaryDashboardScreen(
     var showCreatePostDialog by remember { mutableStateOf(false) }
     var isReelUploadMode by remember { mutableStateOf(false) }
     var showCommentsSheetForPost by remember { mutableStateOf<MomentPost?>(null) }
+    var showMoreOptionsMenuForPost by remember { mutableStateOf<MomentPost?>(null) }
+    var showAudioDetailSheetForPost by remember { mutableStateOf<MomentPost?>(null) }
+    var showDirectShareSheetForPost by remember { mutableStateOf<MomentPost?>(null) }
     var activeStoryView by remember { mutableStateOf<StoryItem?>(null) }
+
+    // Music Search Bottom Sheet State for Reel Upload
+    var showMusicPickerSheet by remember { mutableStateOf(false) }
+    var selectedAudioTrack by remember { mutableStateOf<AudioTrack?>(null) }
+    var musicSearchQuery by remember { mutableStateOf("") }
+    var musicTabState by remember { mutableIntStateOf(0) } // 0: Trending, 1: Saved
+    var playingPreviewAudioId by remember { mutableStateOf<String?>(null) }
+
+    // Sample Trending Audio Tracks
+    val sampleAudioTracks = remember {
+        listOf(
+            AudioTrack("a1", "Ye Meera Deewanapan Hai ✨", "Susheela Raman", duration = "0:30"),
+            AudioTrack("a2", "Destiny Acoustic Sunset 🎸", "Aarav Sharma", duration = "0:45"),
+            AudioTrack("a3", "Midnight Synth Beats 🎹", "DJ Arjun", duration = "0:30"),
+            AudioTrack("a4", "Bole Chudiyan (Remix) 💃", "Simran & Group", duration = "0:60"),
+            AudioTrack("a5", "Lo-Fi Coffee Chill ☕", "LoFi Girl", duration = "0:30")
+        )
+    }
 
     // Eligibility & Warning Dialog States for Go Live
     var showNotEligibleDialog by remember { mutableStateOf(false) }
@@ -405,79 +436,32 @@ fun SecondaryDashboardScreen(
                 }
             }
 
-            // FULL-BLEED EDGE-TO-EDGE FEED POSTS
+            // FULL-BLEED EDGE-TO-EDGE FEED POSTS WITH FULL INSTAGRAM OVERLAYS
             items(momentPosts) { post ->
                 val localBitmap = rememberLoadedImage(context, post.mediaUri)
                 val isReel = post.mediaType == MediaType.REEL_VIDEO
-                val postRelativeTime = TimeUtils.formatTimestamp(post.timestamp, post.createdAtEpochMs)
+                var isExpandedCaption by remember { mutableStateOf(false) }
 
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 12.dp)
+                        .padding(bottom = 14.dp)
                 ) {
-                    // AUTHOR HEADER (INSTAGRAM STYLE WITH HORIZONTAL PADDING)
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 8.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            ProfileAvatarView(
-                                name = post.authorName,
-                                profilePictureUri = post.authorAvatar,
-                                size = 38.dp,
-                                showBorder = true,
-                                borderColor = SkyBluePrimary
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Column {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(post.authorName, fontWeight = FontWeight.Bold, color = NavyTextPrimary, fontSize = 13.sp)
-                                    Text(" ✓", fontSize = 10.sp, color = VerifiedBlue, fontWeight = FontWeight.Bold)
-                                }
-                                if (post.isSponsored) {
-                                    Text("✨ ${post.sponsorName ?: "Brand Partnership"}", fontSize = 10.sp, color = SkyBluePrimary, fontWeight = FontWeight.Bold)
-                                } else {
-                                    Text("${post.authorHandle} • $postRelativeTime", fontSize = 10.sp, color = SlateTextSecondary)
-                                }
-                            }
-                        }
-
-                        // Follow Button
-                        Button(
-                            onClick = {
-                                onToggleFollowAuthor(post.id)
-                                Toast.makeText(
-                                    context,
-                                    if (post.isFollowingAuthor) "Unfollowed ${post.authorName}" else "❤️ Following ${post.authorName}!",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (post.isFollowingAuthor) SkyBlueHeader else SkyBluePrimary
-                            ),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                            modifier = Modifier.height(28.dp)
-                        ) {
-                            Text(
-                                text = if (post.isFollowingAuthor) "✓ Following" else "+ Follow",
-                                fontSize = 11.sp,
-                                color = if (post.isFollowingAuthor) NavyTextPrimary else Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-
-                    // FULL-BLEED MEDIA CONTAINER (0DP SIDE MARGINS TOUCHING SCREEN BORDERS)
+                    // FULL-BLEED MEDIA CONTAINER WITH TOP 4 & BOTTOM 6 INSTAGRAM OVERLAYS
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(if (isReel) 9f / 16f else 4f / 5f)
                             .background(NavyTextPrimary)
+                            .pointerInput(Unit) {
+                                detectTapGestures(
+                                    onDoubleTap = {
+                                        onLikePost(post.id)
+                                        Toast.makeText(context, "❤️ Loved!", Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+                            }
                     ) {
                         if (isReel && !post.mediaUri.isNullOrEmpty()) {
                             ExoVideoPlayerView(
@@ -509,15 +493,143 @@ fun SecondaryDashboardScreen(
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold
                                 )
-                                Text(
-                                    text = "Monetized Creator Media Feed",
-                                    color = Color.White.copy(0.7f),
-                                    fontSize = 11.sp
-                                )
                             }
                         }
 
-                        // OVERLAY BADGES FOR REELS
+                        // Top Gradient Scrim for Header Overlay Visibility
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(100.dp)
+                                .align(Alignment.TopCenter)
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(Color.Black.copy(0.65f), Color.Transparent)
+                                    )
+                                )
+                        )
+
+                        // ----------------------------------------------------
+                        // TOP 4 ACTIONS OVERLAY (MATCHING ANNOTATED SCREENSHOT)
+                        // ----------------------------------------------------
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .align(Alignment.TopCenter)
+                                .padding(horizontal = 12.dp, vertical = 10.dp)
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                // ARROW 1: Profile Avatar & Co-Author Header
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    ProfileAvatarView(
+                                        name = post.authorName,
+                                        profilePictureUri = post.authorAvatar,
+                                        size = 32.dp,
+                                        showBorder = true,
+                                        borderColor = Color.White
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = post.authorHandle.removePrefix("@"),
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        fontSize = 13.sp
+                                    )
+                                    Text(" ✓", fontSize = 10.sp, color = VerifiedBlue, fontWeight = FontWeight.Bold)
+
+                                    if (!post.collaboratorName.isNullOrBlank()) {
+                                        Text(
+                                            text = " and ",
+                                            color = Color.White.copy(0.85f),
+                                            fontSize = 12.sp
+                                        )
+                                        Text(
+                                            text = "${post.collaboratorName}",
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White,
+                                            fontSize = 13.sp
+                                        )
+                                        Text(" ✓", fontSize = 10.sp, color = VerifiedBlue, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                // ARROW 2: Tilted Arrow Music Pill (Susheela Raman • Ye Meera Deewanapan...)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable { showAudioDetailSheetForPost = post }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.NorthEast,
+                                        contentDescription = "Audio Track",
+                                        tint = Color.White.copy(0.9f),
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(3.dp))
+                                    Icon(
+                                        imageVector = Icons.Default.MusicNote,
+                                        contentDescription = "Music",
+                                        tint = Color.White.copy(0.9f),
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = post.audioTitle ?: "Susheela Raman • Ye Meera Deewanapan...",
+                                        color = Color.White.copy(0.9f),
+                                        fontSize = 11.sp,
+                                        maxLines = 1,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                // ARROW 3: High-End Translucent Follow Pill Button
+                                Surface(
+                                    onClick = {
+                                        onToggleFollowAuthor(post.id)
+                                        Toast.makeText(context, if (post.isFollowingAuthor) "Unfollowed" else "Following!", Toast.LENGTH_SHORT).show()
+                                    },
+                                    color = Color(0x33FFFFFF),
+                                    shape = RoundedCornerShape(8.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(0.6f)),
+                                    modifier = Modifier.height(28.dp)
+                                ) {
+                                    Box(
+                                        contentAlignment = Alignment.Center,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = if (post.isFollowingAuthor) "Following" else "Follow",
+                                            color = Color.White,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+
+                                // ARROW 4: More Options Three-Dots Menu Icon
+                                IconButton(
+                                    onClick = { showMoreOptionsMenuForPost = post },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = "More Options",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        // Reel Center Play Button Overlay
                         if (isReel) {
                             Box(
                                 contentAlignment = Alignment.Center,
@@ -532,122 +644,184 @@ fun SecondaryDashboardScreen(
                             ) {
                                 Icon(Icons.Default.PlayArrow, contentDescription = "Play", tint = Color.White, modifier = Modifier.size(32.dp))
                             }
-
-                            Row(
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .align(Alignment.TopCenter)
-                                    .padding(10.dp)
-                            ) {
-                                Surface(
-                                    color = Color.Black.copy(0.6f),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Text(
-                                        text = "🎬 REEL • ${post.videoDuration ?: "0:30"}",
-                                        color = Color.White,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
-                                }
-
-                                Surface(
-                                    color = Color.Black.copy(0.6f),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Text(
-                                        text = "👁️ ${post.viewsCount} views",
-                                        color = Color.White,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                    )
-                                }
-                            }
                         }
                     }
 
-                    // INTERACTIVE ENGAGEMENT BAR (PADDING 14.DP)
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
+                    // --------------------------------------------------------
+                    // BOTTOM 6 ENGAGEMENT OVERLAY (MATCHING REFERENCE IMAGE)
+                    // --------------------------------------------------------
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        // ENGAGEMENT ICONS BAR (Heart, Comment, Repost, Send DM, Bookmark)
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                // ARROW 1: Outlined / Filled Heart Icon with Counter
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(
+                                        onClick = {
+                                            onLikePost(post.id)
+                                            Toast.makeText(context, if (post.isLiked) "Unliked" else "❤️ Loved!", Toast.LENGTH_SHORT).show()
+                                        },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (post.isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                            contentDescription = "Like",
+                                            tint = if (post.isLiked) HeartRed else NavyTextPrimary,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                }
+
+                                // ARROW 2: Comment Speech Bubble Icon (1,969)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable { showCommentsSheetForPost = post }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.Comment,
+                                        contentDescription = "Comments",
+                                        tint = NavyTextPrimary,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "${post.commentsCount}",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = NavyTextPrimary
+                                    )
+                                }
+
+                                // ARROW 3: Share / Repost Counter (2,327)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable {
+                                        Toast.makeText(context, "🔁 Reposted Reel to your feed!", Toast.LENGTH_SHORT).show()
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Repeat,
+                                        contentDescription = "Repost",
+                                        tint = NavyTextPrimary,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "${post.repostsCount}",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = NavyTextPrimary
+                                    )
+                                }
+
+                                // ARROW 4: Direct Message / Send Paper Plane Icon
+                                IconButton(
+                                    onClick = { showDirectShareSheetForPost = post },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.Send,
+                                        contentDescription = "Share DM",
+                                        tint = NavyTextPrimary,
+                                        modifier = Modifier.size(22.dp)
+                                    )
+                                }
+                            }
+
+                            // ARROW 6: Bookmark Ribbon Icon (Save Button)
                             IconButton(
                                 onClick = {
-                                    onLikePost(post.id)
-                                    Toast.makeText(
-                                        context,
-                                        if (post.isLiked) "Unliked Post" else "❤️ Loved & Liked Moment!",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                                    onToggleSavePost(post.id)
+                                    Toast.makeText(context, if (post.isSaved) "Unsaved" else "📌 Saved to Profile!", Toast.LENGTH_SHORT).show()
                                 },
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier.size(28.dp)
                             ) {
                                 Icon(
-                                    imageVector = if (post.isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                    contentDescription = "Like",
-                                    tint = if (post.isLiked) HeartRed else NavyTextPrimary,
+                                    imageVector = if (post.isSaved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                                    contentDescription = "Save Post",
+                                    tint = if (post.isSaved) SkyBluePrimary else NavyTextPrimary,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("${post.likesCount}", fontSize = 12.sp, color = NavyTextPrimary, fontWeight = FontWeight.Bold)
-
-                            Spacer(modifier = Modifier.width(16.dp))
-
-                            IconButton(
-                                onClick = { showCommentsSheetForPost = post },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(Icons.AutoMirrored.Filled.Comment, contentDescription = "Comments", tint = NavyTextPrimary, modifier = Modifier.size(22.dp))
-                            }
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("${post.commentsCount}", fontSize = 12.sp, color = NavyTextPrimary, fontWeight = FontWeight.Bold)
                         }
 
-                        Button(
-                            onClick = { onTipPost(post) },
-                            colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                            modifier = Modifier.height(28.dp)
-                        ) {
-                            Icon(Icons.Default.MonetizationOn, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Tip 💎 ${post.giftTipsTotal}", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // Liked by Avatars & Text Summary
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Liked by ",
+                                fontSize = 12.sp,
+                                color = SlateTextSecondary
+                            )
+                            Text(
+                                text = "tithismily ",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NavyTextPrimary
+                            )
+                            Text(
+                                text = "and ",
+                                fontSize = 12.sp,
+                                color = SlateTextSecondary
+                            )
+                            Text(
+                                text = "others",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NavyTextPrimary
+                            )
                         }
-                    }
 
-                    // CAPTION & SPONSORED BRAND CTA (PADDING 14.DP)
-                    Column(modifier = Modifier.padding(horizontal = 14.dp)) {
-                        Text(text = post.caption, fontSize = 13.sp, color = NavyTextPrimary, fontWeight = FontWeight.Normal)
+                        Spacer(modifier = Modifier.height(4.dp))
 
-                        if (post.isSponsored) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Button(
-                                onClick = {
-                                    Toast.makeText(context, "🔗 Opening Brand Deal: ${post.ctaUrl}", Toast.LENGTH_SHORT).show()
+                        // ARROW 5: Author Caption, Mentions & Inline "...more" Toggle
+                        Row(verticalAlignment = Alignment.Top) {
+                            Text(
+                                text = buildString {
+                                    append(post.authorHandle.removePrefix("@"))
+                                    append(" ")
+                                    append(if (isExpandedCaption) post.caption else post.caption.take(45))
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = BrightCyanAccent),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.fillMaxWidth().height(36.dp)
-                            ) {
-                                Icon(Icons.Default.OpenInNew, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(post.ctaText ?: "Visit Brand Partner 🛍️", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                fontSize = 13.sp,
+                                color = NavyTextPrimary,
+                                maxLines = if (isExpandedCaption) Int.MAX_VALUE else 1
+                            )
+
+                            if (post.caption.length > 45 && !isExpandedCaption) {
+                                Text(
+                                    text = " ...more",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = SlateTextSecondary,
+                                    modifier = Modifier.clickable { isExpandedCaption = true }
+                                )
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = post.timestamp,
+                            fontSize = 10.sp,
+                            color = SlateTextSecondary
+                        )
                     }
 
                     HorizontalDivider(
                         color = SkyBlueBorder,
                         thickness = 0.5.dp,
-                        modifier = Modifier.padding(top = 14.dp)
+                        modifier = Modifier.padding(top = 10.dp)
                     )
                 }
             }
@@ -669,57 +843,264 @@ fun SecondaryDashboardScreen(
         }
     }
 
-    // 1. LIVE STREAM NOT ELIGIBLE DIALOG (< 500 FOLLOWERS)
+    // 1. MUSIC SEARCH & ATTACH BOTTOM SHEET DIALOG FOR REELS
+    if (showMusicPickerSheet) {
+        AlertDialog(
+            onDismissRequest = { showMusicPickerSheet = false },
+            containerColor = SkyBlueCardBg,
+            title = {
+                Column {
+                    Text("🎵 Select Audio Track for Reel", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = NavyTextPrimary)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    // Search Bar
+                    OutlinedTextField(
+                        value = musicSearchQuery,
+                        onValueChange = { musicSearchQuery = it },
+                        placeholder = { Text("Search music, tracks, artists...", fontSize = 12.sp, color = SlateTextSecondary) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = SlateTextSecondary, modifier = Modifier.size(18.dp)) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = SkyBluePrimary,
+                            unfocusedBorderColor = SkyBlueBorder,
+                            focusedTextColor = NavyTextPrimary,
+                            unfocusedTextColor = NavyTextPrimary
+                        ),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().height(48.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TabRow(selectedTabIndex = musicTabState) {
+                        Tab(selected = musicTabState == 0, onClick = { musicTabState = 0 }) {
+                            Text("Trending Tracks", fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(8.dp))
+                        }
+                        Tab(selected = musicTabState == 1, onClick = { musicTabState = 1 }) {
+                            Text("Saved Audio", fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(8.dp))
+                        }
+                    }
+                }
+            },
+            text = {
+                val tracks = sampleAudioTracks.filter {
+                    it.title.contains(musicSearchQuery, ignoreCase = true) ||
+                    it.artist.contains(musicSearchQuery, ignoreCase = true)
+                }
+
+                LazyColumn(modifier = Modifier.height(240.dp)) {
+                    items(tracks) { track ->
+                        val isPlaying = playingPreviewAudioId == track.id
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                IconButton(
+                                    onClick = {
+                                        playingPreviewAudioId = if (isPlaying) null else track.id
+                                    },
+                                    modifier = Modifier.size(36.dp).clip(CircleShape).background(SkyBlueHeader)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                        contentDescription = "Preview",
+                                        tint = SkyBluePrimary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(10.dp))
+
+                                Column {
+                                    Text(track.title, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = NavyTextPrimary)
+                                    Text("${track.artist} • ${track.duration}", fontSize = 10.sp, color = SlateTextSecondary)
+                                }
+                            }
+
+                            Button(
+                                onClick = {
+                                    selectedAudioTrack = track
+                                    showMusicPickerSheet = false
+                                    Toast.makeText(context, "🎵 Attached Track: ${track.title}", Toast.LENGTH_SHORT).show()
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                modifier = Modifier.height(28.dp)
+                            ) {
+                                Text("Add", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showMusicPickerSheet = false }) {
+                    Text("Close", color = SlateTextSecondary)
+                }
+            }
+        )
+    }
+
+    // 2. MORE OPTIONS BOTTOM SHEET DIALOG (ARROW 4 OVERLAY)
+    if (showMoreOptionsMenuForPost != null) {
+        val post = showMoreOptionsMenuForPost!!
+        AlertDialog(
+            onDismissRequest = { showMoreOptionsMenuForPost = null },
+            containerColor = SkyBlueCardBg,
+            title = { Text("Options", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = NavyTextPrimary) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = {
+                            showMoreOptionsMenuForPost = null
+                            Toast.makeText(context, "🔗 Link Copied to Clipboard!", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("🔗 Copy Link", color = NavyTextPrimary, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth())
+                    }
+
+                    TextButton(
+                        onClick = {
+                            showMoreOptionsMenuForPost = null
+                            Toast.makeText(context, "📲 Sharing post to external apps...", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("📲 Share to...", color = NavyTextPrimary, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth())
+                    }
+
+                    TextButton(
+                        onClick = {
+                            showMoreOptionsMenuForPost = null
+                            Toast.makeText(context, "🚫 Marked as Not Interested", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("🚫 Not Interested", color = SlateTextSecondary, modifier = Modifier.fillMaxWidth())
+                    }
+
+                    TextButton(
+                        onClick = {
+                            showMoreOptionsMenuForPost = null
+                            Toast.makeText(context, "🚩 Reported post to moderators", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("🚩 Report", color = HeartRed, fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth())
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showMoreOptionsMenuForPost = null }) {
+                    Text("Cancel", color = SlateTextSecondary)
+                }
+            }
+        )
+    }
+
+    // 3. AUDIO DETAILS BOTTOM SHEET DIALOG (ARROW 2 OVERLAY)
+    if (showAudioDetailSheetForPost != null) {
+        val post = showAudioDetailSheetForPost!!
+        AlertDialog(
+            onDismissRequest = { showAudioDetailSheetForPost = null },
+            containerColor = SkyBlueCardBg,
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.MusicNote, contentDescription = null, tint = SkyBluePrimary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(post.audioTitle ?: "Original Audio", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = NavyTextPrimary)
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("🎵 Audio Track: ${post.audioArtist ?: "Artist"}", fontSize = 12.sp, color = SlateTextSecondary)
+                    Text("🔥 Used in 4,280 Reels on Final Destiny", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = SkyBluePrimary)
+
+                    Button(
+                        onClick = {
+                            showAudioDetailSheetForPost = null
+                            isReelUploadMode = true
+                            showCreatePostDialog = true
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("🎬 Use this Audio for your Reel", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAudioDetailSheetForPost = null }) {
+                    Text("Close", color = SlateTextSecondary)
+                }
+            }
+        )
+    }
+
+    // 4. DIRECT SHARE FRIENDS LIST SHEET (BOTTOM 6 ARROW 4 DM SHARE)
+    if (showDirectShareSheetForPost != null) {
+        val post = showDirectShareSheetForPost!!
+        AlertDialog(
+            onDismissRequest = { showDirectShareSheetForPost = null },
+            containerColor = SkyBlueCardBg,
+            title = { Text("✈️ Send Post via Direct Message", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = NavyTextPrimary) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val friends = listOf("Ananya Roy", "Aarav Sharma", "Simran Kaur", "Vikram Malhotra", "Riya Kapoor")
+                    friends.forEach { friendName ->
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        ) {
+                            Text(friendName, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = NavyTextPrimary)
+                            Button(
+                                onClick = {
+                                    showDirectShareSheetForPost = null
+                                    Toast.makeText(context, "✈️ Sent post to $friendName!", Toast.LENGTH_SHORT).show()
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                modifier = Modifier.height(28.dp)
+                            ) {
+                                Text("Send", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDirectShareSheetForPost = null }) {
+                    Text("Close", color = SlateTextSecondary)
+                }
+            }
+        )
+    }
+
+    // 5. LIVE STREAM NOT ELIGIBLE DIALOG (< 500 FOLLOWERS)
     if (showNotEligibleDialog) {
         AlertDialog(
             onDismissRequest = { showNotEligibleDialog = false },
             containerColor = SkyBlueCardBg,
-            title = {
-                Text(
-                    text = "Live Stream Not Eligible",
-                    color = NavyTextPrimary,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
-            },
-            text = {
-                Text(
-                    text = "You need at least 500 followers to go live on Final Destiny. Keep creating content and growing your community!",
-                    color = SlateTextSecondary,
-                    fontSize = 13.sp
-                )
-            },
+            title = { Text("Live Stream Not Eligible", color = NavyTextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+            text = { Text("You need at least 500 followers to go live on Final Destiny. Keep creating content and growing your community!", color = SlateTextSecondary, fontSize = 13.sp) },
             confirmButton = {
-                Button(
-                    onClick = { showNotEligibleDialog = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary)
-                ) {
+                Button(onClick = { showNotEligibleDialog = false }, colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary)) {
                     Text("OK", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             }
         )
     }
 
-    // 2. COMMUNITY GUIDELINES & MODERATION WARNING DIALOG (>= 500 FOLLOWERS)
+    // 6. COMMUNITY GUIDELINES & MODERATION WARNING DIALOG (>= 500 FOLLOWERS)
     if (showCommunityGuidelinesDialog) {
         AlertDialog(
             onDismissRequest = { showCommunityGuidelinesDialog = false },
             containerColor = SkyBlueCardBg,
-            title = {
-                Text(
-                    text = "Community Guidelines Warning",
-                    color = NavyTextPrimary,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp
-                )
-            },
-            text = {
-                Text(
-                    text = "No vulgarity, nudity, or hate speech allowed. Violating streams will result in immediate termination and permanent account suspension/ban.",
-                    color = SlateTextSecondary,
-                    fontSize = 13.sp
-                )
-            },
+            title = { Text("Community Guidelines Warning", color = NavyTextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp) },
+            text = { Text("No vulgarity, nudity, or hate speech allowed. Violating streams will result in immediate termination and permanent account suspension/ban.", color = SlateTextSecondary, fontSize = 13.sp) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -740,18 +1121,12 @@ fun SecondaryDashboardScreen(
         )
     }
 
-    // CREATE POST OR REEL DIALOG (TRIGGERS PROGRESS TRACKING FOR BOTH PHOTOS & VIDEOS)
+    // CREATE POST OR REEL DIALOG (WITH MUSIC ATTACH BUTTON FOR REELS)
     if (showCreatePostDialog) {
         AlertDialog(
             onDismissRequest = { showCreatePostDialog = false },
             containerColor = SkyBlueCardBg,
-            title = {
-                Text(
-                    text = if (isReelUploadMode) "🎬 Upload Reel / Short Video" else "📸 Share Photo Moment",
-                    color = NavyTextPrimary,
-                    fontWeight = FontWeight.Bold
-                )
-            },
+            title = { Text(if (isReelUploadMode) "🎬 Upload Reel / Short Video" else "📸 Share Photo Moment", color = NavyTextPrimary, fontWeight = FontWeight.Bold) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
@@ -764,12 +1139,7 @@ fun SecondaryDashboardScreen(
                         value = captionInput,
                         onValueChange = { captionInput = it },
                         label = { Text(if (isReelUploadMode) "Reel Title & Hashtags" else "Caption & Hashtags", color = SlateTextSecondary, fontSize = 12.sp) },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = SkyBluePrimary,
-                            unfocusedBorderColor = SkyBlueBorder,
-                            focusedTextColor = NavyTextPrimary,
-                            unfocusedTextColor = NavyTextPrimary
-                        ),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = SkyBluePrimary, unfocusedBorderColor = SkyBlueBorder, focusedTextColor = NavyTextPrimary, unfocusedTextColor = NavyTextPrimary),
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -786,6 +1156,23 @@ fun SecondaryDashboardScreen(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
                         )
+                    }
+
+                    if (isReelUploadMode) {
+                        Button(
+                            onClick = { showMusicPickerSheet = true },
+                            colors = ButtonDefaults.buttonColors(containerColor = SkyBlueHeader),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.MusicNote, contentDescription = null, tint = SkyBluePrimary)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (selectedAudioTrack != null) "🎵 Audio: ${selectedAudioTrack!!.title}" else "🎵 Attach Music Track",
+                                color = NavyTextPrimary,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
 
                     if (selectedMediaUri != null) {
@@ -823,20 +1210,22 @@ fun SecondaryDashboardScreen(
                             val caption = captionInput.ifBlank { if (isReelUploadMode) "New Reel Video! 🎬" else "Shared a new moment!" }
                             val mediaUri = selectedMediaUri
                             val isReel = isReelUploadMode
+                            val track = selectedAudioTrack
 
                             captionInput = ""
                             selectedMediaUri = null
+                            selectedAudioTrack = null
                             showCreatePostDialog = false
 
                             coroutineScope.launch {
                                 isUploadingMedia = true
-                                uploadStatusText = if (isReel) "Uploading Reel Video..." else "Uploading Photo..."
+                                uploadStatusText = if (isReel) "Uploading Reel Video & Audio..." else "Uploading Photo..."
                                 for (p in 1..10) {
                                     uploadProgressPercentage = p / 10f
                                     kotlinx.coroutines.delay(140)
                                 }
                                 if (isReel) {
-                                    onPublishReel(caption, mediaUri)
+                                    onPublishReel(caption, mediaUri, track?.title ?: "Original Audio", track?.artist ?: user.name, track?.audioUrl)
                                 } else {
                                     onPublishPost(caption, mediaUri)
                                 }
@@ -891,12 +1280,7 @@ fun SecondaryDashboardScreen(
                             value = commentInputText,
                             onValueChange = { commentInputText = it },
                             placeholder = { Text("Add a comment...", color = SlateTextSecondary, fontSize = 11.sp) },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = SkyBluePrimary,
-                                unfocusedBorderColor = SkyBlueBorder,
-                                focusedTextColor = NavyTextPrimary,
-                                unfocusedTextColor = NavyTextPrimary
-                            ),
+                            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = SkyBluePrimary, unfocusedBorderColor = SkyBlueBorder, focusedTextColor = NavyTextPrimary, unfocusedTextColor = NavyTextPrimary),
                             singleLine = true,
                             modifier = Modifier.weight(1f).height(44.dp)
                         )

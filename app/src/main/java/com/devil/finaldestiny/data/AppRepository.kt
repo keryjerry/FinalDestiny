@@ -411,7 +411,13 @@ class AppRepository {
         _momentPosts.value = listOf(newPost) + _momentPosts.value
     }
 
-    fun postReelVideo(caption: String, mediaUri: String? = null) {
+    fun postReelVideo(
+        caption: String,
+        mediaUri: String? = null,
+        audioTitle: String? = "Susheela Raman • Ye Meera Deewanapan",
+        audioArtist: String? = "Susheela Raman",
+        audioUrl: String? = null
+    ) {
         val user = _currentUser.value
         val newReel = MomentPost(
             id = "reel_${System.currentTimeMillis()}",
@@ -428,9 +434,20 @@ class AppRepository {
             mediaUri = mediaUri,
             mediaType = MediaType.REEL_VIDEO,
             videoDuration = "0:30",
-            viewsCount = 1
+            viewsCount = 1,
+            audioTitle = audioTitle,
+            audioArtist = audioArtist,
+            audioUrl = audioUrl
         )
         _momentPosts.value = listOf(newReel) + _momentPosts.value
+    }
+
+    fun toggleSavePost(postId: String) {
+        _momentPosts.value = _momentPosts.value.map { post ->
+            if (post.id == postId) {
+                post.copy(isSaved = !post.isSaved)
+            } else post
+        }
     }
 
     fun addStory(mediaUri: String) {
