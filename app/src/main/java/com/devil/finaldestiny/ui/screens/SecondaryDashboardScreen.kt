@@ -79,8 +79,33 @@ fun SecondaryDashboardScreen(
     notifications: List<AppNotification> = emptyList(),
     onOpenNotifications: () -> Unit = {},
     onLikePost: (String) -> Unit,
-    onPublishPost: (String, String?) -> Unit,
-    onPublishReel: (String, String?, String?, String?, String?) -> Unit = { _, _, _, _, _ -> },
+    onPublishPost: (
+        caption: String,
+        mediaUri: String?,
+        isAiGenerated: Boolean,
+        commentsDisabled: Boolean,
+        hideLikes: Boolean,
+        hideShares: Boolean,
+        scheduledAt: String?,
+        altText: String?,
+        appliedFilter: String?,
+        overlayText: String?
+    ) -> Unit = { _, _, _, _, _, _, _, _, _, _ -> },
+    onPublishReel: (
+        caption: String,
+        mediaUri: String?,
+        audioTitle: String?,
+        audioArtist: String?,
+        audioUrl: String?,
+        isAiGenerated: Boolean,
+        commentsDisabled: Boolean,
+        hideLikes: Boolean,
+        hideShares: Boolean,
+        scheduledAt: String?,
+        altText: String?,
+        appliedFilter: String?,
+        overlayText: String?
+    ) -> Unit = { _, _, _, _, _, _, _, _, _, _, _, _, _ -> },
     onTipPost: (MomentPost) -> Unit,
     onAddStory: (String) -> Unit = {},
     onAddComment: (String, String) -> Unit = { _, _ -> },
@@ -1156,9 +1181,9 @@ fun SecondaryDashboardScreen(
                     }
 
                     if (isReelUploadMode) {
-                        onPublishReel(caption, mediaUri, audioTitle, audioArtist, audioUrl)
+                        onPublishReel(caption, mediaUri, audioTitle, audioArtist, audioUrl, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText)
                     } else {
-                        onPublishPost(caption, mediaUri)
+                        onPublishPost(caption, mediaUri, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText)
                     }
 
                     isUploadingMedia = false

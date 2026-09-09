@@ -393,7 +393,18 @@ class AppRepository {
         _matchedCard.value = null
     }
 
-    fun postMoment(caption: String, mediaUri: String? = null) {
+    fun postMoment(
+        caption: String,
+        mediaUri: String? = null,
+        isAiGenerated: Boolean = false,
+        commentsDisabled: Boolean = false,
+        hideLikes: Boolean = false,
+        hideShares: Boolean = false,
+        scheduledAt: String? = null,
+        altText: String? = null,
+        appliedFilter: String? = null,
+        overlayText: String? = null
+    ) {
         val user = _currentUser.value
         val newPost = MomentPost(
             id = "m_${System.currentTimeMillis()}",
@@ -402,13 +413,21 @@ class AppRepository {
             authorAvatar = user.profilePictureUri ?: "https://picsum.photos/100/100?random=1",
             mediaUrl = "https://picsum.photos/600/750?random=99",
             caption = caption,
-            timestamp = "Just now",
+            timestamp = if (!scheduledAt.isNullOrBlank()) "Scheduled: $scheduledAt" else "Just now",
             likesCount = 1,
             commentsCount = 0,
             giftTipsTotal = 0,
             isLiked = true,
             mediaUri = mediaUri,
-            mediaType = MediaType.PHOTO
+            mediaType = MediaType.PHOTO,
+            isAiGenerated = isAiGenerated,
+            commentsDisabled = commentsDisabled,
+            hideLikeCount = hideLikes,
+            hideShareCount = hideShares,
+            scheduledAt = scheduledAt,
+            altText = altText,
+            appliedFilter = appliedFilter,
+            overlayText = overlayText
         )
         _momentPosts.value = listOf(newPost) + _momentPosts.value
     }
@@ -418,7 +437,15 @@ class AppRepository {
         mediaUri: String? = null,
         audioTitle: String? = "Susheela Raman • Ye Meera Deewanapan",
         audioArtist: String? = "Susheela Raman",
-        audioUrl: String? = null
+        audioUrl: String? = null,
+        isAiGenerated: Boolean = false,
+        commentsDisabled: Boolean = false,
+        hideLikes: Boolean = false,
+        hideShares: Boolean = false,
+        scheduledAt: String? = null,
+        altText: String? = null,
+        appliedFilter: String? = null,
+        overlayText: String? = null
     ) {
         val user = _currentUser.value
         val newReel = MomentPost(
@@ -428,7 +455,7 @@ class AppRepository {
             authorAvatar = user.profilePictureUri ?: "https://picsum.photos/100/100?random=1",
             mediaUrl = "https://picsum.photos/540/960?random=105",
             caption = caption,
-            timestamp = "Just now",
+            timestamp = if (!scheduledAt.isNullOrBlank()) "Scheduled: $scheduledAt" else "Just now",
             likesCount = 1,
             commentsCount = 0,
             giftTipsTotal = 0,
@@ -439,7 +466,15 @@ class AppRepository {
             viewsCount = 1,
             audioTitle = audioTitle,
             audioArtist = audioArtist,
-            audioUrl = audioUrl
+            audioUrl = audioUrl,
+            isAiGenerated = isAiGenerated,
+            commentsDisabled = commentsDisabled,
+            hideLikeCount = hideLikes,
+            hideShareCount = hideShares,
+            scheduledAt = scheduledAt,
+            altText = altText,
+            appliedFilter = appliedFilter,
+            overlayText = overlayText
         )
         _momentPosts.value = listOf(newReel) + _momentPosts.value
     }

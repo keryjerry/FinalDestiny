@@ -1,5 +1,8 @@
 package com.devil.finaldestiny.data
 
+import android.content.Context
+import android.location.Geocoder
+import android.location.LocationManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -7,8 +10,51 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.util.Locale
 
 object GlobalLocationRepository {
+
+    suspend fun detectCurrentLocationWithGps(context: Context): String = withContext(Dispatchers.IO) {
+        try {
+            val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+            if (locationManager != null) {
+                val providers = locationManager.getProviders(true)
+                var bestLocation: android.location.Location? = null
+                for (provider in providers) {
+                    try {
+                        val loc = locationManager.getLastKnownLocation(provider) ?: continue
+                        if (bestLocation == null || loc.accuracy < bestLocation.accuracy) {
+                            bestLocation = loc
+                        }
+                    } catch (e: SecurityException) {
+                        // Permission or GPS hardware fallback
+                    }
+                }
+
+                if (bestLocation != null && Geocoder.isPresent()) {
+                    try {
+                        val geocoder = Geocoder(context, Locale.getDefault())
+                        @Suppress("DEPRECATION")
+                        val addresses = geocoder.getFromLocation(bestLocation.latitude, bestLocation.longitude, 1)
+                        if (!addresses.isNullOrEmpty()) {
+                            val address = addresses[0]
+                            val locality = address.locality ?: address.subAdminArea ?: address.adminArea
+                            val subLocality = address.subLocality ?: address.featureName
+                            if (!locality.isNullOrBlank()) {
+                                return@withContext if (!subLocality.isNullOrBlank() && subLocality != locality) "$subLocality, $locality" else "$locality, ${address.countryName ?: ""}"
+                            }
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
+        detectCurrentLocation()
+    }
 
     suspend fun detectCurrentLocation(): String = withContext(Dispatchers.IO) {
         try {

@@ -348,8 +348,12 @@ fun FinalDestinyApp(repository: AppRepository) {
                     notifications = notifications,
                     onOpenNotifications = { currentScreen = Screen.NOTIFICATION },
                     onLikePost = { postId -> repository.toggleLikePost(postId) },
-                    onPublishPost = { caption, mediaUri -> repository.postMoment(caption, mediaUri) },
-                    onPublishReel = { caption, mediaUri, audioTitle, audioArtist, audioUrl -> repository.postReelVideo(caption, mediaUri, audioTitle, audioArtist, audioUrl) },
+                    onPublishPost = { caption, mediaUri, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText ->
+                        repository.postMoment(caption, mediaUri, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText)
+                    },
+                    onPublishReel = { caption, mediaUri, audioTitle, audioArtist, audioUrl, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText ->
+                        repository.postReelVideo(caption, mediaUri, audioTitle, audioArtist, audioUrl, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText)
+                    },
                     onTipPost = { currentScreen = Screen.VIP_STORE },
                     onAddStory = { mediaUri -> repository.addStory(mediaUri) },
                     onAddComment = { postId, text -> repository.addCommentToPost(postId, text) },

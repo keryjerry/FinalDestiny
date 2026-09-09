@@ -129,7 +129,7 @@ fun InstagramNewPostScreen(
     var isSearchingLocation by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        val currentLoc = com.devil.finaldestiny.data.GlobalLocationRepository.detectCurrentLocation()
+        val currentLoc = com.devil.finaldestiny.data.GlobalLocationRepository.detectCurrentLocationWithGps(context)
         detectedCity = currentLoc
         selectedLocation = currentLoc
         locationChips = com.devil.finaldestiny.data.GlobalLocationRepository.generateLocationChipsForCity(currentLoc)
