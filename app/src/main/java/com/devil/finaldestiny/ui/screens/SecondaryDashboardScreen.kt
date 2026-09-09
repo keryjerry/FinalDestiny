@@ -139,6 +139,7 @@ fun SecondaryDashboardScreen(
     onAddComment: (String, String) -> Unit = { _, _ -> },
     onToggleFollowAuthor: (String) -> Unit = {},
     onToggleSavePost: (String) -> Unit = {},
+    onIncrementView: (String) -> Unit = {},
     onStartLiveStream: () -> Unit = {},
     onRefresh: suspend () -> Unit = {},
     onBack: () -> Unit = {}
@@ -573,7 +574,8 @@ fun SecondaryDashboardScreen(
                         if (isReel && !post.mediaUri.isNullOrEmpty()) {
                             ExoVideoPlayerView(
                                 videoUri = post.mediaUri,
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier.fillMaxSize(),
+                                onVideoPlay = { onIncrementView(post.id) }
                             )
                         } else if (localBitmap != null) {
                             Image(
@@ -1476,9 +1478,15 @@ internal fun rememberLoadedImage(context: Context, uriString: String?): ImageBit
 @Composable
 internal fun ExoVideoPlayerView(
     videoUri: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onVideoPlay: () -> Unit = {}
 ) {
     val context = LocalContext.current
+
+    LaunchedEffect(videoUri) {
+        onVideoPlay()
+    }
+
     val exoPlayer = remember(videoUri) {
         androidx.media3.exoplayer.ExoPlayer.Builder(context).build().apply {
             val mediaItem = androidx.media3.common.MediaItem.fromUri(Uri.parse(videoUri))

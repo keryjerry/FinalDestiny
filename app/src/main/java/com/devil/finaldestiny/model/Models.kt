@@ -108,7 +108,7 @@ data class MomentPost(
     val ctaText: String? = null,
     val ctaUrl: String? = null,
     val videoDuration: String? = "0:30",
-    val viewsCount: Int = 1420,
+    val viewsCount: Int = 0,
     val createdAtEpochMs: Long = System.currentTimeMillis(),
     val audioTitle: String? = "Susheela Raman • Ye Meera Deewanapan",
     val audioArtist: String? = "Susheela Raman",

@@ -1000,6 +1000,18 @@ class AppRepository {
         }
     }
 
+    fun incrementPostView(postId: String) {
+        if (postId.isBlank()) return
+        // Increment locally in StateFlow for immediate UI response
+        _momentPosts.value = _momentPosts.value.map { post ->
+            if (post.id == postId) post.copy(viewsCount = post.viewsCount + 1) else post
+        }
+        // Async RPC call to Supabase
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            SupabaseAuthClient.incrementPostView(postId)
+        }
+    }
+
     suspend fun refreshUserProfile() {
         kotlinx.coroutines.delay(800)
         // Refresh profile stats

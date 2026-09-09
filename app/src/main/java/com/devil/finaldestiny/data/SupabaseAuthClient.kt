@@ -639,6 +639,7 @@ object SupabaseAuthClient {
                     val ctaLabel = obj.optString("cta_label", null).takeIf { !it.isNullOrBlank() && it != "null" }
                     val isPaidPartnership = obj.optBoolean("is_paid_partnership", false)
                     val createdAt = obj.optString("created_at", "")
+                    val viewsCount = obj.optInt("views_count", 0)
 
                     if (mediaUrl.isBlank()) continue
 
@@ -660,6 +661,7 @@ object SupabaseAuthClient {
                             timestamp = TimeUtils.formatTimestamp(createdAt),
                             likesCount = obj.optInt("likes_count", 0),
                             commentsCount = obj.optInt("comments_count", 0),
+                            viewsCount = viewsCount,
                             giftTipsTotal = 0,
                             mediaType = mediaType,
                             ctaUrl = ctaLink,
@@ -674,6 +676,47 @@ object SupabaseAuthClient {
             Log.e(TAG, "Failed to fetch posts from Supabase REST", e)
         }
         posts
+    }
+
+    /**
+     * Supabase RPC call: increment_post_view(target_post_id)
+     * Atomically increments views_count in public.posts
+     */
+    suspend fun incrementPostView(postId: String): Boolean = withContext(Dispatchers.IO) {
+        if (postId.isBlank()) return@withContext false
+        try {
+            val baseUrl = supabaseUrl.trimEnd('/')
+            val endpoint = "$baseUrl/rest/v1/rpc/increment_post_view"
+            Log.d(TAG, "POST /rest/v1/rpc/increment_post_view -> Target Post ID: $postId")
+            val url = URL(endpoint)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 6000
+                readTimeout = 6000
+                setRequestProperty("apikey", supabaseAnonKey)
+                setRequestProperty("Authorization", "Bearer ${currentSessionToken ?: supabaseAnonKey}")
+                setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                setRequestProperty("Accept", "application/json")
+                doOutput = true
+            }
+
+            val payload = JSONObject().apply {
+                put("target_post_id", postId)
+            }
+
+            connection.outputStream.use { os ->
+                os.write(payload.toString().toByteArray(Charsets.UTF_8))
+            }
+
+            val resCode = connection.responseCode
+            val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
+            val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
+            Log.d(TAG, "RPC increment_post_view Response -> Code: $resCode | Body: $resText")
+            resCode in 200..299
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to execute RPC increment_post_view", e)
+            false
+        }
     }
 
     /**

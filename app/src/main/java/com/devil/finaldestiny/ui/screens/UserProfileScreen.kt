@@ -208,18 +208,35 @@ fun UserProfileScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
-                // Left: '+' Icon
-                IconButton(
-                    onClick = {
-                        try {
-                            visualMediaLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                        } catch (e: Exception) {
-                            galleryLauncher.launch("image/*")
-                        }
-                    },
-                    modifier = Modifier.size(28.dp)
+                // Left: Back Arrow (Pop back to Primary Dashboard) & '+' Create Icon
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Create", tint = Color.Black, modifier = Modifier.size(28.dp))
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back to Dashboard",
+                            tint = Color.Black,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+
+                    IconButton(
+                        onClick = {
+                            try {
+                                visualMediaLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            } catch (e: Exception) {
+                                galleryLauncher.launch("image/*")
+                            }
+                        },
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Create", tint = Color.Black, modifier = Modifier.size(28.dp))
+                    }
                 }
 
                 // Center/Left: Username with Chevron and Red Dot (Opens Multi-Account Switcher)
@@ -1007,19 +1024,71 @@ fun UserProfileScreen(
                                 .heightIn(max = 600.dp)
                         ) {
                             items(reelPosts) { reel ->
+                                val bitmap = rememberProfileLoadedImage(context, reel.mediaUrl)
+                                val realViews = reel.viewsCount.toLong()
+                                val displayViews = when {
+                                    realViews >= 1_000_000 -> String.format(java.util.Locale.US, "%.1fM", realViews / 1_000_000.0)
+                                    realViews >= 1_000 -> String.format(java.util.Locale.US, "%.1fK", realViews / 1_000.0)
+                                    else -> realViews.toString()
+                                }
+
                                 Box(
                                     contentAlignment = Alignment.Center,
                                     modifier = Modifier
                                         .aspectRatio(1f)
-                                        .background(Color(0xFFE5E5EA))
+                                        .background(Color(0xFF1C1C1E))
                                         .clickable { onNavigateToSecondaryFeed() }
                                 ) {
-                                    Icon(
-                                        Icons.Default.Movie,
-                                        contentDescription = "Reel Item",
-                                        tint = Color(0xFF8E8E93),
-                                        modifier = Modifier.size(28.dp)
+                                    if (bitmap != null) {
+                                        Image(
+                                            bitmap = bitmap,
+                                            contentDescription = reel.caption,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        Icon(
+                                            Icons.Default.Movie,
+                                            contentDescription = "Reel Item",
+                                            tint = Color(0xFF8E8E93),
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+
+                                    // Dark bottom gradient overlay for view count contrast
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(32.dp)
+                                            .align(Alignment.BottomCenter)
+                                            .background(
+                                                androidx.compose.ui.graphics.Brush.verticalGradient(
+                                                    colors = listOf(Color.Transparent, Color.Black.copy(0.75f))
+                                                )
+                                            )
                                     )
+
+                                    // Bottom-Left Overlay: White Play Icon (▶) + Dynamic Database Views Count
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier
+                                            .align(Alignment.BottomStart)
+                                            .padding(start = 6.dp, bottom = 6.dp)
+                                    ) {
+                                        Text(
+                                            text = "▶",
+                                            fontSize = 10.sp,
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Spacer(modifier = Modifier.width(3.dp))
+                                        Text(
+                                            text = displayViews,
+                                            fontSize = 11.sp,
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
                                 }
                             }
                         }

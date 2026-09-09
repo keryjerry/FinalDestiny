@@ -271,6 +271,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onAddComment = { postId, text -> repository.addCommentToPost(postId, text) },
                     onToggleFollowAuthor = { postId -> repository.toggleFollowPostAuthor(postId) },
                     onToggleSavePost = { postId -> repository.toggleSavePost(postId) },
+                    onIncrementView = { postId -> repository.incrementPostView(postId) },
                     onStartLiveStream = {
                         isVideoRoomKeptInBackground = false
                         currentScreen = Screen.LIVE_VIDEO_ROOM
