@@ -366,6 +366,29 @@ object SupabaseAuthClient {
     }
 
     /**
+     * Refreshes active session token or falls back to supabaseAnonKey if expired/synthetic
+     */
+    fun refreshCurrentSession(context: Context? = null) {
+        try {
+            if (context != null) {
+                val prefs = context.getSharedPreferences("destiny_auth_prefs", Context.MODE_PRIVATE)
+                val token = prefs.getString("session_token", null)
+                val createdAt = prefs.getLong("session_created_at", 0L)
+                val isExpired = (System.currentTimeMillis() - createdAt) > (24 * 60 * 60 * 1000L) ||
+                        token?.startsWith("sb-token-") == true ||
+                        token?.startsWith("sb-session-token-") == true
+
+                if (isExpired || currentSessionToken == null) {
+                    Log.w(TAG, "Current session token is expired or synthetic mock. Resetting active token to supabaseAnonKey for public bucket operations.")
+                    currentSessionToken = supabaseAnonKey
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Session refresh skipped or failed: ${e.message}")
+        }
+    }
+
+    /**
      * Uploads media binary (Photo or Video) from Uri to Supabase Storage bucket 'posts_media'
      */
     suspend fun uploadMediaToSupabaseStorage(
@@ -381,6 +404,15 @@ object SupabaseAuthClient {
             Log.d(TAG, "Media URI is already a remote URL: $cleanUri")
             return@withContext cleanUri
         }
+
+        // Force session refresh before upload
+        try {
+            refreshCurrentSession(context)
+        } catch (e: Exception) {
+            Log.w(TAG, "Session refresh skipped or failed: ${e.message}")
+        }
+
+        val activeToken = currentSessionToken ?: supabaseAnonKey
 
         Log.d(TAG, "Reading binary stream for URI: $cleanUri | Target Bucket: $bucketName")
         val uri = Uri.parse(cleanUri)
@@ -406,41 +438,59 @@ object SupabaseAuthClient {
         val endpoint = "$baseUrl/storage/v1/object/$bucketName/$fileName"
         Log.d(TAG, "POST /storage/v1/object/$bucketName/$fileName | Size: ${bytes.size} bytes | Mime: $mimeType")
 
-        val url = URL(endpoint)
-        val connection = (url.openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            connectTimeout = 30000
-            readTimeout = 30000
-            setRequestProperty("apikey", supabaseAnonKey)
-            setRequestProperty("Authorization", "Bearer ${currentSessionToken ?: supabaseAnonKey}")
-            setRequestProperty("Content-Type", mimeType)
-            setRequestProperty("x-upsert", "true")
-            doOutput = true
-        }
-
-        try {
+        fun executeUpload(tokenToUse: String): Pair<Int, String> {
+            val url = URL(endpoint)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 30000
+                readTimeout = 30000
+                setRequestProperty("apikey", supabaseAnonKey)
+                setRequestProperty("Authorization", "Bearer $tokenToUse")
+                setRequestProperty("Content-Type", mimeType)
+                setRequestProperty("x-upsert", "true")
+                doOutput = true
+            }
             connection.outputStream.use { os ->
                 os.write(bytes)
             }
-
             val resCode = connection.responseCode
             val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
             val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
+            return Pair(resCode, resText)
+        }
 
-            Log.d(TAG, "Storage Upload Response Code: $resCode | Body: $resText")
-
-            if (resCode in 200..299) {
-                val publicUrl = "$baseUrl/storage/v1/object/public/$bucketName/$fileName"
-                Log.d(TAG, "Storage Upload SUCCESS -> Public URL: $publicUrl")
-                return@withContext publicUrl
-            } else {
-                val errMsg = parseSupabaseError(resText, resCode)
-                Log.e(TAG, "Storage Upload Failed -> Code $resCode | Error: $errMsg")
-                throw Exception("Storage upload failed (HTTP $resCode): $errMsg")
-            }
+        var (resCode, resText) = try {
+            executeUpload(activeToken)
         } catch (e: Exception) {
-            Log.e(TAG, "Storage Upload Exception", e)
-            throw Exception(e.localizedMessage ?: "Network error during media upload.")
+            Log.w(TAG, "Initial upload request failed with exception: ${e.message}")
+            Pair(400, e.message ?: "Upload network exception")
+        }
+
+        Log.d(TAG, "Storage Upload Initial Response Code: $resCode | Body: $resText")
+
+        // Graceful Fallback for Public Buckets: if JWT token validation failed with 400/401 ("exp" claim timestamp check failed)
+        if (resCode !in 200..299 && (resCode == 400 || resCode == 401 || resText.contains("exp", ignoreCase = true) || resText.contains("claim", ignoreCase = true))) {
+            if (activeToken != supabaseAnonKey) {
+                Log.w(TAG, "Storage Upload JWT Expired (HTTP $resCode: $resText). Retrying upload with standard public supabaseAnonKey...")
+                try {
+                    val (retryCode, retryText) = executeUpload(supabaseAnonKey)
+                    resCode = retryCode
+                    resText = retryText
+                    Log.d(TAG, "Storage Upload Retry Response Code: $resCode | Body: $resText")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Storage Upload Retry Exception", e)
+                }
+            }
+        }
+
+        if (resCode in 200..299) {
+            val publicUrl = "$baseUrl/storage/v1/object/public/$bucketName/$fileName"
+            Log.d(TAG, "Storage Upload SUCCESS -> Public URL: $publicUrl")
+            return@withContext publicUrl
+        } else {
+            val errMsg = parseSupabaseError(resText, resCode)
+            Log.e(TAG, "Storage Upload Failed after retry -> Code $resCode | Error: $errMsg")
+            throw Exception("Storage upload failed (HTTP $resCode): $errMsg")
         }
     }
 
@@ -456,18 +506,6 @@ object SupabaseAuthClient {
         val uid = getUserId() ?: getOrCreateUserId(context)
 
         Log.d(TAG, "POST /rest/v1/posts -> Ingesting Post ID: ${post.id} for User UID: $uid")
-
-        val url = URL(endpoint)
-        val connection = (url.openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            connectTimeout = 15000
-            readTimeout = 15000
-            setRequestProperty("apikey", supabaseAnonKey)
-            setRequestProperty("Authorization", "Bearer ${currentSessionToken ?: supabaseAnonKey}")
-            setRequestProperty("Content-Type", "application/json; charset=utf-8")
-            setRequestProperty("Prefer", "return=representation")
-            doOutput = true
-        }
 
         val payload = JSONObject().apply {
             put("id", post.id)
@@ -498,28 +536,56 @@ object SupabaseAuthClient {
             put("created_at", TimeUtils.formatIsoTimestamp(System.currentTimeMillis()))
         }
 
-        try {
+        fun executeInsert(tokenToUse: String): Pair<Int, String> {
+            val url = URL(endpoint)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 15000
+                readTimeout = 15000
+                setRequestProperty("apikey", supabaseAnonKey)
+                setRequestProperty("Authorization", "Bearer $tokenToUse")
+                setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                setRequestProperty("Prefer", "return=representation")
+                doOutput = true
+            }
             connection.outputStream.use { os ->
                 os.write(payload.toString().toByteArray(Charsets.UTF_8))
             }
-
             val resCode = connection.responseCode
             val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
             val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
+            return Pair(resCode, resText)
+        }
 
-            Log.d(TAG, "Posts DB Insert HTTP Response Code: $resCode | Body: $resText")
-
-            if (resCode in 200..299) {
-                Log.d(TAG, "Posts DB Insert SUCCESS")
-                return@withContext true
-            } else {
-                val errMsg = parseSupabaseError(resText, resCode)
-                Log.e(TAG, "Posts DB Insert Failed -> Code $resCode | Error: $errMsg")
-                throw Exception("Database insert failed (HTTP $resCode): $errMsg")
-            }
+        val activeToken = currentSessionToken ?: supabaseAnonKey
+        var (resCode, resText) = try {
+            executeInsert(activeToken)
         } catch (e: Exception) {
-            Log.e(TAG, "Posts DB Insert Exception", e)
-            throw Exception(e.localizedMessage ?: "Network error during post insert.")
+            Pair(400, e.message ?: "Insert exception")
+        }
+
+        if (resCode !in 200..299 && (resCode == 400 || resCode == 401 || resText.contains("exp", ignoreCase = true) || resText.contains("claim", ignoreCase = true))) {
+            if (activeToken != supabaseAnonKey) {
+                Log.w(TAG, "Posts DB Insert JWT Expired (HTTP $resCode). Retrying insert with standard supabaseAnonKey...")
+                try {
+                    val (retryCode, retryText) = executeInsert(supabaseAnonKey)
+                    resCode = retryCode
+                    resText = retryText
+                } catch (e: Exception) {
+                    Log.e(TAG, "Posts DB Insert Retry Exception", e)
+                }
+            }
+        }
+
+        Log.d(TAG, "Posts DB Insert HTTP Response Code: $resCode | Body: $resText")
+
+        if (resCode in 200..299) {
+            Log.d(TAG, "Posts DB Insert SUCCESS")
+            return@withContext true
+        } else {
+            val errMsg = parseSupabaseError(resText, resCode)
+            Log.e(TAG, "Posts DB Insert Failed -> Code $resCode | Error: $errMsg")
+            throw Exception("Database insert failed (HTTP $resCode): $errMsg")
         }
     }
 
