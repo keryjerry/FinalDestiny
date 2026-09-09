@@ -1,6 +1,7 @@
 package com.devil.finaldestiny.ui.settings
 
 import android.widget.Toast
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -176,6 +177,52 @@ fun SettingsActivityScreen(
                                 fontSize = 11.sp,
                                 color = Color.Gray
                             )
+                        }
+                    }
+
+                    HorizontalDivider(color = Color(0xFFE5E5EA), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 10.dp))
+
+                    // SECTION: APPEARANCE & DISPLAY THEME PICKER
+                    SettingsSectionHeader("Appearance & Display")
+                    val currentThemeMode by com.devil.finaldestiny.ui.theme.ThemeManager.currentMode.collectAsState()
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 4.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Palette, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("App Theme Mode", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                            }
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                com.devil.finaldestiny.ui.theme.AppThemeMode.values().forEach { mode ->
+                                    val isSelected = currentThemeMode == mode
+                                    OutlinedButton(
+                                        onClick = {
+                                            com.devil.finaldestiny.ui.theme.ThemeManager.setThemeMode(context, mode)
+                                            Toast.makeText(context, "✨ Theme set to ${mode.displayName}", Toast.LENGTH_SHORT).show()
+                                        },
+                                        colors = ButtonDefaults.outlinedButtonColors(
+                                            containerColor = if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent,
+                                            contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface
+                                        ),
+                                        border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else Color.Gray.copy(0.4f)),
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.weight(1f).height(38.dp),
+                                        contentPadding = PaddingValues(horizontal = 4.dp)
+                                    ) {
+                                        Text(mode.displayName, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
                         }
                     }
 

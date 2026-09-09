@@ -1015,20 +1015,6 @@ fun SecondaryDashboardScreen(
             }
         }
 
-        // FLOATING ACTION BUTTON FOR QUICK POSTING
-        FloatingActionButton(
-            onClick = {
-                isReelUploadMode = false
-                postMediaLauncher.launch("image/*")
-            },
-            containerColor = SkyBluePrimary,
-            contentColor = Color.White,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(20.dp)
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Post Moment")
-        }
     }
 
     // 1. MUSIC SEARCH & ATTACH BOTTOM SHEET DIALOG FOR REELS

@@ -35,6 +35,10 @@ import com.devil.finaldestiny.Screen
 import com.devil.finaldestiny.model.UserProfile
 import com.devil.finaldestiny.ui.components.ProfileAvatarView
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.shadow
+
 @Composable
 fun FloatingGalaxyNavPill(
     currentScreen: Screen,
@@ -74,27 +78,29 @@ fun FloatingGalaxyNavPill(
         label = "VortexRotation"
     )
 
-    // Deep Galaxy base color (0xFF0B0D19 - Deep Cosmic Void)
-    val galaxyBaseColor = Color(0xFF0B0D19)
-    val borderAlphaClamped = (borderPulseAlpha * 0.65f).coerceIn(0.2f, 1.0f)
-    val borderGlowColor = Color(0xFF7C3AED).copy(alpha = borderAlphaClamped)
+    val ambientBorderBrush = Brush.horizontalGradient(
+        colors = listOf(
+            Color(0x337C3AED),
+            Color(0x6638BDF8),
+            Color(0x33EC4899)
+        )
+    )
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(start = 24.dp, end = 24.dp, bottom = 20.dp)
+            .shadow(elevation = 12.dp, shape = CircleShape, spotColor = Color(0x447C3AED))
             .height(64.dp)
-            .clip(CircleShape)
-            .background(galaxyBaseColor)
+            .clip(RoundedCornerShape(percent = 50))
+            .background(Color(0xCC111827))
             .drawWithCache {
                 val nebulaBrush = Brush.sweepGradient(
                     colors = listOf(
-                        Color(0xFF0B0D19), // Core: Deep Cosmic Void
-                        Color(0xFF7C3AED), // Orbiting Highlight: Electric Violet
-                        Color(0xFF06B6D4), // Orbiting Highlight: Astral Cyan
-                        Color(0xFFD946EF), // Orbiting Highlight: Deep Magenta
-                        Color(0xFF0B0D19)  // Deep Cosmic Void
+                        Color(0x99111827),
+                        Color(0xAA7C3AED),
+                        Color(0xAA06B6D4),
+                        Color(0xAAD946EF),
+                        Color(0x99111827)
                     )
                 )
                 val starsBrush = Brush.radialGradient(
@@ -107,7 +113,7 @@ fun FloatingGalaxyNavPill(
                     drawRect(brush = starsBrush)
                 }
             }
-            .border(width = 1.2.dp, color = borderGlowColor, shape = CircleShape)
+            .border(border = BorderStroke(1.dp, ambientBorderBrush), shape = RoundedCornerShape(percent = 50))
     ) {
         Row(
             modifier = Modifier

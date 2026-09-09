@@ -3,24 +3,24 @@ package com.devil.finaldestiny.ui.theme
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
-// BRIGHT SKY BLUE PALETTE (OFF-WHITE EYE-FRIENDLY SURFACES)
-val SkyBlueBgLight = Color(0xFFF4F6FB)        // Soothing off-white canvas background
-val SkyBlueHeader = Color(0xFFE4EEF8)         // Soft sky header fill
-val SkyBlueCardBg = Color(0xFFFAFBFD)         // Eye-friendly off-white card surface
-val SkyBlueBorder = Color(0xFFD0E2F0)         // Modern soft border
-val SkyBluePrimary = Color(0xFF0077B6)        // Rich sky blue for primary buttons
-val BrightCyanAccent = Color(0xFF00B4D8)      // Vibrant sky cyan accent
-val SoftSkyAccent = Color(0xFF90E0EF)        // Soft sky glow
+// WARM DULL OFF-WHITE EYE-CARE PALETTE (#F7F5F0)
+val SkyBlueBgLight = Color(0xFFF7F5F0)        // Warm eggshell / dull cream-white canvas background (#F7F5F0)
+val SkyBlueHeader = Color(0xFFEFECE6)         // Soft warm header fill
+val SkyBlueCardBg = Color(0xFFF0EEE8)         // Warm dull off-white card surface (#F0EEE8 / #FAF8F5)
+val SkyBlueBorder = Color(0xFFE5E0D8)         // Soft warm border (#E5E0D8)
+val SkyBluePrimary = Color(0xFF0284C7)        // Muted sky blue for primary buttons
+val BrightCyanAccent = Color(0xFF0284C7)      // Muted sky cyan accent
+val SoftSkyAccent = Color(0xFFE0E7FF)        // Soft warm glow
 
-// HIGH CONTRAST TYPOGRAPHY COLORS
-val NavyTextPrimary = Color(0xFF0B1E2D)       // Deep navy for sharp headers/title contrast
-val SlateTextSecondary = Color(0xFF476072)    // Slate for body text/subtitles
-val MutedSkyText = Color(0xFF6C8A9C)          // Muted text for captions/metadata
+// HIGH CONTRAST TYPOGRAPHY COLORS (#1C1917 Deep Charcoal & #78716C Muted Stone)
+val NavyTextPrimary = Color(0xFF1C1917)       // Warm deep charcoal for sharp headers/text
+val SlateTextSecondary = Color(0xFF78716C)    // Muted stone gray for body text/subtitles
+val MutedSkyText = Color(0xFFA8A29E)          // Muted stone for captions/metadata
 
-// LEGACY ALIASES (Backward Compatibility mapped to Sky Blue Palette)
+// LEGACY ALIASES (Backward Compatibility mapped to Warm Off-White Palette)
 val WineRedDark = SkyBlueBgLight
 val WineRedMedium = SkyBlueHeader
-val WineRedLight = Color(0xFFD0E8FF)
+val WineRedLight = Color(0xFFE5E0D8)
 val CrimsonVelvet = SkyBlueBorder
 val DeepCrimson = SkyBluePrimary
 
@@ -32,9 +32,9 @@ val GoldGradientEnd = BrightCyanAccent
 
 // Surface & Card Colors
 val CardBackground = SkyBlueCardBg
-val CardBackgroundTransparent = Color(0xF5FAFBFD)
+val CardBackgroundTransparent = Color(0xF5F0EEE8)
 val SurfaceDark = SkyBlueBgLight
-val GlassmorphismOverlay = Color(0x3300B4D8)
+val GlassmorphismOverlay = Color(0x330284C7)
 val SeatVelvetBg = Color(0xFFE3F2FD)
 
 // Status & Badge Colors

@@ -100,6 +100,10 @@ class MainActivity : ComponentActivity(), PaymentResultWithDataListener {
 @Composable
 fun FinalDestinyApp(repository: AppRepository) {
     val context = LocalContext.current
+    LaunchedEffect(context) {
+        com.devil.finaldestiny.ui.theme.ThemeManager.init(context)
+    }
+
     val initialScreen = remember(context) {
         if (com.devil.finaldestiny.data.SupabaseAuthClient.hasValidSession(context)) {
             Screen.PRIMARY_DASHBOARD
@@ -148,132 +152,19 @@ fun FinalDestinyApp(repository: AppRepository) {
     }
 
     Scaffold(
-        bottomBar = {
-            if (currentScreen != Screen.AUTH_SPLASH && currentScreen != Screen.LIVENESS_CHECK && currentScreen != Screen.ABOUT_US) {
-                Column(
-                    modifier = Modifier.zIndex(99f)
-                ) {
-                    // FLOATING PIP MINI PLAYER BANNER WHEN A ROOM IS KEPT IN BACKGROUND
-                    if (isAudioRoomKeptInBackground && currentScreen != Screen.LIVE_AUDIO_ROOM) {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = SkyBlueHeader),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 2.dp)
-                                .border(1.dp, BrightCyanAccent, RoundedCornerShape(12.dp))
-                        ) {
-                            Row(
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 10.dp, vertical = 6.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { currentScreen = Screen.LIVE_AUDIO_ROOM }
-                                ) {
-                                    Icon(Icons.Default.GraphicEq, contentDescription = null, tint = LiveIndicatorGreen, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Column {
-                                        Text("🔴 Audio Room Active (Keep Mode)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = NavyTextPrimary)
-                                        Text("Host: ${audioRoom.hostUser.name} | Tap to Re-enter ↩", fontSize = 9.sp, color = SkyBluePrimary)
-                                    }
-                                }
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Button(
-                                        onClick = { currentScreen = Screen.LIVE_AUDIO_ROOM },
-                                        colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary),
-                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                                        modifier = Modifier.height(26.dp)
-                                    ) {
-                                        Text("Open ↩", fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                                    }
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    IconButton(
-                                        onClick = {
-                                            isAudioRoomKeptInBackground = false
-                                            Toast.makeText(context, "Audio Room Closed", Toast.LENGTH_SHORT).show()
-                                        },
-                                        modifier = Modifier.size(24.dp)
-                                    ) {
-                                        Icon(Icons.Default.Close, contentDescription = "Close", tint = NavyTextPrimary, modifier = Modifier.size(16.dp))
-                                    }
-                                }
-                            }
-                        }
-                    } else if (isVideoRoomKeptInBackground && currentScreen != Screen.LIVE_VIDEO_ROOM) {
-                        Card(
-                            colors = CardDefaults.cardColors(containerColor = SkyBlueHeader),
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 2.dp)
-                                .border(1.dp, BrightCyanAccent, RoundedCornerShape(12.dp))
-                        ) {
-                            Row(
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 10.dp, vertical = 6.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable { currentScreen = Screen.LIVE_VIDEO_ROOM }
-                                ) {
-                                    Icon(Icons.Default.Videocam, contentDescription = null, tint = LiveIndicatorGreen, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Column {
-                                        Text("🔴 Video Stream Active (Keep Mode)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = NavyTextPrimary)
-                                        Text("Host: ${videoRoom.hostUser.name} | Tap to Re-enter ↩", fontSize = 9.sp, color = SkyBluePrimary)
-                                    }
-                                }
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Button(
-                                        onClick = { currentScreen = Screen.LIVE_VIDEO_ROOM },
-                                        colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary),
-                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                                        modifier = Modifier.height(26.dp)
-                                    ) {
-                                        Text("Open ↩", fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                                    }
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    IconButton(
-                                        onClick = {
-                                            isVideoRoomKeptInBackground = false
-                                            Toast.makeText(context, "Video Room Closed", Toast.LENGTH_SHORT).show()
-                                        },
-                                        modifier = Modifier.size(24.dp)
-                                    ) {
-                                        Icon(Icons.Default.Close, contentDescription = "Close", tint = NavyTextPrimary, modifier = Modifier.size(16.dp))
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // FLOATING GALAXY NAVIGATION PILL CONTAINER (Matching Reference Screenshots 1, 2, & 3)
-                    FloatingGalaxyNavPill(
-                        currentScreen = currentScreen,
-                        user = user,
-                        unreadNotificationCount = notifications.count { !it.isRead },
-                        onNavigate = { destination -> currentScreen = destination }
-                    )
-                }
-            }
-        }
+        containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .background(MaterialTheme.colorScheme.background)
         ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
             when (currentScreen) {
                 Screen.AUTH_SPLASH -> SplashScreen(
                     repository = repository,
@@ -492,7 +383,131 @@ fun FinalDestinyApp(repository: AppRepository) {
                 )
             }
         }
+
+        // EDGE-TO-EDGE FLOATING GALAXY NAVIGATION PILL CONTAINER (iOS DYNAMIC ISLAND STYLE)
+        if (currentScreen != Screen.AUTH_SPLASH && currentScreen != Screen.LIVENESS_CHECK && currentScreen != Screen.ABOUT_US) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(start = 24.dp, end = 24.dp, bottom = 12.dp)
+                    .zIndex(99f)
+            ) {
+                // FLOATING PIP MINI PLAYER BANNER WHEN A ROOM IS KEPT IN BACKGROUND
+                if (isAudioRoomKeptInBackground && currentScreen != Screen.LIVE_AUDIO_ROOM) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = SkyBlueHeader),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                            .border(1.dp, BrightCyanAccent, RoundedCornerShape(12.dp))
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { currentScreen = Screen.LIVE_AUDIO_ROOM }
+                            ) {
+                                Icon(Icons.Default.GraphicEq, contentDescription = null, tint = LiveIndicatorGreen, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Column {
+                                    Text("🔴 Audio Room Active (Keep Mode)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = NavyTextPrimary)
+                                    Text("Host: ${audioRoom.hostUser.name} | Tap to Re-enter ↩", fontSize = 9.sp, color = SkyBluePrimary)
+                                }
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Button(
+                                    onClick = { currentScreen = Screen.LIVE_AUDIO_ROOM },
+                                    colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                    modifier = Modifier.height(26.dp)
+                                ) {
+                                    Text("Open ↩", fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                }
+                                Spacer(modifier = Modifier.width(4.dp))
+                                IconButton(
+                                    onClick = {
+                                        isAudioRoomKeptInBackground = false
+                                        Toast.makeText(context, "Audio Room Closed", Toast.LENGTH_SHORT).show()
+                                    },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(Icons.Default.Close, contentDescription = "Close", tint = NavyTextPrimary, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        }
+                    }
+                } else if (isVideoRoomKeptInBackground && currentScreen != Screen.LIVE_VIDEO_ROOM) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = SkyBlueHeader),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                            .border(1.dp, BrightCyanAccent, RoundedCornerShape(12.dp))
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable { currentScreen = Screen.LIVE_VIDEO_ROOM }
+                            ) {
+                                Icon(Icons.Default.Videocam, contentDescription = null, tint = LiveIndicatorGreen, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Column {
+                                    Text("🔴 Video Stream Active (Keep Mode)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = NavyTextPrimary)
+                                    Text("Host: ${videoRoom.hostUser.name} | Tap to Re-enter ↩", fontSize = 9.sp, color = SkyBluePrimary)
+                                }
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Button(
+                                    onClick = { currentScreen = Screen.LIVE_VIDEO_ROOM },
+                                    colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                    modifier = Modifier.height(26.dp)
+                                ) {
+                                    Text("Open ↩", fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                }
+                                Spacer(modifier = Modifier.width(4.dp))
+                                IconButton(
+                                    onClick = {
+                                        isVideoRoomKeptInBackground = false
+                                        Toast.makeText(context, "Video Room Closed", Toast.LENGTH_SHORT).show()
+                                    },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(Icons.Default.Close, contentDescription = "Close", tint = NavyTextPrimary, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        }
+                    }
+                }
+
+                FloatingGalaxyNavPill(
+                    currentScreen = currentScreen,
+                    user = user,
+                    unreadNotificationCount = notifications.count { !it.isRead },
+                    onNavigate = { destination -> currentScreen = destination }
+                )
+            }
+        }
     }
+}
 
     if (showMonetizationPopup && (currentScreen == Screen.PRIMARY_DASHBOARD || currentScreen == Screen.SECONDARY_FEED)) {
         MonetizationAnnouncementModal(
