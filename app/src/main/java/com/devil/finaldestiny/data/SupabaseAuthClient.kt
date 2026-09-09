@@ -256,10 +256,37 @@ object SupabaseAuthClient {
         Log.d(TAG, "Session persisted to SharedPreferences -> UID: $uid | Email: $email")
     }
 
-    private fun syncSupabaseProfile(uid: String, email: String, name: String?) {
+    suspend fun signUpWithEmail(
+        context: Context,
+        email: String,
+        password: String? = null
+    ): AuthResult = withContext(Dispatchers.IO) {
+        val res = sendOtpToEmail(context, email)
+        if (res is AuthResult.Success) {
+            val uid = getUserId() ?: getOrCreateUserId(context)
+            upsertUserProfile(uid, email, email.substringBefore("@"))
+        }
+        return@withContext res
+    }
+
+    suspend fun loginWithEmail(
+        context: Context,
+        email: String,
+        password: String? = null
+    ): AuthResult = withContext(Dispatchers.IO) {
+        val res = sendOtpToEmail(context, email)
+        if (res is AuthResult.Success) {
+            val uid = getUserId() ?: getOrCreateUserId(context)
+            upsertUserProfile(uid, email, email.substringBefore("@"))
+        }
+        return@withContext res
+    }
+
+    fun upsertUserProfile(uid: String, email: String, username: String? = null) {
         try {
             val endpoint = "${supabaseUrl.trimEnd('/')}/rest/v1/profiles"
-            Log.d(TAG, "POST /rest/v1/profiles -> Syncing user profile for UID: $uid | Email: $email")
+            val cleanUsername = if (!username.isNull_or_blank_custom()) username!! else email.substringBefore("@")
+            Log.d(TAG, "POST /rest/v1/profiles -> Explicit Profile Upsert for UID: $uid | Email: $email | Username: $cleanUsername")
             val url = URL(endpoint)
             val connection = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
@@ -272,11 +299,12 @@ object SupabaseAuthClient {
                 doOutput = true
             }
 
-            val handle = "@" + email.substringBefore("@").replace(" ", "_")
+            val handle = "@" + cleanUsername.replace(" ", "_")
             val payload = JSONObject().apply {
                 put("id", uid)
                 put("email", email)
-                put("name", if (!name.isNull_or_blank_custom()) name else email.substringBefore("@"))
+                put("username", cleanUsername)
+                put("name", cleanUsername)
                 put("handle", handle)
             }
 
@@ -287,10 +315,14 @@ object SupabaseAuthClient {
             val resCode = connection.responseCode
             val resStream = if (resCode in 200..299) connection.inputStream else connection.errorStream
             val resText = resStream?.bufferedReader()?.use { it.readText() } ?: ""
-            Log.d(TAG, "Profiles REST API Response -> Status: $resCode | Body: $resText")
+            Log.d(TAG, "Profiles REST API Upsert Response -> Status: $resCode | Body: $resText")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to sync profile to public.profiles", e)
+            Log.e(TAG, "Failed to execute explicit profile upsert to public.profiles", e)
         }
+    }
+
+    private fun syncSupabaseProfile(uid: String, email: String, name: String?) {
+        upsertUserProfile(uid, email, name)
     }
 
     fun getOrCreateUserId(context: Context): String {

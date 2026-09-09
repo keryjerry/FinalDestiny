@@ -44,14 +44,24 @@ fun FloatingGalaxyNavPill(
     modifier: Modifier = Modifier
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "GalaxyPillShimmer")
-    val shimmerRotation by infiniteTransition.animateFloat(
+    val sweepAngle by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
         animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 8000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
-        label = "ShimmerRotation"
+        label = "SweepAngle"
+    )
+
+    val borderPulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.8f,
+        targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2000, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "BorderPulseAlpha"
     )
 
     val vortexRotation by infiniteTransition.animateFloat(
@@ -64,38 +74,40 @@ fun FloatingGalaxyNavPill(
         label = "VortexRotation"
     )
 
-    // Deep Galaxy base colors
-    val galaxyBaseColor = Color(0xFF050510)
-    val neonBorderColor = Color(0x664A90E2)
+    // Deep Galaxy base color (0xFF0B0D19 - Deep Cosmic Void)
+    val galaxyBaseColor = Color(0xFF0B0D19)
+    val borderAlphaClamped = (borderPulseAlpha * 0.65f).coerceIn(0.2f, 1.0f)
+    val borderGlowColor = Color(0xFF7C3AED).copy(alpha = borderAlphaClamped)
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(start = 20.dp, end = 20.dp, bottom = 18.dp)
+            .navigationBarsPadding()
+            .padding(start = 24.dp, end = 24.dp, bottom = 20.dp)
             .height(64.dp)
             .clip(CircleShape)
             .background(galaxyBaseColor)
             .drawWithCache {
                 val nebulaBrush = Brush.sweepGradient(
                     colors = listOf(
-                        Color(0xFF0D0B26),
-                        Color(0xFF1E1035),
-                        Color(0xFF0B1930),
-                        Color(0xFF2A0845),
-                        Color(0xFF0D0B26)
+                        Color(0xFF0B0D19), // Core: Deep Cosmic Void
+                        Color(0xFF7C3AED), // Orbiting Highlight: Electric Violet
+                        Color(0xFF06B6D4), // Orbiting Highlight: Astral Cyan
+                        Color(0xFFD946EF), // Orbiting Highlight: Deep Magenta
+                        Color(0xFF0B0D19)  // Deep Cosmic Void
                     )
                 )
                 val starsBrush = Brush.radialGradient(
-                    colors = listOf(Color(0x33A855F7), Color(0x113B82F6), Color.Transparent)
+                    colors = listOf(Color(0x447C3AED), Color(0x2206B6D4), Color.Transparent)
                 )
                 onDrawBehind {
-                    rotate(shimmerRotation) {
+                    rotate(sweepAngle) {
                         drawRect(brush = nebulaBrush)
                     }
                     drawRect(brush = starsBrush)
                 }
             }
-            .border(width = 0.8.dp, color = neonBorderColor, shape = CircleShape)
+            .border(width = 1.2.dp, color = borderGlowColor, shape = CircleShape)
     ) {
         Row(
             modifier = Modifier

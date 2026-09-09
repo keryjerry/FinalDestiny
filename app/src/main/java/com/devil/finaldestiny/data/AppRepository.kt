@@ -201,6 +201,9 @@ class AppRepository {
         )
         _currentUser.value = updatedUser
 
+        // Explicit Profile Upsert to public.profiles
+        SupabaseAuthClient.upsertUserProfile(userId, cleanEmail, name)
+
         // Real-Time Sync: Update host user state across active Audio and Video Rooms
         _currentAudioRoom.value = _currentAudioRoom.value.copy(
             hostUser = _currentAudioRoom.value.hostUser.copy(id = userId, name = name, handle = handle)
