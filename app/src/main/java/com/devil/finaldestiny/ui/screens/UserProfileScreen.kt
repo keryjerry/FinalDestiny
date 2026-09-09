@@ -90,6 +90,7 @@ fun UserProfileScreen(
     onNavigateToAboutUs: () -> Unit = {},
     onLogOut: () -> Unit,
     onRefresh: suspend () -> Unit = {},
+    onToggleFollowCandidate: (String, Boolean) -> Unit = { _, _ -> },
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -301,7 +302,13 @@ fun UserProfileScreen(
                             .size(80.dp)
                             .clip(CircleShape)
                             .border(1.dp, Color(0xFFE5E5EA), CircleShape)
-                            .clickable { showPhotoOptionsDialog = true }
+                            .clickable {
+                                try {
+                                    visualMediaLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                } catch (e: Exception) {
+                                    galleryLauncher.launch("image/*")
+                                }
+                            }
                     ) {
                         if (customAvatarBitmap != null) {
                             Image(
@@ -339,7 +346,13 @@ fun UserProfileScreen(
                             .clip(CircleShape)
                             .background(Color.Black)
                             .border(2.dp, Color.White, CircleShape)
-                            .clickable { showPhotoOptionsDialog = true }
+                            .clickable {
+                                try {
+                                    visualMediaLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                } catch (e: Exception) {
+                                    galleryLauncher.launch("image/*")
+                                }
+                            }
                     ) {
                         Icon(Icons.Default.Add, contentDescription = "Add Avatar", tint = Color.White, modifier = Modifier.size(16.dp))
                     }
@@ -672,7 +685,9 @@ fun UserProfileScreen(
 
                                         Button(
                                             onClick = {
-                                                candidate.isFollowing = !candidate.isFollowing
+                                                val nextState = !candidate.isFollowing
+                                                candidate.isFollowing = nextState
+                                                onToggleFollowCandidate(candidate.id, nextState)
                                                 Toast.makeText(context, if (candidate.isFollowing) "Followed ${candidate.name}" else "Unfollowed", Toast.LENGTH_SHORT).show()
                                             },
                                             colors = ButtonDefaults.buttonColors(containerColor = if (candidate.isFollowing) Color(0xFFEFEFEF) else Color(0xFF3897F0)),

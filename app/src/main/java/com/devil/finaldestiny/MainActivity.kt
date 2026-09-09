@@ -337,6 +337,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                         currentScreen = Screen.AUTH_SPLASH
                     },
                     onRefresh = { repository.refreshUserProfile() },
+                    onToggleFollowCandidate = { targetId, isFollowing -> repository.toggleFollowUser(targetId, isFollowing) },
                     onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
                 )
 

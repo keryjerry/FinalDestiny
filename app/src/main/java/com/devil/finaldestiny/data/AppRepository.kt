@@ -6,6 +6,7 @@ import com.devil.finaldestiny.model.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class AppRepository {
 
@@ -738,9 +739,56 @@ class AppRepository {
         return if (userPosts.isNotEmpty()) userPosts.size else 265
     }
 
-    fun toggleFollowUser(isFollowing: Boolean) {
+    fun toggleFollowUser(targetUserId: String = "usr_target", isFollowing: Boolean) {
         val user = _currentUser.value
         val newFollowingCount = if (isFollowing) (user.followingCount + 1) else (user.followingCount - 1).coerceAtLeast(0)
         _currentUser.value = user.copy(followingCount = newFollowingCount)
+
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                val baseUrl = SupabaseAuthClient.supabaseUrl.trimEnd('/')
+                val anonKey = SupabaseAuthClient.supabaseAnonKey
+                val token = SupabaseAuthClient.getSessionToken() ?: anonKey
+                val myId = user.id
+
+                if (isFollowing) {
+                    val endpoint = "$baseUrl/rest/v1/follows"
+                    val url = java.net.URL(endpoint)
+                    val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+                        requestMethod = "POST"
+                        connectTimeout = 6000
+                        readTimeout = 6000
+                        setRequestProperty("apikey", anonKey)
+                        setRequestProperty("Authorization", "Bearer $token")
+                        setRequestProperty("Content-Type", "application/json")
+                        setRequestProperty("Prefer", "resolution=merge-duplicates")
+                        doOutput = true
+                    }
+                    val payload = org.json.JSONObject().apply {
+                        put("follower_id", myId)
+                        put("following_id", targetUserId)
+                    }
+                    connection.outputStream.use { os ->
+                        os.write(payload.toString().toByteArray(Charsets.UTF_8))
+                    }
+                    val resCode = connection.responseCode
+                    android.util.Log.d("[DestinyFollow]", "Supabase Follow Insert -> Code $resCode")
+                } else {
+                    val endpoint = "$baseUrl/rest/v1/follows?follower_id=eq.$myId&following_id=eq.$targetUserId"
+                    val url = java.net.URL(endpoint)
+                    val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+                        requestMethod = "DELETE"
+                        connectTimeout = 6000
+                        readTimeout = 6000
+                        setRequestProperty("apikey", anonKey)
+                        setRequestProperty("Authorization", "Bearer $token")
+                    }
+                    val resCode = connection.responseCode
+                    android.util.Log.d("[DestinyFollow]", "Supabase Follow Delete -> Code $resCode")
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("[DestinyFollow]", "Failed to sync follow state to Supabase", e)
+            }
+        }
     }
 }
