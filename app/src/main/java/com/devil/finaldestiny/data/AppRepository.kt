@@ -36,12 +36,95 @@ class AppRepository {
     )
     val currentUser: StateFlow<UserProfile> = _currentUser.asStateFlow()
 
+    private val _savedAccounts = MutableStateFlow<List<UserProfile>>(emptyList())
+    val savedAccounts: StateFlow<List<UserProfile>> = _savedAccounts.asStateFlow()
+
+    fun loadSavedAccounts(context: Context) {
+        val prefs = context.getSharedPreferences("destiny_multi_accounts", Context.MODE_PRIVATE)
+        val jsonStr = prefs.getString("saved_accounts_json", null)
+        val accountsList = mutableListOf<UserProfile>()
+        if (!jsonStr.isNullOrEmpty()) {
+            try {
+                val array = org.json.JSONArray(jsonStr)
+                for (i in 0 until array.length()) {
+                    val obj = array.getJSONObject(i)
+                    accountsList.add(
+                        UserProfile(
+                            id = obj.getString("id"),
+                            handle = obj.getString("handle"),
+                            name = obj.getString("name"),
+                            profilePictureUri = obj.optString("profilePictureUri", null).takeIf { !it.isNullOrEmpty() },
+                            accountType = obj.optString("accountType", "Creator")
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        if (accountsList.none { it.id == _currentUser.value.id }) {
+            accountsList.add(0, _currentUser.value)
+        }
+        _savedAccounts.value = accountsList
+    }
+
+    fun saveAccountsListToPrefs(context: Context, list: List<UserProfile>) {
+        val prefs = context.getSharedPreferences("destiny_multi_accounts", Context.MODE_PRIVATE)
+        val array = org.json.JSONArray()
+        list.forEach { acc ->
+            val obj = org.json.JSONObject().apply {
+                put("id", acc.id)
+                put("handle", acc.handle)
+                put("name", acc.name)
+                put("profilePictureUri", acc.profilePictureUri ?: "")
+                put("accountType", acc.accountType)
+            }
+            array.put(obj)
+        }
+        prefs.edit().putString("saved_accounts_json", array.toString()).apply()
+        _savedAccounts.value = list
+    }
+
+    fun switchAccount(targetUserId: String, context: Context) {
+        val target = _savedAccounts.value.find { it.id == targetUserId } ?: return
+        _currentUser.value = target
+        val prefs = context.getSharedPreferences("destiny_auth_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putString("unique_user_id", target.id).apply()
+        fetchProfileFromSupabase(target.id)
+    }
+
+    fun addAccount(email: String, name: String, context: Context) {
+        val cleanEmail = email.trim()
+        val uid = "u_" + java.util.UUID.randomUUID().toString().take(8)
+        val handle = "@" + cleanEmail.substringBefore("@").replace(" ", "_")
+        val newAcc = UserProfile(
+            id = uid,
+            handle = handle,
+            name = if (name.isNotBlank()) name else cleanEmail.substringBefore("@"),
+            accountType = "Personal"
+        )
+        val updatedList = _savedAccounts.value + newAcc
+        saveAccountsListToPrefs(context, updatedList)
+        switchAccount(uid, context)
+    }
+
+    fun removeAccount(targetUserId: String, context: Context) {
+        if (_savedAccounts.value.size <= 1) return
+        val updatedList = _savedAccounts.value.filter { it.id != targetUserId }
+        saveAccountsListToPrefs(context, updatedList)
+        if (_currentUser.value.id == targetUserId && updatedList.isNotEmpty()) {
+            switchAccount(updatedList.first().id, context)
+        }
+    }
+
     fun initializeUserSession(context: Context) {
         SupabaseAuthClient.init(context)
         val uniqueId = SupabaseAuthClient.getOrCreateUserId(context)
         val email = SupabaseAuthClient.getUserEmail()
         val shortId = uniqueId.takeLast(6).uppercase()
         val current = _currentUser.value
+
+        loadSavedAccounts(context)
 
         if (SupabaseAuthClient.isAuthenticated && !email.isNullOrBlank()) {
             syncAuthenticatedUser(uniqueId, email)
@@ -51,6 +134,55 @@ class AppRepository {
                 name = "User_$shortId",
                 handle = "@User_$shortId"
             )
+        }
+
+        fetchProfileFromSupabase(uniqueId)
+    }
+
+    fun fetchProfileFromSupabase(userId: String) {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                val baseUrl = SupabaseAuthClient.supabaseUrl.trimEnd('/')
+                val anonKey = SupabaseAuthClient.supabaseAnonKey
+                val token = SupabaseAuthClient.getSessionToken() ?: anonKey
+
+                val endpoint = "$baseUrl/rest/v1/profiles?id=eq.$userId&select=*"
+                val url = java.net.URL(endpoint)
+                val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 6000
+                    readTimeout = 6000
+                    setRequestProperty("apikey", anonKey)
+                    setRequestProperty("Authorization", "Bearer $token")
+                }
+
+                if (connection.responseCode in 200..299) {
+                    val jsonText = connection.inputStream.bufferedReader().use { it.readText() }
+                    val jsonArray = org.json.JSONArray(jsonText)
+                    if (jsonArray.length() > 0) {
+                        val obj = jsonArray.getJSONObject(0)
+                        val name = obj.optString("name", _currentUser.value.name)
+                        val handle = obj.optString("handle", _currentUser.value.handle)
+                        val bio = obj.optString("bio", _currentUser.value.bio)
+                        val avatarUrl = obj.optString("avatar_url", "").takeIf { it.isNotBlank() && it != "null" }
+                        val accountType = obj.optString("account_type", _currentUser.value.accountType)
+                        val creatorCategory = obj.optString("creator_category", _currentUser.value.creatorCategory)
+
+                        _currentUser.value = _currentUser.value.copy(
+                            id = userId,
+                            name = name,
+                            handle = handle,
+                            bio = bio,
+                            profilePictureUri = avatarUrl ?: _currentUser.value.profilePictureUri,
+                            accountType = accountType,
+                            creatorCategory = creatorCategory
+                        )
+                        android.util.Log.d("[DestinyProfile]", "Restored Supabase Profile -> Name: $name, Avatar: $avatarUrl")
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("[DestinyProfile]", "Failed to fetch profile from Supabase", e)
+            }
         }
     }
 
@@ -814,7 +946,7 @@ class AppRepository {
     fun getUserPostsCount(): Int {
         val user = _currentUser.value
         val userPosts = _momentPosts.value.filter { it.authorHandle == user.handle || it.authorName == user.name }
-        return if (userPosts.isNotEmpty()) userPosts.size else 265
+        return userPosts.size
     }
 
     fun toggleFollowUser(targetUserId: String = "usr_target", isFollowing: Boolean) {

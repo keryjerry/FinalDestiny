@@ -83,6 +83,8 @@ data class StoryHighlightItem(
 @Composable
 fun UserProfileScreen(
     user: UserProfile,
+    userPosts: List<com.devil.finaldestiny.model.MomentPost> = emptyList(),
+    savedAccounts: List<UserProfile> = emptyList(),
     onSaveProfile: (UserProfile) -> Unit,
     onNavigateToStore: () -> Unit = {},
     onNavigateToSecondaryFeed: () -> Unit = {},
@@ -95,6 +97,9 @@ fun UserProfileScreen(
     onLogOut: () -> Unit,
     onRefresh: suspend () -> Unit = {},
     onToggleFollowCandidate: (String, Boolean) -> Unit = { _, _ -> },
+    onSwitchAccount: (String) -> Unit = {},
+    onAddAccount: (String, String) -> Unit = { _, _ -> },
+    onRemoveAccount: (String) -> Unit = {},
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -107,6 +112,10 @@ fun UserProfileScreen(
     var showComplaintModal by remember { mutableStateOf(false) }
     var showPrivacyPolicyModal by remember { mutableStateOf(false) }
     var showSettingsBottomSheet by remember { mutableStateOf(false) }
+    var showAccountSwitcherBottomSheet by remember { mutableStateOf(false) }
+    var showAddAccountDialog by remember { mutableStateOf(false) }
+    var newAccEmail by remember { mutableStateOf("") }
+    var newAccName by remember { mutableStateOf("") }
     var showDiscoverPeople by remember { mutableStateOf(true) }
     var dialogTitle by remember { mutableStateOf("Followers List") }
 
@@ -166,23 +175,11 @@ fun UserProfileScreen(
         )
     }
 
-    val storyHighlights = remember {
-        listOf(
-            StoryHighlightItem("h1", "Siliguri", "https://picsum.photos/200/200?random=201"),
-            StoryHighlightItem("h2", "Kalimpong", "https://picsum.photos/200/200?random=202"),
-            StoryHighlightItem("h3", "Darjeeling", "https://picsum.photos/200/200?random=203")
-        )
+    val gridPosts = remember(userPosts) {
+        userPosts.filter { it.mediaType != com.devil.finaldestiny.model.MediaType.REEL_VIDEO }
     }
-
-    val postsThumbnails = remember {
-        listOf(
-            "https://picsum.photos/400/400?random=301",
-            "https://picsum.photos/400/400?random=302",
-            "https://picsum.photos/400/400?random=303",
-            "https://picsum.photos/400/400?random=304",
-            "https://picsum.photos/400/400?random=305",
-            "https://picsum.photos/400/400?random=306"
-        )
+    val reelPosts = remember(userPosts) {
+        userPosts.filter { it.mediaType == com.devil.finaldestiny.model.MediaType.REEL_VIDEO }
     }
 
     PullToRefreshBox(
@@ -225,11 +222,11 @@ fun UserProfileScreen(
                     Icon(Icons.Default.Add, contentDescription = "Create", tint = Color.Black, modifier = Modifier.size(28.dp))
                 }
 
-                // Center/Left: Username with Chevron and Red Dot
+                // Center/Left: Username with Chevron and Red Dot (Opens Multi-Account Switcher)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.clickable {
-                        Toast.makeText(context, "Switching accounts...", Toast.LENGTH_SHORT).show()
+                        showAccountSwitcherBottomSheet = true
                     }
                 ) {
                     Text(
@@ -370,7 +367,7 @@ fun UserProfileScreen(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     modifier = Modifier.weight(1f)
                 ) {
-                    InstagramStatItem(count = "265", label = "posts")
+                    InstagramStatItem(count = "${userPosts.size}", label = "posts")
 
                     Box(modifier = Modifier.clickable {
                         dialogTitle = "Followers (${user.followerCount})"
@@ -827,7 +824,7 @@ fun UserProfileScreen(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // First item: '+' New Highlight Circle
+                // First item: '+' New Highlight Circle ONLY
                 item {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Box(
@@ -850,31 +847,11 @@ fun UserProfileScreen(
                         Text("New", fontSize = 11.sp, color = Color.Black)
                     }
                 }
-
-                items(storyHighlights) { highlight ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(CircleShape)
-                                .border(1.dp, Color(0xFFC7C7CC), CircleShape)
-                                .background(Color(0xFFF2F2F7))
-                                .clickable {
-                                    Toast.makeText(context, "Opening ${highlight.title}...", Toast.LENGTH_SHORT).show()
-                                }
-                        ) {
-                            Text(highlight.title.take(1), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                        }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(highlight.title, fontSize = 11.sp, color = Color.Black)
-                    }
-                }
             }
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // 7. MEDIA TABS & 3x3 GRID
+            // 7. MEDIA TABS & DYNAMIC GRID / EMPTY STATES
             Row(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 modifier = Modifier
@@ -951,37 +928,345 @@ fun UserProfileScreen(
                 }
             }
 
-            // 3x3 Edge-to-Edge Media Grid
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                horizontalArrangement = Arrangement.spacedBy(1.dp),
-                verticalArrangement = Arrangement.spacedBy(1.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(360.dp)
-            ) {
-                items(postsThumbnails) { url ->
-                    Box(
-                        contentAlignment = Alignment.Center,
+            // Tab Content Body: Dynamic Media Grid or Clean Instagram Empty State
+            when (activeTabState) {
+                0 -> {
+                    if (gridPosts.isNotEmpty()) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(3),
+                            horizontalArrangement = Arrangement.spacedBy(1.dp),
+                            verticalArrangement = Arrangement.spacedBy(1.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 600.dp)
+                        ) {
+                            items(gridPosts) { post ->
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .aspectRatio(1f)
+                                        .background(Color(0xFFE5E5EA))
+                                        .clickable { onNavigateToSecondaryFeed() }
+                                ) {
+                                    val bitmap = rememberProfileLoadedImage(context, post.mediaUrl)
+                                    if (bitmap != null) {
+                                        Image(
+                                            bitmap = bitmap,
+                                            contentDescription = post.caption,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        Icon(
+                                            Icons.Default.PhotoLibrary,
+                                            contentDescription = "Media Item",
+                                            tint = Color(0xFF8E8E93),
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 48.dp, horizontal = 24.dp)
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .clip(CircleShape)
+                                    .border(2.dp, Color.Black, CircleShape)
+                            ) {
+                                Icon(Icons.Default.CameraAlt, contentDescription = null, tint = Color.Black, modifier = Modifier.size(36.dp))
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("No Posts Yet", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                "When you share photos, they will appear on your profile.",
+                                fontSize = 13.sp,
+                                color = Color(0xFF8E8E93),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                }
+                1 -> {
+                    if (reelPosts.isNotEmpty()) {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(3),
+                            horizontalArrangement = Arrangement.spacedBy(1.dp),
+                            verticalArrangement = Arrangement.spacedBy(1.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 600.dp)
+                        ) {
+                            items(reelPosts) { reel ->
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .aspectRatio(1f)
+                                        .background(Color(0xFFE5E5EA))
+                                        .clickable { onNavigateToSecondaryFeed() }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Movie,
+                                        contentDescription = "Reel Item",
+                                        tint = Color(0xFF8E8E93),
+                                        modifier = Modifier.size(28.dp)
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 48.dp, horizontal = 24.dp)
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .clip(CircleShape)
+                                    .border(2.dp, Color.Black, CircleShape)
+                            ) {
+                                Icon(Icons.Default.Movie, contentDescription = null, tint = Color.Black, modifier = Modifier.size(36.dp))
+                            }
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text("No Reels Yet", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                "Share your creative videos with the world.",
+                                fontSize = 13.sp,
+                                color = Color(0xFF8E8E93),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                }
+                2 -> {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
                         modifier = Modifier
-                            .aspectRatio(1f)
-                            .background(Color(0xFFE5E5EA))
-                            .clickable { onNavigateToSecondaryFeed() }
+                            .fillMaxWidth()
+                            .padding(vertical = 48.dp, horizontal = 24.dp)
                     ) {
-                        Icon(
-                            imageVector = when (activeTabState) {
-                                1 -> Icons.Default.Movie
-                                2 -> Icons.Default.Bookmark
-                                else -> Icons.Default.PhotoLibrary
-                            },
-                            contentDescription = "Media Item",
-                            tint = Color(0xFF8E8E93),
-                            modifier = Modifier.size(24.dp)
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(72.dp)
+                                .clip(CircleShape)
+                                .border(2.dp, Color.Black, CircleShape)
+                        ) {
+                            Icon(Icons.Default.PersonPin, contentDescription = null, tint = Color.Black, modifier = Modifier.size(36.dp))
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Photos and videos of you", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            "When people tag you in photos and videos, they'll appear here.",
+                            fontSize = 13.sp,
+                            color = Color(0xFF8E8E93),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                     }
                 }
             }
         }
+    }
+
+    // MULTI-ACCOUNT SWITCHER BOTTOM SHEET
+    if (showAccountSwitcherBottomSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showAccountSwitcherBottomSheet = false },
+            containerColor = Color.White
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Switch accounts",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                val displayAccounts = if (savedAccounts.isEmpty()) listOf(user) else savedAccounts
+
+                displayAccounts.forEach { acc ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable {
+                                showAccountSwitcherBottomSheet = false
+                                if (acc.id != user.id) {
+                                    onSwitchAccount(acc.id)
+                                }
+                            }
+                            .padding(vertical = 10.dp, horizontal = 8.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF006494))
+                            ) {
+                                Text(
+                                    acc.name.take(1).uppercase(),
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Column {
+                                Text(
+                                    text = acc.name,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Black
+                                )
+                                Text(
+                                    text = acc.handle,
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF8E8E93)
+                                )
+                            }
+                        }
+
+                        if (acc.id == user.id) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = "Active Account",
+                                tint = Color(0xFF3897F0),
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp), color = Color(0xFFE5E5EA))
+
+                // Add Account Action Row
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable {
+                            showAccountSwitcherBottomSheet = false
+                            showAddAccountDialog = true
+                        }
+                        .padding(vertical = 12.dp, horizontal = 8.dp)
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .border(1.dp, Color(0xFFE5E5EA), CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Add account",
+                            tint = Color.Black,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Text(
+                        text = "Add Instagram account",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF3897F0)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+        }
+    }
+
+    // ADD ACCOUNT DIALOG
+    if (showAddAccountDialog) {
+        AlertDialog(
+            onDismissRequest = { showAddAccountDialog = false },
+            containerColor = Color.White,
+            title = {
+                Text("➕ Add Account", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Enter new account email & name:", fontSize = 12.sp, color = Color.Gray)
+
+                    OutlinedTextField(
+                        value = newAccEmail,
+                        onValueChange = { newAccEmail = it },
+                        label = { Text("Account Email", color = Color.Gray) },
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color(0xFF3897F0), unfocusedBorderColor = Color.LightGray),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = newAccName,
+                        onValueChange = { newAccName = it },
+                        label = { Text("Display Name (Optional)", color = Color.Gray) },
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color(0xFF3897F0), unfocusedBorderColor = Color.LightGray),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (newAccEmail.isNotBlank()) {
+                            onAddAccount(newAccEmail, newAccName)
+                            showAddAccountDialog = false
+                            newAccEmail = ""
+                            newAccName = ""
+                            Toast.makeText(context, "Account added successfully!", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Please enter a valid email", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3897F0))
+                ) {
+                    Text("Log In / Add", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddAccountDialog = false }) {
+                    Text("Cancel", color = Color.Gray)
+                }
+            }
+        )
     }
 
     // SETTINGS & PRIVACY BOTTOM SHEET / MODAL
@@ -1306,18 +1591,33 @@ fun Context.cacheBufferDir(): File {
 
 @Composable
 fun rememberProfileLoadedImage(context: Context, uriString: String?): ImageBitmap? {
-    return remember(uriString) {
-        if (uriString.isNullOrBlank()) null
-        else {
+    var imageBitmap by remember(uriString) { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(uriString) {
+        if (uriString.isNullOrBlank()) {
+            imageBitmap = null
+            return@LaunchedEffect
+        }
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                val uri = Uri.parse(uriString)
-                val inputStream = context.contentResolver.openInputStream(uri)
-                val bitmap = BitmapFactory.decodeStream(inputStream)
-                bitmap?.asImageBitmap()
+                if (uriString.startsWith("http://") || uriString.startsWith("https://")) {
+                    val url = java.net.URL(uriString)
+                    val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+                        connectTimeout = 5000
+                        readTimeout = 5000
+                    }
+                    val inputStream = connection.inputStream
+                    val bitmap = BitmapFactory.decodeStream(inputStream)
+                    imageBitmap = bitmap?.asImageBitmap()
+                } else {
+                    val uri = Uri.parse(uriString)
+                    val inputStream = context.contentResolver.openInputStream(uri)
+                    val bitmap = BitmapFactory.decodeStream(inputStream)
+                    imageBitmap = bitmap?.asImageBitmap()
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
-                null
             }
         }
     }
+    return imageBitmap
 }

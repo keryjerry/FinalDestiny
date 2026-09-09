@@ -114,6 +114,7 @@ fun FinalDestinyApp(repository: AppRepository) {
     var isVideoRoomKeptInBackground by remember { mutableStateOf(false) }
 
     val user by repository.currentUser.collectAsState()
+    val savedAccounts by repository.savedAccounts.collectAsState()
     val swipeCards by repository.swipeCards.collectAsState()
     val matchedCard by repository.matchedCard.collectAsState()
     val storyTrays by repository.storyTrays.collectAsState()
@@ -331,6 +332,8 @@ fun FinalDestinyApp(repository: AppRepository) {
 
                 Screen.USER_PROFILE -> UserProfileScreen(
                     user = user,
+                    userPosts = momentPosts.filter { it.authorHandle == user.handle || it.authorName == user.name },
+                    savedAccounts = savedAccounts,
                     onSaveProfile = { updated -> repository.updateUserProfile(updated) },
                     onNavigateToStore = { currentScreen = Screen.VIP_STORE },
                     onNavigateToSecondaryFeed = { currentScreen = Screen.SECONDARY_FEED },
@@ -346,6 +349,9 @@ fun FinalDestinyApp(repository: AppRepository) {
                     },
                     onRefresh = { repository.refreshUserProfile() },
                     onToggleFollowCandidate = { targetId, isFollowing -> repository.toggleFollowUser(targetId, isFollowing) },
+                    onSwitchAccount = { targetId -> repository.switchAccount(targetId, context) },
+                    onAddAccount = { email, name -> repository.addAccount(email, name, context) },
+                    onRemoveAccount = { targetId -> repository.removeAccount(targetId, context) },
                     onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
                 )
 
