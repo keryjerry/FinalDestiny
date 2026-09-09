@@ -69,6 +69,7 @@ val samplePhotoFilters = listOf(
 fun InstagramNewPostScreen(
     mediaUri: String?,
     isReel: Boolean,
+    user: com.devil.finaldestiny.model.UserProfile = com.devil.finaldestiny.model.UserProfile(),
     onBack: () -> Unit,
     onPublish: (
         caption: String,
@@ -83,7 +84,12 @@ fun InstagramNewPostScreen(
         scheduledAt: String?,
         altText: String?,
         appliedFilter: String?,
-        overlayText: String?
+        overlayText: String?,
+        ctaLink: String?,
+        ctaLabel: String?,
+        isPaidPartnership: Boolean,
+        promotionStatus: String,
+        promotionBudget: Double
     ) -> Unit
 ) {
     val context = LocalContext.current
@@ -94,6 +100,14 @@ fun InstagramNewPostScreen(
     var selectedLocation by remember { mutableStateOf("Kolkata") }
     var isAiLabelEnabled by remember { mutableStateOf(false) }
     var isOnlyPostToProfile by remember { mutableStateOf(false) }
+
+    // Monetization & Paid Partnership State (500 Follower Gatekeeper)
+    var isPaidPartnership by remember { mutableStateOf(false) }
+    var ctaLinkInput by remember { mutableStateOf("") }
+    var ctaLabelSelected by remember { mutableStateOf("Shop now") }
+    var showPromotionCheckoutDialog by remember { mutableStateOf(false) }
+    var promotionBudgetInput by remember { mutableStateOf("500") }
+    var isPromotionActive by remember { mutableStateOf(false) }
 
     // Advanced Options State
     var showMoreOptionsScreen by remember { mutableStateOf(false) }
@@ -221,7 +235,12 @@ fun InstagramNewPostScreen(
                             scheduledDateTimeStr,
                             altTextValue.ifBlank { null },
                             samplePhotoFilters[selectedFilterIndex].name,
-                            overlayTextValue.ifBlank { null }
+                            overlayTextValue.ifBlank { null },
+                            ctaLinkInput.ifBlank { null },
+                            ctaLabelSelected,
+                            isPaidPartnership,
+                            if (isPromotionActive) "active" else "none",
+                            promotionBudgetInput.toDoubleOrNull() ?: 0.0
                         )
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3897F0)),
@@ -531,6 +550,110 @@ fun InstagramNewPostScreen(
 
             HorizontalDivider(color = Color(0xFFE5E5EA), thickness = 0.5.dp)
 
+            // ----------------------------------------------------------------
+            // MONETIZATION / PAID PARTNERSHIP GATEKEEPER (500 FOLLOWER THRESHOLD)
+            // ----------------------------------------------------------------
+            val isMonetizationUnlocked = user.followerCount >= 500
+
+            if (!isMonetizationUnlocked) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBEB)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFCD34D)),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(12.dp)
+                    ) {
+                        Icon(Icons.Default.Lock, contentDescription = "Locked", tint = Color(0xFFD97706), modifier = Modifier.size(24.dp))
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text("Paid Branding & Action Link Locked 🔒", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color(0xFF92400E))
+                            Text("Paid Branding unlocks at 500 followers (Current: ${user.followerCount}/500)", fontSize = 11.sp, color = Color(0xFFB45309))
+                        }
+                    }
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Text("Paid Partnership & Action Link 💼", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Toggle: Paid Partnership
+                    ListItem(
+                        headlineContent = { Text("Paid partnership label", fontSize = 13.sp, fontWeight = FontWeight.SemiBold) },
+                        supportingContent = { Text("Adds 'Paid partnership' tag to post header", fontSize = 11.sp, color = Color(0xFF8E8E93)) },
+                        trailingContent = {
+                            Switch(
+                                checked = isPaidPartnership,
+                                onCheckedChange = { isPaidPartnership = it },
+                                colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = Color(0xFF3897F0))
+                            )
+                        }
+                    )
+
+                    // Action Link Input
+                    OutlinedTextField(
+                        value = ctaLinkInput,
+                        onValueChange = { ctaLinkInput = it },
+                        label = { Text("Action Link URL", fontSize = 12.sp, color = Color.Gray) },
+                        placeholder = { Text("https://yourwebsite.com/deal", fontSize = 12.sp, color = Color.Gray) },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color(0xFF3897F0), unfocusedBorderColor = Color.LightGray),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // CTA Button Label Selector Chips
+                    Text("Select CTA Button Label:", fontSize = 12.sp, color = Color.Black, fontWeight = FontWeight.SemiBold)
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        contentPadding = PaddingValues(vertical = 4.dp)
+                    ) {
+                        val ctaOptions = listOf("Shop now", "Sign up", "Visit site", "Install app", "Learn more")
+                        items(ctaOptions) { labelOpt ->
+                            FilterChip(
+                                selected = (ctaLabelSelected == labelOpt),
+                                onClick = { ctaLabelSelected = labelOpt },
+                                label = { Text(labelOpt, fontSize = 12.sp) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Color(0xFF3897F0),
+                                    selectedLabelColor = Color.White
+                                )
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // In-App Revenue Promotion Checkout Button
+                    Button(
+                        onClick = { showPromotionCheckoutDialog = true },
+                        colors = ButtonDefaults.buttonColors(containerColor = if (isPromotionActive) Color(0xFF166534) else Color(0xFF7C3AED)),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth().height(42.dp)
+                    ) {
+                        Icon(Icons.Default.MonetizationOn, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            if (isPromotionActive) "✅ Promotion Active (Paid)" else "Promote Post (In-App Revenue)",
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+
+            HorizontalDivider(color = Color(0xFFE5E5EA), thickness = 0.5.dp)
+
             // More Options Row (Reference 2 & 3 Link)
             ListItem(
                 headlineContent = { Text("More options", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
@@ -541,6 +664,78 @@ fun InstagramNewPostScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
         }
+    }
+
+    // IN-APP REVENUE PROMOTION CHECKOUT DIALOG
+    if (showPromotionCheckoutDialog) {
+        val budgetVal = promotionBudgetInput.toDoubleOrNull() ?: 500.0
+        val platformCut = budgetVal * 0.20
+        val netBudget = budgetVal * 0.80
+
+        AlertDialog(
+            onDismissRequest = { showPromotionCheckoutDialog = false },
+            containerColor = Color.White,
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.MonetizationOn, contentDescription = null, tint = Color(0xFF7C3AED))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("💰 Promote Post Checkout", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Set campaign budget to feature this post in discovery feeds:", fontSize = 12.sp, color = Color.Gray)
+
+                    OutlinedTextField(
+                        value = promotionBudgetInput,
+                        onValueChange = { promotionBudgetInput = it.filter { char -> char.isDigit() } },
+                        label = { Text("Promotion Budget (₹)", color = Color.Gray) },
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color(0xFF7C3AED)),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF3F4F6)),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                Text("Total Campaign:", fontSize = 12.sp, color = Color.Black)
+                                Text("₹${budgetVal.toInt()}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                            }
+                            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                Text("Platform Commission Cut (20%):", fontSize = 12.sp, color = Color(0xFFDC2626))
+                                Text("- ₹${platformCut.toInt()}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFFDC2626))
+                            }
+                            HorizontalDivider(color = Color(0xFFD1D5DB))
+                            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                Text("Net Ad Reach Credit:", fontSize = 12.sp, color = Color(0xFF166534), fontWeight = FontWeight.Bold)
+                                Text("₹${netBudget.toInt()}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        isPromotionActive = true
+                        isPaidPartnership = true
+                        showPromotionCheckoutDialog = false
+                        Toast.makeText(context, "✅ Paid Promotion Activated! Platform Cut 20%: ₹${platformCut.toInt()}", Toast.LENGTH_LONG).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7C3AED))
+                ) {
+                    Text("Pay & Activate Promotion 💳", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPromotionCheckoutDialog = false }) {
+                    Text("Cancel", color = Color.Gray)
+                }
+            }
+        )
     }
 
     // GLOBAL MUSIC SEARCH BOTTOM SHEET

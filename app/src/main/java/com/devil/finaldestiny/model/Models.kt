@@ -134,7 +134,11 @@ data class MomentPost(
     val scheduledAt: String? = null,
     val altText: String? = null,
     val appliedFilter: String? = null,
-    val overlayText: String? = null
+    val overlayText: String? = null,
+    val ctaLabel: String? = null,
+    val isPaidPartnership: Boolean = false,
+    val promotionStatus: String = "none",
+    val promotionBudget: Double = 0.0
 )
 
 data class StoryItem(

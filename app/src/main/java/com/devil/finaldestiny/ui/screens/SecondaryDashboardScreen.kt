@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bookmark
@@ -51,7 +52,11 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devil.finaldestiny.data.SupabaseAuthClient
@@ -89,8 +94,13 @@ fun SecondaryDashboardScreen(
         scheduledAt: String?,
         altText: String?,
         appliedFilter: String?,
-        overlayText: String?
-    ) -> Unit = { _, _, _, _, _, _, _, _, _, _ -> },
+        overlayText: String?,
+        ctaLink: String?,
+        ctaLabel: String?,
+        isPaidPartnership: Boolean,
+        promotionStatus: String,
+        promotionBudget: Double
+    ) -> Unit = { _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ -> },
     onPublishReel: (
         caption: String,
         mediaUri: String?,
@@ -104,8 +114,13 @@ fun SecondaryDashboardScreen(
         scheduledAt: String?,
         altText: String?,
         appliedFilter: String?,
-        overlayText: String?
-    ) -> Unit = { _, _, _, _, _, _, _, _, _, _, _, _, _ -> },
+        overlayText: String?,
+        ctaLink: String?,
+        ctaLabel: String?,
+        isPaidPartnership: Boolean,
+        promotionStatus: String,
+        promotionBudget: Double
+    ) -> Unit = { _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _ -> },
     onTipPost: (MomentPost) -> Unit,
     onAddStory: (String) -> Unit = {},
     onAddComment: (String, String) -> Unit = { _, _ -> },
@@ -677,12 +692,63 @@ fun SecondaryDashboardScreen(
                     }
 
                     // --------------------------------------------------------
-                    // BOTTOM 6 ENGAGEMENT OVERLAY (MATCHING REFERENCE IMAGE)
+                    // CONDITIONAL CTA BANNER (SLIM ~38DP INDIGO/PURPLE BANNER)
+                    // Rendered ONLY IF post has valid link & (active promotion or paid partnership)
+                    // --------------------------------------------------------
+                    val hasActiveCta = (!post.ctaUrl.isNullOrBlank() || !post.ctaText.isNullOrBlank() || !post.ctaLabel.isNullOrBlank()) &&
+                            (post.isSponsored || post.isPaidPartnership || post.promotionStatus == "active")
+
+                    if (hasActiveCta) {
+                        Surface(
+                            color = Color(0xFF3730A3), // Deep Indigo / Purple matching Reference Screenshot 3
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(38.dp)
+                                .clickable {
+                                    val targetUrl = post.ctaUrl ?: "https://finaldestiny.app"
+                                    try {
+                                        val intent = android.content.Intent(
+                                            android.content.Intent.ACTION_VIEW,
+                                            Uri.parse(targetUrl)
+                                        )
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Opening CTA link: $targetUrl", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(horizontal = 14.dp)
+                            ) {
+                                Text(
+                                    text = post.ctaText ?: post.ctaLabel ?: "Sign up",
+                                    color = Color.White,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                    contentDescription = "Navigate Link",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // --------------------------------------------------------
+                    // BOTTOM ENGAGEMENT DETAILS (STRICT WRAP CONTENT HEIGHT, NO DEAD WHITESPACE)
                     // --------------------------------------------------------
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                            .wrapContentHeight()
+                            .background(Color.White)
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
                     ) {
                         // ENGAGEMENT ICONS BAR (Heart, Comment, Repost, Send DM, Bookmark)
                         Row(
@@ -694,7 +760,7 @@ fun SecondaryDashboardScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                // ARROW 1: Outlined / Filled Heart Icon with Counter
+                                // Heart Icon
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     IconButton(
                                         onClick = {
@@ -713,7 +779,7 @@ fun SecondaryDashboardScreen(
                                     }
                                 }
 
-                                // ARROW 2: Comment Speech Bubble Icon (1,969)
+                                // Comment Icon
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.clickable {
@@ -736,7 +802,7 @@ fun SecondaryDashboardScreen(
                                     )
                                 }
 
-                                // ARROW 3: Share / Repost Counter (2,327)
+                                // Repost Counter
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.clickable {
@@ -759,7 +825,7 @@ fun SecondaryDashboardScreen(
                                     )
                                 }
 
-                                // ARROW 4: Direct Message / Send Paper Plane Icon
+                                // Send DM Icon
                                 IconButton(
                                     onClick = {
                                         showDirectShareSheetForPost = post
@@ -776,7 +842,7 @@ fun SecondaryDashboardScreen(
                                 }
                             }
 
-                            // ARROW 6: Bookmark Ribbon Icon (Save Button)
+                            // Bookmark Ribbon Icon
                             IconButton(
                                 onClick = {
                                     onToggleSavePost(post.id)
@@ -794,9 +860,9 @@ fun SecondaryDashboardScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
 
-                        // Liked by Avatars & Text Summary
+                        // Liked by Summary
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = "Liked by ",
@@ -824,26 +890,48 @@ fun SecondaryDashboardScreen(
 
                         Spacer(modifier = Modifier.height(4.dp))
 
-                        // ARROW 5: Author Caption, Mentions & Inline "...more" Toggle
-                        Row(verticalAlignment = Alignment.Top) {
+                        // INLINE CAPTION CLAMPING (REPAIRS VERTICAL LETTER-BY-LETTER WRAP BUG)
+                        val authorHandleText = post.authorHandle.removePrefix("@")
+                        val isLongCaptionText = post.caption.length > 42
+
+                        val annotatedCaptionText = remember(authorHandleText, post.caption, isExpandedCaption) {
+                            buildAnnotatedString {
+                                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = NavyTextPrimary)) {
+                                    append(authorHandleText)
+                                }
+                                append(" ")
+                                if (isExpandedCaption || !isLongCaptionText) {
+                                    append(post.caption)
+                                } else {
+                                    append(post.caption.take(42))
+                                    append("...")
+                                }
+                            }
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             Text(
-                                text = buildString {
-                                    append(post.authorHandle.removePrefix("@"))
-                                    append(" ")
-                                    append(if (isExpandedCaption) post.caption else post.caption.take(45))
-                                },
+                                text = annotatedCaptionText,
                                 fontSize = 13.sp,
                                 color = NavyTextPrimary,
-                                maxLines = if (isExpandedCaption) Int.MAX_VALUE else 1
+                                maxLines = if (isExpandedCaption) 15 else 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .weight(1f, fill = false)
+                                    .clickable { if (isLongCaptionText) isExpandedCaption = !isExpandedCaption }
                             )
-
-                            if (post.caption.length > 45 && !isExpandedCaption) {
+                            if (isLongCaptionText && !isExpandedCaption) {
                                 Text(
-                                    text = " ...more",
+                                    text = "more",
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = SlateTextSecondary,
-                                    modifier = Modifier.clickable { isExpandedCaption = true }
+                                    modifier = Modifier
+                                        .padding(start = 2.dp)
+                                        .clickable { isExpandedCaption = true }
                                 )
                             }
                         }
@@ -858,8 +946,7 @@ fun SecondaryDashboardScreen(
 
                     HorizontalDivider(
                         color = SkyBlueBorder,
-                        thickness = 0.5.dp,
-                        modifier = Modifier.padding(top = 10.dp)
+                        thickness = 0.5.dp
                     )
                 }
             }
@@ -1164,11 +1251,12 @@ fun SecondaryDashboardScreen(
         InstagramNewPostScreen(
             mediaUri = selectedMediaUri,
             isReel = isReelUploadMode,
+            user = user,
             onBack = {
                 showCreatePostDialog = false
                 selectedMediaUri = null
             },
-            onPublish = { caption, mediaUri, audioTitle, audioArtist, audioUrl, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText ->
+            onPublish = { caption, mediaUri, audioTitle, audioArtist, audioUrl, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText, ctaLink, ctaLabel, isPaidPartnership, promotionStatus, promotionBudget ->
                 showCreatePostDialog = false
                 selectedMediaUri = null
 
@@ -1181,9 +1269,9 @@ fun SecondaryDashboardScreen(
                     }
 
                     if (isReelUploadMode) {
-                        onPublishReel(caption, mediaUri, audioTitle, audioArtist, audioUrl, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText)
+                        onPublishReel(caption, mediaUri, audioTitle, audioArtist, audioUrl, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText, ctaLink, ctaLabel, isPaidPartnership, promotionStatus, promotionBudget)
                     } else {
-                        onPublishPost(caption, mediaUri, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText)
+                        onPublishPost(caption, mediaUri, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText, ctaLink, ctaLabel, isPaidPartnership, promotionStatus, promotionBudget)
                     }
 
                     isUploadingMedia = false

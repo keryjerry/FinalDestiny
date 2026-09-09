@@ -535,7 +535,12 @@ class AppRepository {
         scheduledAt: String? = null,
         altText: String? = null,
         appliedFilter: String? = null,
-        overlayText: String? = null
+        overlayText: String? = null,
+        ctaLink: String? = null,
+        ctaLabel: String? = null,
+        isPaidPartnership: Boolean = false,
+        promotionStatus: String = "none",
+        promotionBudget: Double = 0.0
     ) {
         val user = _currentUser.value
         val newPost = MomentPost(
@@ -559,7 +564,14 @@ class AppRepository {
             scheduledAt = scheduledAt,
             altText = altText,
             appliedFilter = appliedFilter,
-            overlayText = overlayText
+            overlayText = overlayText,
+            ctaUrl = ctaLink,
+            ctaText = ctaLabel,
+            ctaLabel = ctaLabel,
+            isPaidPartnership = isPaidPartnership,
+            promotionStatus = promotionStatus,
+            promotionBudget = promotionBudget,
+            isSponsored = isPaidPartnership || promotionStatus == "active"
         )
         _momentPosts.value = listOf(newPost) + _momentPosts.value
     }
@@ -577,7 +589,12 @@ class AppRepository {
         scheduledAt: String? = null,
         altText: String? = null,
         appliedFilter: String? = null,
-        overlayText: String? = null
+        overlayText: String? = null,
+        ctaLink: String? = null,
+        ctaLabel: String? = null,
+        isPaidPartnership: Boolean = false,
+        promotionStatus: String = "none",
+        promotionBudget: Double = 0.0
     ) {
         val user = _currentUser.value
         val newReel = MomentPost(
@@ -606,7 +623,14 @@ class AppRepository {
             scheduledAt = scheduledAt,
             altText = altText,
             appliedFilter = appliedFilter,
-            overlayText = overlayText
+            overlayText = overlayText,
+            ctaUrl = ctaLink,
+            ctaText = ctaLabel,
+            ctaLabel = ctaLabel,
+            isPaidPartnership = isPaidPartnership,
+            promotionStatus = promotionStatus,
+            promotionBudget = promotionBudget,
+            isSponsored = isPaidPartnership || promotionStatus == "active"
         )
         _momentPosts.value = listOf(newReel) + _momentPosts.value
     }
