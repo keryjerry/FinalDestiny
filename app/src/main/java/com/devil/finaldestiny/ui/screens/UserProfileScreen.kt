@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.PersonPin
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Policy
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -88,6 +89,7 @@ fun UserProfileScreen(
     onNavigateToMonetization: () -> Unit = {},
     onNavigateToCreatorHub: () -> Unit = {},
     onNavigateToCreatorTools: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
     onNavigateToDating: () -> Unit = {},
     onNavigateToAboutUs: () -> Unit = {},
     onLogOut: () -> Unit,
@@ -996,6 +998,21 @@ fun UserProfileScreen(
             ) {
                 Text("Settings & Privacy", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                 HorizontalDivider(color = Color(0xFFE5E5EA))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            showSettingsBottomSheet = false
+                            onNavigateToSettings()
+                        }
+                        .padding(vertical = 8.dp)
+                ) {
+                    Icon(Icons.Default.Settings, contentDescription = null, tint = Color(0xFF3897F0))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Settings and activity", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                }
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

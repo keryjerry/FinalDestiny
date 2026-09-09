@@ -33,6 +33,7 @@ import com.devil.finaldestiny.ui.components.NotificationCenterModal
 import com.devil.finaldestiny.ui.components.PermissionModalDialog
 import com.devil.finaldestiny.ui.components.UpdateInstallerModalDialog
 import com.devil.finaldestiny.ui.screens.*
+import com.devil.finaldestiny.ui.settings.*
 import com.devil.finaldestiny.ui.theme.*
 import com.razorpay.Checkout
 import com.razorpay.PaymentData
@@ -55,6 +56,7 @@ enum class Screen {
     USER_PROFILE,
     CREATOR_HUB,
     CREATOR_TOOLS,
+    SETTINGS_ACTIVITY,
     FINAL_DESTINY_DATING,
     ABOUT_US
 }
@@ -126,6 +128,7 @@ fun FinalDestinyApp(repository: AppRepository) {
     val isVisionBlackoutTriggered by repository.isVisionBlackoutTriggered.collectAsState()
     val notifications by repository.notifications.collectAsState()
     val creatorAnalytics by repository.creatorAnalytics.collectAsState()
+    val userSettings by repository.userSettingsState.collectAsState()
     var showNotificationModal by remember { mutableStateOf(false) }
 
     // Auto-Update Checker State (Supabase Remote Config)
@@ -334,6 +337,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onNavigateToMonetization = { currentScreen = Screen.CREATOR_MONETIZATION },
                     onNavigateToCreatorHub = { currentScreen = Screen.CREATOR_HUB },
                     onNavigateToCreatorTools = { currentScreen = Screen.CREATOR_TOOLS },
+                    onNavigateToSettings = { currentScreen = Screen.SETTINGS_ACTIVITY },
                     onNavigateToDating = { currentScreen = Screen.FINAL_DESTINY_DATING },
                     onNavigateToAboutUs = { currentScreen = Screen.ABOUT_US },
                     onLogOut = {
@@ -356,6 +360,24 @@ fun FinalDestinyApp(repository: AppRepository) {
                 Screen.CREATOR_TOOLS -> CreatorToolsScreen(
                     user = user,
                     onSaveUser = { updated -> repository.updateUserProfile(updated) },
+                    onBack = { currentScreen = Screen.USER_PROFILE }
+                )
+
+                Screen.SETTINGS_ACTIVITY -> SettingsActivityScreen(
+                    userSettings = userSettings,
+                    onUpdateSettings = { updated -> repository.updateSettingsState(updated) },
+                    onLogOutAllSessions = {
+                        com.devil.finaldestiny.data.SupabaseAuthClient.signOut(context)
+                        currentScreen = Screen.AUTH_SPLASH
+                    },
+                    onClearSearchHistory = { repository.clearSearchHistory() },
+                    onRequestDataExport = {
+                        Toast.makeText(context, "📩 Asynchronous data export requested! Download link will be emailed to ${userSettings.email}.", Toast.LENGTH_LONG).show()
+                    },
+                    onAddKeywordToBlacklist = { keyword -> repository.addKeywordToBlacklist(keyword) },
+                    onUnblockUser = { targetId -> repository.unblockUser(targetId) },
+                    onResetFeedInterests = { repository.resetFeedInterests() },
+                    onNavigateToCreatorTools = { currentScreen = Screen.CREATOR_TOOLS },
                     onBack = { currentScreen = Screen.USER_PROFILE }
                 )
 

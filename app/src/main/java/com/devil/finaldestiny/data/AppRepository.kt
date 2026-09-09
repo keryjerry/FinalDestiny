@@ -869,4 +869,142 @@ class AppRepository {
             }
         }
     }
+
+    // ================================================================================
+    // 26-POINT MODULAR SETTINGS, PRIVACY & ACTIVITY SUITE STATE & SUPABASE SYNC
+    // ================================================================================
+    private val _userSettingsState = MutableStateFlow(com.devil.finaldestiny.ui.settings.UserSettingsState())
+    val userSettingsState: StateFlow<com.devil.finaldestiny.ui.settings.UserSettingsState> = _userSettingsState.asStateFlow()
+
+    fun updateSettingsState(newSettings: com.devil.finaldestiny.ui.settings.UserSettingsState) {
+        _userSettingsState.value = newSettings
+
+        // Async persistence to public.user_settings on Supabase
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                val baseUrl = SupabaseAuthClient.supabaseUrl.trimEnd('/')
+                val anonKey = SupabaseAuthClient.supabaseAnonKey
+                val token = SupabaseAuthClient.getSessionToken() ?: anonKey
+                val myId = _currentUser.value.id
+
+                val endpoint = "$baseUrl/rest/v1/user_settings?user_id=eq.$myId"
+                val url = java.net.URL(endpoint)
+                val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+                    requestMethod = "PATCH"
+                    connectTimeout = 6000
+                    readTimeout = 6000
+                    setRequestProperty("apikey", anonKey)
+                    setRequestProperty("Authorization", "Bearer $token")
+                    setRequestProperty("Content-Type", "application/json")
+                    doOutput = true
+                }
+                val payload = org.json.JSONObject().apply {
+                    put("is_private_account", newSettings.isPrivateAccount)
+                    put("hide_like_share_counts", newSettings.hideLikeShareCounts)
+                    put("quiet_mode_enabled", newSettings.quietModeEnabled)
+                    put("sensitive_content_level", newSettings.sensitiveContentLevel.name)
+                    put("data_saver_enabled", newSettings.dataSaverEnabled)
+                    put("auto_captions_enabled", newSettings.autoCaptionsEnabled)
+                    put("preferred_language", newSettings.preferredLanguage)
+                }
+                connection.outputStream.use { os ->
+                    os.write(payload.toString().toByteArray(Charsets.UTF_8))
+                }
+                val resCode = connection.responseCode
+                android.util.Log.d("[DestinySettings]", "Supabase user_settings PATCH -> Code $resCode")
+            } catch (e: Exception) {
+                android.util.Log.e("[DestinySettings]", "Failed to update user_settings on Supabase", e)
+            }
+        }
+    }
+
+    fun clearSearchHistory() {
+        val current = _userSettingsState.value
+        val filteredLogs = current.activityLogs.filter { it.category != "SEARCH" }
+        _userSettingsState.value = current.copy(activityLogs = filteredLogs)
+    }
+
+    fun resetFeedInterests() {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                val baseUrl = SupabaseAuthClient.supabaseUrl.trimEnd('/')
+                val anonKey = SupabaseAuthClient.supabaseAnonKey
+                val token = SupabaseAuthClient.getSessionToken() ?: anonKey
+                val myId = _currentUser.value.id
+
+                val endpoint = "$baseUrl/rest/v1/user_interests?user_id=eq.$myId"
+                val url = java.net.URL(endpoint)
+                val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+                    requestMethod = "DELETE"
+                    connectTimeout = 6000
+                    readTimeout = 6000
+                    setRequestProperty("apikey", anonKey)
+                    setRequestProperty("Authorization", "Bearer $token")
+                }
+                val resCode = connection.responseCode
+                android.util.Log.d("[DestinyFeedReset]", "Supabase Reset user_interests DELETE -> Code $resCode")
+            } catch (e: Exception) {
+                android.util.Log.e("[DestinyFeedReset]", "Failed to reset feed interests on Supabase", e)
+            }
+        }
+    }
+
+    fun addKeywordToBlacklist(keyword: String) {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                val baseUrl = SupabaseAuthClient.supabaseUrl.trimEnd('/')
+                val anonKey = SupabaseAuthClient.supabaseAnonKey
+                val token = SupabaseAuthClient.getSessionToken() ?: anonKey
+                val myId = _currentUser.value.id
+
+                val endpoint = "$baseUrl/rest/v1/content_moderation_rules"
+                val url = java.net.URL(endpoint)
+                val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    connectTimeout = 6000
+                    readTimeout = 6000
+                    setRequestProperty("apikey", anonKey)
+                    setRequestProperty("Authorization", "Bearer $token")
+                    setRequestProperty("Content-Type", "application/json")
+                    doOutput = true
+                }
+                val payload = org.json.JSONObject().apply {
+                    put("user_id", myId)
+                    put("blocked_keyword", keyword)
+                }
+                connection.outputStream.use { os ->
+                    os.write(payload.toString().toByteArray(Charsets.UTF_8))
+                }
+                val resCode = connection.responseCode
+                android.util.Log.d("[DestinyBlacklist]", "Supabase Moderation Rule POST -> Code $resCode")
+            } catch (e: Exception) {
+                android.util.Log.e("[DestinyBlacklist]", "Failed to post moderation rule to Supabase", e)
+            }
+        }
+    }
+
+    fun unblockUser(targetUserId: String) {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                val baseUrl = SupabaseAuthClient.supabaseUrl.trimEnd('/')
+                val anonKey = SupabaseAuthClient.supabaseAnonKey
+                val token = SupabaseAuthClient.getSessionToken() ?: anonKey
+                val myId = _currentUser.value.id
+
+                val endpoint = "$baseUrl/rest/v1/user_relationships_privacy?user_id=eq.$myId&target_user_id=eq.$targetUserId"
+                val url = java.net.URL(endpoint)
+                val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+                    requestMethod = "DELETE"
+                    connectTimeout = 6000
+                    readTimeout = 6000
+                    setRequestProperty("apikey", anonKey)
+                    setRequestProperty("Authorization", "Bearer $token")
+                }
+                val resCode = connection.responseCode
+                android.util.Log.d("[DestinyUnblock]", "Supabase Privacy Relationship DELETE -> Code $resCode")
+            } catch (e: Exception) {
+                android.util.Log.e("[DestinyUnblock]", "Failed to unblock user on Supabase", e)
+            }
+        }
+    }
 }
