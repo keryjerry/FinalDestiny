@@ -36,6 +36,27 @@ data class SwipeCard(
     val isMatched: Boolean = false
 )
 
+data class SearchResultUser(
+    val id: String,
+    val name: String,
+    val handle: String,
+    val avatarUrl: String?,
+    val matchChip: String,
+    val isVerified: Boolean = true,
+    val isFollowing: Boolean = false
+)
+
+data class DirectMessageConversation(
+    val id: String,
+    val userName: String,
+    val userHandle: String,
+    val userAvatar: String?,
+    val lastMessage: String,
+    val timestamp: String,
+    val unreadCount: Int = 0,
+    val isOnline: Boolean = true
+)
+
 enum class MediaType { PHOTO, REEL_VIDEO }
 
 data class MomentComment(

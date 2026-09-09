@@ -311,5 +311,44 @@ object SupabaseAuthClient {
         }
     }
 
+    /**
+     * Supabase RPC call: smart_ai_search(search_query)
+     * Scans usernames, full names, bios, cities, and hobbies via fuzzy matching.
+     */
+    suspend fun executeSmartAiSearch(query: String): String = withContext(Dispatchers.IO) {
+        try {
+            val endpoint = "${supabaseUrl.trimEnd('/')}/rest/v1/rpc/smart_ai_search"
+            Log.d(TAG, "Executing Supabase RPC -> smart_ai_search: $query")
+            val url = URL(endpoint)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 6000
+                readTimeout = 6000
+                setRequestProperty("apikey", supabaseAnonKey)
+                setRequestProperty("Authorization", "Bearer ${currentSessionToken ?: supabaseAnonKey}")
+                setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                setRequestProperty("Accept", "application/json")
+                doOutput = true
+            }
+
+            val payload = JSONObject().apply {
+                put("search_query", query.trim())
+            }
+
+            connection.outputStream.use { os ->
+                os.write(payload.toString().toByteArray(Charsets.UTF_8))
+            }
+
+            val resCode = connection.responseCode
+            val resStream = if (resCode in 200..299) connection.inputStream else connection.errorStream
+            val resText = resStream?.bufferedReader()?.use { it.readText() } ?: ""
+            Log.d(TAG, "Supabase RPC smart_ai_search response -> Code $resCode | Output: $resText")
+            resText
+        } catch (e: Exception) {
+            Log.e(TAG, "Supabase RPC smart_ai_search failed", e)
+            ""
+        }
+    }
+
     private fun String?.isNull_or_blank_custom(): Boolean = this == null || this.trim().isEmpty()
 }

@@ -193,7 +193,7 @@ fun SecondaryDashboardScreen(
                 }
             }
 
-            // TOP BAR HEADER: INSTAGRAM BRAND LOGO & HEART NOTIFICATION BELL
+            // TOP BAR HEADER: UNIVERSAL BACK ARROW ('<'), INSTAGRAM BRAND LOGO & HEART NOTIFICATION BELL
             item {
                 Row(
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -202,13 +202,30 @@ fun SecondaryDashboardScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
-                    Text(
-                        text = "Final Destiny",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = NavyTextPrimary,
-                        letterSpacing = (-0.5).sp
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(
+                            onClick = onBack,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(SkyBlueHeader)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = NavyTextPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Text(
+                            text = "Final Destiny",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = NavyTextPrimary,
+                            letterSpacing = (-0.5).sp
+                        )
+                    }
 
                     // Top-Right Heart Icon for Notifications
                     Box(contentAlignment = Alignment.TopEnd) {

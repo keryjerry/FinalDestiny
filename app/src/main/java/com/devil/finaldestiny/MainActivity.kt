@@ -44,6 +44,9 @@ enum class Screen {
     LIVENESS_CHECK,
     PRIMARY_DASHBOARD,
     SECONDARY_FEED,
+    SEARCH_EXPLORE,
+    INBOX,
+    NOTIFICATION,
     DISCOVER_SWIPE,
     LIVE_AUDIO_ROOM,
     LIVE_VIDEO_ROOM,
@@ -256,19 +259,16 @@ fun FinalDestinyApp(repository: AppRepository) {
                             label = { Text("Home", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.SECONDARY_FEED || currentScreen == Screen.PRIMARY_DASHBOARD) SkyBluePrimary else SlateTextSecondary) }
                         )
                         NavigationBarItem(
-                            selected = currentScreen == Screen.DISCOVER_SWIPE,
-                            onClick = { currentScreen = Screen.DISCOVER_SWIPE },
-                            icon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = if (currentScreen == Screen.DISCOVER_SWIPE) SkyBluePrimary else SlateTextSecondary) },
-                            label = { Text("Search", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.DISCOVER_SWIPE) SkyBluePrimary else SlateTextSecondary) }
+                            selected = currentScreen == Screen.SEARCH_EXPLORE,
+                            onClick = { currentScreen = Screen.SEARCH_EXPLORE },
+                            icon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = if (currentScreen == Screen.SEARCH_EXPLORE) SkyBluePrimary else SlateTextSecondary) },
+                            label = { Text("Search", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.SEARCH_EXPLORE) SkyBluePrimary else SlateTextSecondary) }
                         )
                         NavigationBarItem(
-                            selected = currentScreen == Screen.LIVE_AUDIO_ROOM,
-                            onClick = {
-                                isAudioRoomKeptInBackground = false
-                                currentScreen = Screen.LIVE_AUDIO_ROOM
-                            },
-                            icon = { Icon(Icons.Default.Chat, contentDescription = "Messages", tint = if (currentScreen == Screen.LIVE_AUDIO_ROOM) SkyBluePrimary else SlateTextSecondary) },
-                            label = { Text("Messages", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.LIVE_AUDIO_ROOM) SkyBluePrimary else SlateTextSecondary) }
+                            selected = currentScreen == Screen.INBOX,
+                            onClick = { currentScreen = Screen.INBOX },
+                            icon = { Icon(Icons.Default.Chat, contentDescription = "Messages", tint = if (currentScreen == Screen.INBOX) SkyBluePrimary else SlateTextSecondary) },
+                            label = { Text("Messages", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.INBOX) SkyBluePrimary else SlateTextSecondary) }
                         )
                         NavigationBarItem(
                             selected = currentScreen == Screen.USER_PROFILE,
@@ -299,7 +299,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                 Screen.PRIMARY_DASHBOARD -> PrimaryDashboardScreen(
                     user = user,
                     notifications = notifications,
-                    onOpenNotifications = { showNotificationModal = true },
+                    onOpenNotifications = { currentScreen = Screen.NOTIFICATION },
                     onNavigateToSwipe = { currentScreen = Screen.FINAL_DESTINY_DATING },
                     onNavigateToAudioRoom = {
                         isAudioRoomKeptInBackground = false
@@ -335,7 +335,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                     storyTrays = storyTrays,
                     momentPosts = momentPosts,
                     notifications = notifications,
-                    onOpenNotifications = { showNotificationModal = true },
+                    onOpenNotifications = { currentScreen = Screen.NOTIFICATION },
                     onLikePost = { postId -> repository.toggleLikePost(postId) },
                     onPublishPost = { caption, mediaUri -> repository.postMoment(caption, mediaUri) },
                     onPublishReel = { caption, mediaUri -> repository.postReelVideo(caption, mediaUri) },
@@ -349,6 +349,22 @@ fun FinalDestinyApp(repository: AppRepository) {
                     },
                     onRefresh = { repository.refreshMomentsAndReels() },
                     onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
+                )
+
+                Screen.SEARCH_EXPLORE -> SearchExploreScreen(
+                    explorePosts = momentPosts,
+                    onSelectPost = { currentScreen = Screen.SECONDARY_FEED },
+                    onBack = { currentScreen = Screen.SECONDARY_FEED }
+                )
+
+                Screen.INBOX -> InboxScreen(
+                    onBack = { currentScreen = Screen.SECONDARY_FEED }
+                )
+
+                Screen.NOTIFICATION -> NotificationScreen(
+                    user = user,
+                    notificationsList = notifications,
+                    onBack = { currentScreen = Screen.SECONDARY_FEED }
                 )
 
                 Screen.DISCOVER_SWIPE -> DiscoverSwipeScreen(
