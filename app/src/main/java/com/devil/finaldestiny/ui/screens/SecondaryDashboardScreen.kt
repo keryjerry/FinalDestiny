@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -255,7 +256,7 @@ fun SecondaryDashboardScreen(
             .background(SkyBlueBgLight)
     ) {
         LazyColumn(
-            contentPadding = PaddingValues(bottom = 80.dp),
+            contentPadding = PaddingValues(bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxSize()
         ) {
@@ -433,10 +434,11 @@ fun SecondaryDashboardScreen(
                         }
                     }
 
-                    // Active Followers / Friends Stories List
-                    items(displayStoryTrays) { story ->
+                    // Active Followers / Friends Stories List (Rotating Fire & Cosmic Plasma Ring Styles)
+                    itemsIndexed(displayStoryTrays) { index, story ->
                         val storyImageBitmap = rememberLoadedImage(context, story.mediaUri)
                         val relativeTime = TimeUtils.formatTimestamp(story.timestamp, story.createdAtEpochMs)
+                        val ringStyle = if (index % 2 == 0) StoryRingStyle.FIRE else StoryRingStyle.COSMIC_PLASMA
 
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -445,6 +447,7 @@ fun SecondaryDashboardScreen(
                             AnimatedFireStoryRing(
                                 modifier = Modifier.size(64.dp),
                                 isViewed = story.isViewed,
+                                ringStyle = ringStyle,
                                 rotationAngle = storyRingRotation
                             ) {
                                 Box(
@@ -1513,29 +1516,49 @@ internal fun ExoVideoPlayerView(
     )
 }
 
+enum class StoryRingStyle {
+    FIRE,
+    COSMIC_PLASMA
+}
+
 @Composable
 fun AnimatedFireStoryRing(
     modifier: Modifier = Modifier,
     isViewed: Boolean = false,
+    ringStyle: StoryRingStyle = StoryRingStyle.FIRE,
     rotationAngle: Float = 0f,
-    strokeWidth: Dp = 2.4.dp,
+    strokeWidth: Dp = 2.5.dp,
     gapPadding: Dp = 2.dp,
     content: @Composable () -> Unit
 ) {
     val fireGradientColors = remember {
         listOf(
-            Color(0xFFFF0844), // Deep Crimson Red
-            Color(0xFFFF6B00), // Fiery Solar Orange
-            Color(0xFFFFD60A), // Radiant Sun Gold
-            Color(0xFFFF453A), // Electric Coral
-            Color(0xFFFF0844)  // Deep Crimson Red (Loop Back)
+            Color(0xFFFF1E00), // Deep Crimson
+            Color(0xFFFF7700), // Solar Orange
+            Color(0xFFFFD000), // Golden Yellow
+            Color(0xFFFF7700), // Solar Orange
+            Color(0xFFFF1E00)  // Deep Crimson (Loop Back)
         )
     }
+
+    val cosmicPlasmaGradientColors = remember {
+        listOf(
+            Color(0xFF00F2FE), // Electric Cyan
+            Color(0xFF7928CA), // Deep Nebula Purple
+            Color(0xFF2B0080), // Cosmic Blue
+            Color(0xFF7928CA), // Deep Nebula Purple
+            Color(0xFF00F2FE)  // Electric Cyan (Loop Back)
+        )
+    }
+
     val viewedColor = remember { Color(0xFF3A3A3C) }
 
     val density = LocalDensity.current
     val strokeWidthPx = remember(density, strokeWidth, isViewed) {
         with(density) { (if (isViewed) 1.5.dp else strokeWidth).toPx() }
+    }
+    val auraWidthPx = remember(density, isViewed) {
+        with(density) { if (isViewed) 0f else 4.dp.toPx() }
     }
     val totalPadding = if (isViewed) 3.5.dp else (strokeWidth + gapPadding)
 
@@ -1544,10 +1567,22 @@ fun AnimatedFireStoryRing(
         modifier = modifier
             .drawWithCache {
                 val radius = (size.minDimension - strokeWidthPx) / 2f
+                val selectedColors = if (ringStyle == StoryRingStyle.FIRE) fireGradientColors else cosmicPlasmaGradientColors
                 val brush = if (isViewed) {
                     SolidColor(viewedColor)
                 } else {
-                    Brush.sweepGradient(colors = fireGradientColors)
+                    Brush.sweepGradient(colors = selectedColors)
+                }
+
+                val auraBrush = if (isViewed) {
+                    SolidColor(Color.Transparent)
+                } else {
+                    val auraColors = if (ringStyle == StoryRingStyle.FIRE) {
+                        listOf(Color(0x55FF1E00), Color(0x55FF7700), Color(0x55FFD000), Color(0x55FF1E00))
+                    } else {
+                        listOf(Color(0x5500F2FE), Color(0x557928CA), Color(0x552B0080), Color(0x5500F2FE))
+                    }
+                    Brush.sweepGradient(colors = auraColors)
                 }
 
                 onDrawWithContent {
@@ -1559,6 +1594,13 @@ fun AnimatedFireStoryRing(
                         )
                     } else {
                         rotate(rotationAngle) {
+                            // Outer blur aura layer
+                            drawCircle(
+                                brush = auraBrush,
+                                radius = radius,
+                                style = Stroke(width = strokeWidthPx + auraWidthPx)
+                            )
+                            // Main sharp ring layer
                             drawCircle(
                                 brush = brush,
                                 radius = radius,

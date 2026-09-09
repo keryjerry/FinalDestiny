@@ -28,6 +28,7 @@ import com.devil.finaldestiny.engine.AppInstallerEngine
 import com.devil.finaldestiny.engine.UpdateReleaseInfo
 import com.devil.finaldestiny.model.GiftItem
 import com.devil.finaldestiny.model.PaymentMethodType
+import com.devil.finaldestiny.ui.components.FloatingGalaxyNavPill
 import com.devil.finaldestiny.ui.components.MonetizationAnnouncementModal
 import com.devil.finaldestiny.ui.components.NotificationCenterModal
 import com.devil.finaldestiny.ui.components.PermissionModalDialog
@@ -254,42 +255,13 @@ fun FinalDestinyApp(repository: AppRepository) {
                         }
                     }
 
-                    // MODERN 4-TAB CLEAN BOTTOM NAVIGATION BAR
-                    NavigationBar(
-                        containerColor = SkyBlueCardBg,
-                        contentColor = SkyBluePrimary,
-                        modifier = Modifier
-                            .navigationBarsPadding()
-                            .fillMaxWidth()
-                            .height(68.dp)
-                            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-                            .border(1.dp, SkyBlueBorder, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-                    ) {
-                        NavigationBarItem(
-                            selected = currentScreen == Screen.SECONDARY_FEED || currentScreen == Screen.PRIMARY_DASHBOARD,
-                            onClick = { currentScreen = Screen.SECONDARY_FEED },
-                            icon = { Icon(Icons.Default.Home, contentDescription = "Home", tint = if (currentScreen == Screen.SECONDARY_FEED || currentScreen == Screen.PRIMARY_DASHBOARD) SkyBluePrimary else SlateTextSecondary) },
-                            label = { Text("Home", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.SECONDARY_FEED || currentScreen == Screen.PRIMARY_DASHBOARD) SkyBluePrimary else SlateTextSecondary) }
-                        )
-                        NavigationBarItem(
-                            selected = currentScreen == Screen.SEARCH_EXPLORE,
-                            onClick = { currentScreen = Screen.SEARCH_EXPLORE },
-                            icon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = if (currentScreen == Screen.SEARCH_EXPLORE) SkyBluePrimary else SlateTextSecondary) },
-                            label = { Text("Search", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.SEARCH_EXPLORE) SkyBluePrimary else SlateTextSecondary) }
-                        )
-                        NavigationBarItem(
-                            selected = currentScreen == Screen.INBOX,
-                            onClick = { currentScreen = Screen.INBOX },
-                            icon = { Icon(Icons.Default.Chat, contentDescription = "Messages", tint = if (currentScreen == Screen.INBOX) SkyBluePrimary else SlateTextSecondary) },
-                            label = { Text("Messages", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.INBOX) SkyBluePrimary else SlateTextSecondary) }
-                        )
-                        NavigationBarItem(
-                            selected = currentScreen == Screen.USER_PROFILE,
-                            onClick = { currentScreen = Screen.USER_PROFILE },
-                            icon = { Icon(Icons.Default.Person, contentDescription = "Profile", tint = if (currentScreen == Screen.USER_PROFILE) SkyBluePrimary else SlateTextSecondary) },
-                            label = { Text("Profile", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (currentScreen == Screen.USER_PROFILE) SkyBluePrimary else SlateTextSecondary) }
-                        )
-                    }
+                    // FLOATING GALAXY NAVIGATION PILL CONTAINER (Matching Reference Screenshots 1, 2, & 3)
+                    FloatingGalaxyNavPill(
+                        currentScreen = currentScreen,
+                        user = user,
+                        unreadNotificationCount = notifications.count { !it.isRead },
+                        onNavigate = { destination -> currentScreen = destination }
+                    )
                 }
             }
         }
