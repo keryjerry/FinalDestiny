@@ -916,11 +916,19 @@ class AppRepository {
             val remotePosts = SupabaseAuthClient.fetchPostsFromSupabase()
             android.util.Log.d("SUPABASE_SYNC", "Successfully loaded ${remotePosts.size} posts from Supabase")
             android.util.Log.d("SUPABASE_FEED", "Fetched from remote DB: ${remotePosts.size} posts")
-            _momentPosts.value = remotePosts
+            if (remotePosts.isNotEmpty()) {
+                _momentPosts.value = remotePosts
+                android.util.Log.d("FEED_DEBUG", "Cold start feed success: ${remotePosts.size} posts loaded.")
+            } else if (_momentPosts.value.isEmpty()) {
+                _momentPosts.value = remotePosts
+                android.util.Log.d("FEED_DEBUG", "Initial fetch returned 0 posts.")
+            } else {
+                android.util.Log.w("FEED_DEBUG", "Transient empty fetch ignored, retaining existing ${_momentPosts.value.size} posts in memory.")
+            }
             android.util.Log.d("[DestinyPosts]", "Fetched ${remotePosts.size} remote posts from Supabase.")
         } catch (e: Exception) {
             android.util.Log.e("SUPABASE_SYNC", "Fetch failed: ${e.message}")
-            android.util.Log.e("[DestinyPosts]", "Failed to refresh moments and reels from Supabase", e)
+            android.util.Log.e("FEED_DEBUG", "Cold start fetch failed: ${e.message}", e)
         }
     }
 

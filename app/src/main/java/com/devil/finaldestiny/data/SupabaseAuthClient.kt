@@ -633,15 +633,38 @@ object SupabaseAuthClient {
         try {
             val baseUrl = supabaseUrl.trimEnd('/')
             val endpoint = "$baseUrl/rest/v1/posts?select=*&order=created_at.desc"
-            Log.d(TAG, "GET /rest/v1/posts -> Fetching real posts from Supabase")
-            val url = URL(endpoint)
-            val connection = (url.openConnection() as HttpURLConnection).apply {
-                requestMethod = "GET"
-                connectTimeout = 8000
-                readTimeout = 8000
-                setRequestProperty("apikey", supabaseAnonKey)
-                setRequestProperty("Authorization", "Bearer ${currentSessionToken ?: supabaseAnonKey}")
-                setRequestProperty("Accept", "application/json")
+            fun executeGet(tokenToUse: String): Pair<Int, String> {
+                val url = URL(endpoint)
+                val conn = (url.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 8000
+                    readTimeout = 8000
+                    setRequestProperty("apikey", supabaseAnonKey)
+                    setRequestProperty("Authorization", "Bearer $tokenToUse")
+                    setRequestProperty("Accept", "application/json")
+                }
+                val code = conn.responseCode
+                val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+                val text = stream?.bufferedReader()?.use { it.readText() } ?: ""
+                return Pair(code, text)
+            }
+
+            val activeToken = currentSessionToken ?: supabaseAnonKey
+            var (resCode, resText) = try {
+                executeGet(activeToken)
+            } catch (e: Exception) {
+                Pair(400, e.message ?: "")
+            }
+
+            if (resCode !in 200..299 && (resCode == 400 || resCode == 401) && activeToken != supabaseAnonKey) {
+                Log.w(TAG, "Fetch Posts HTTP $resCode with JWT. Retrying GET with public anon key...")
+                try {
+                    val (retryCode, retryText) = executeGet(supabaseAnonKey)
+                    resCode = retryCode
+                    resText = retryText
+                } catch (e: Exception) {
+                    Log.e(TAG, "Fetch Posts Retry Exception", e)
+                }
             }
 
             // Fetch Profiles Map in-memory for zero-join safe matching
@@ -680,9 +703,6 @@ object SupabaseAuthClient {
                 Log.w(TAG, "Profiles in-memory fetch warning: ${e.message}")
             }
 
-            val resCode = connection.responseCode
-            val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
-            val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
             Log.d(TAG, "Fetch Posts HTTP Code: $resCode | Response length: ${resText.length}")
 
             if (resCode in 200..299 && resText.isNotBlank()) {
