@@ -261,73 +261,15 @@ class AppRepository {
     )
     val storyTrays: StateFlow<List<StoryItem>> = _storyTrays.asStateFlow()
 
+    init {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            refreshMomentsAndReels()
+            refreshDiscoverMatches()
+        }
+    }
+
     // Social Moments & Reels Feed
-    private val _momentPosts = MutableStateFlow(
-        listOf(
-            MomentPost(
-                id = "m1",
-                authorName = "Aria Rose",
-                authorHandle = "@AriaRose",
-                authorAvatar = "https://picsum.photos/100/100?random=20",
-                mediaUrl = "https://picsum.photos/600/750?random=30",
-                caption = "Sunset vibes & soft acoustic music. Tell me your favorite song for tonight's sofa room! ❤️✨",
-                timestamp = "10 mins ago",
-                likesCount = 342,
-                commentsCount = 48,
-                giftTipsTotal = 1500,
-                isLiked = false,
-                mediaType = MediaType.PHOTO
-            ),
-            MomentPost(
-                id = "m_reel1",
-                authorName = "Simran Verma",
-                authorHandle = "@Simran_V",
-                authorAvatar = "https://picsum.photos/100/100?random=22",
-                mediaUrl = "https://picsum.photos/540/960?random=88",
-                caption = "🎬 New Reel: Dance choreography to trending beats! Drop a 🔥 if you want a tutorial video on my channel! #DestinyReels #Monetize",
-                timestamp = "35 mins ago",
-                likesCount = 1480,
-                commentsCount = 210,
-                giftTipsTotal = 4500,
-                isLiked = true,
-                mediaType = MediaType.REEL_VIDEO,
-                videoDuration = "0:45",
-                viewsCount = 12400
-            ),
-            MomentPost(
-                id = "m_sp1",
-                authorName = "Nykaa Fashion",
-                authorHandle = "@NykaaFashion",
-                authorAvatar = "https://picsum.photos/100/100?random=99",
-                mediaUrl = "https://picsum.photos/600/750?random=77",
-                caption = "✨ Collab Highlight: Get up to 50% OFF on festive collection for Final Destiny creators! Use code DESTINY50 at checkout.",
-                timestamp = "1 hour ago",
-                likesCount = 2100,
-                commentsCount = 85,
-                giftTipsTotal = 0,
-                isLiked = false,
-                mediaType = MediaType.PHOTO,
-                isSponsored = true,
-                sponsorName = "Nykaa Official Brand Collab",
-                ctaText = "Shop Collection 🛍️",
-                ctaUrl = "https://finaldestiny.app"
-            ),
-            MomentPost(
-                id = "m2",
-                authorName = "Aarav Sharma",
-                authorHandle = "@Aarav_Sharma",
-                authorAvatar = "https://picsum.photos/100/100?random=1",
-                mediaUrl = "https://picsum.photos/600/750?random=31",
-                caption = "Late night acoustic jam in Room #2088! Hosted 10-mic sofa session with amazing creators 🎸🔥",
-                timestamp = "2 hours ago",
-                likesCount = 890,
-                commentsCount = 112,
-                giftTipsTotal = 3200,
-                isLiked = true,
-                mediaType = MediaType.PHOTO
-            )
-        )
-    )
+    private val _momentPosts = MutableStateFlow<List<MomentPost>>(emptyList())
     val momentPosts: StateFlow<List<MomentPost>> = _momentPosts.asStateFlow()
 
     // Real-Time Activity Notifications List
@@ -969,12 +911,12 @@ class AppRepository {
     suspend fun refreshMomentsAndReels() {
         try {
             val remotePosts = SupabaseAuthClient.fetchPostsFromSupabase()
+            android.util.Log.d("SUPABASE_SYNC", "Successfully loaded ${remotePosts.size} posts from Supabase")
             android.util.Log.d("SUPABASE_FEED", "Fetched from remote DB: ${remotePosts.size} posts")
-            if (remotePosts.isNotEmpty()) {
-                _momentPosts.value = remotePosts
-                android.util.Log.d("[DestinyPosts]", "Fetched ${remotePosts.size} remote posts from Supabase.")
-            }
+            _momentPosts.value = remotePosts
+            android.util.Log.d("[DestinyPosts]", "Fetched ${remotePosts.size} remote posts from Supabase.")
         } catch (e: Exception) {
+            android.util.Log.e("SUPABASE_SYNC", "Fetch failed: ${e.message}")
             android.util.Log.e("[DestinyPosts]", "Failed to refresh moments and reels from Supabase", e)
         }
     }

@@ -698,6 +698,7 @@ object SupabaseAuthClient {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to fetch posts from Supabase REST", e)
         }
+        Log.d("SUPABASE_SYNC", "Successfully loaded ${posts.size} posts from Supabase")
         Log.d("SUPABASE_FEED", "Fetched from remote DB: ${posts.size} posts")
         posts
     }
