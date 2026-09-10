@@ -208,6 +208,9 @@ class AppRepository {
         // Explicit Profile Upsert to public.profiles
         SupabaseAuthClient.upsertUserProfile(userId, cleanEmail, name)
 
+        // Restore Remote Profile Details & Avatar from Supabase
+        fetchProfileFromSupabase(userId)
+
         // Real-Time Sync: Update host user state across active Audio and Video Rooms
         _currentAudioRoom.value = _currentAudioRoom.value.copy(
             hostUser = _currentAudioRoom.value.hostUser.copy(id = userId, name = name, handle = handle)
