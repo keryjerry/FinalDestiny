@@ -55,7 +55,9 @@ fun NotificationScreen(
         Surface(
             color = SkyBlueCardBg,
             shadowElevation = 2.dp,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
         ) {
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,

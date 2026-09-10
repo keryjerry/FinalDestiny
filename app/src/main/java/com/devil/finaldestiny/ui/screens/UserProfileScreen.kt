@@ -189,10 +189,12 @@ fun UserProfileScreen(
         try {
             val remoteProfiles = com.devil.finaldestiny.data.SupabaseAuthClient.fetchDiscoverProfilesFromSupabase(user.id)
             val items = remoteProfiles.map { p ->
+                val displayName = p.name.ifBlank { p.handle.removePrefix("@") }.ifBlank { "Creator" }
+                val displayHandle = p.handle.ifBlank { "@" + displayName.lowercase().replace(" ", "_") }
                 DiscoverUserItem(
                     id = p.id,
-                    name = p.name.ifBlank { "Destiny Member" },
-                    handle = p.handle.ifBlank { "@destiny" },
+                    name = displayName,
+                    handle = displayHandle,
                     avatarUrl = p.profilePictureUri ?: "",
                     mutualsLabel = "Suggested for you",
                     isFollowBack = false

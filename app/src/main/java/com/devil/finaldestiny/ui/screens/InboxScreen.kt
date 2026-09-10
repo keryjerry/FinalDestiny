@@ -37,18 +37,7 @@ fun InboxScreen(
     val context = LocalContext.current
     var searchInput by remember { mutableStateOf("") }
 
-    val sampleConversations = remember {
-        if (conversationsList.isNotEmpty()) conversationsList
-        else listOf(
-            DirectMessageConversation("c1", "Ananya Roy", "@Ananya_Roy", null, "Hey! Loved your recent reel 🎬", "10m ago", unreadCount = 2, isOnline = true),
-            DirectMessageConversation("c2", "Aarav Sharma", "@Aarav_Sharma", null, "Are we still doing the duet live stream tonight?", "1h ago", unreadCount = 1, isOnline = true),
-            DirectMessageConversation("c3", "Simran Kaur", "@Simran_Vibes", null, "Thanks for sending the gift tips! 💎", "3h ago", unreadCount = 0, isOnline = false),
-            DirectMessageConversation("c4", "Vikram Malhotra", "@Vikram_M", null, "Great job on the creator monetization program!", "Yesterday", unreadCount = 0, isOnline = true),
-            DirectMessageConversation("c5", "Riya Kapoor", "@Riya_Kapoor", null, "Let's schedule a collab next week 💃", "2d ago", unreadCount = 0, isOnline = false)
-        )
-    }
-
-    val filteredList = sampleConversations.filter {
+    val filteredList = conversationsList.filter {
         it.userName.contains(searchInput, ignoreCase = true) ||
         it.userHandle.contains(searchInput, ignoreCase = true) ||
         it.lastMessage.contains(searchInput, ignoreCase = true)
@@ -63,7 +52,9 @@ fun InboxScreen(
         Surface(
             color = SkyBlueCardBg,
             shadowElevation = 2.dp,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
         ) {
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -144,12 +135,39 @@ fun InboxScreen(
             )
         }
 
-        // CONVERSATIONS DIRECT MESSAGE LIST
-        LazyColumn(
-            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxSize()
-        ) {
+        if (filteredList.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(24.dp)
+                ) {
+                    Text("💬", fontSize = 48.sp)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "No direct messages yet 💬",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = NavyTextPrimary
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Start a 1-on-1 chat with creators from Discover People!",
+                        fontSize = 12.sp,
+                        color = SlateTextSecondary
+                    )
+                }
+            }
+        } else {
+            // CONVERSATIONS DIRECT MESSAGE LIST
+            LazyColumn(
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
             items(filteredList) { chat ->
                 Card(
                     colors = CardDefaults.cardColors(containerColor = SkyBlueCardBg),
@@ -245,4 +263,5 @@ fun InboxScreen(
             }
         }
     }
+}
 }
