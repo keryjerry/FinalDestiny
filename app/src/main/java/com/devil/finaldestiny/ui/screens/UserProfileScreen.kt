@@ -58,6 +58,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devil.finaldestiny.model.UserProfile
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.request.CachePolicy
 import coil.request.videoFrameMillis
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import kotlinx.coroutines.launch
@@ -180,12 +183,26 @@ fun UserProfileScreen(
 
     val customAvatarBitmap = rememberProfileLoadedImage(context, user.profilePictureUri)
 
-    val sampleDiscoverUsers = remember {
-        mutableStateListOf(
-            DiscoverUserItem("d1", "Anurag Ray", "@anurag_ray", "https://picsum.photos/200/200?random=101", "2 mutuals", isFollowBack = true),
-            DiscoverUserItem("d2", "Sahil Khan", "@sahil_khan", "https://picsum.photos/200/200?random=102", "1 mutual", isFollowBack = false),
-            DiscoverUserItem("d3", "Sagarika", "@sagarika_s", "https://picsum.photos/200/200?random=103", "1 mutual", isFollowBack = false)
-        )
+    val discoverUsersState = remember { mutableStateListOf<DiscoverUserItem>() }
+
+    LaunchedEffect(user.id) {
+        try {
+            val remoteProfiles = com.devil.finaldestiny.data.SupabaseAuthClient.fetchDiscoverProfilesFromSupabase(user.id)
+            val items = remoteProfiles.map { p ->
+                DiscoverUserItem(
+                    id = p.id,
+                    name = p.name.ifBlank { "Destiny Member" },
+                    handle = p.handle.ifBlank { "@destiny" },
+                    avatarUrl = p.profilePictureUri ?: "",
+                    mutualsLabel = "Suggested for you",
+                    isFollowBack = false
+                )
+            }
+            discoverUsersState.clear()
+            discoverUsersState.addAll(items)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     val gridPosts = remember(userPosts) {
@@ -350,7 +367,22 @@ fun UserProfileScreen(
                                 }
                             }
                     ) {
-                        if (customAvatarBitmap != null) {
+                        val avatarUrl = user.profilePictureUri.takeIf { !it.isNullOrBlank() } ?: com.devil.finaldestiny.data.SupabaseAuthClient.getUserAvatarUrl()
+                        if (!avatarUrl.isNullOrBlank()) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(avatarUrl)
+                                    .diskCachePolicy(CachePolicy.ENABLED)
+                                    .memoryCachePolicy(CachePolicy.ENABLED)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Avatar",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                            )
+                        } else if (customAvatarBitmap != null) {
                             Image(
                                 bitmap = customAvatarBitmap,
                                 contentDescription = "Avatar",
@@ -784,7 +816,7 @@ fun UserProfileScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        items(sampleDiscoverUsers) { candidate ->
+                        items(discoverUsersState) { candidate ->
                             Card(
                                 colors = CardDefaults.cardColors(containerColor = Color.White),
                                 shape = RoundedCornerShape(8.dp),
@@ -800,7 +832,7 @@ fun UserProfileScreen(
                                         modifier = Modifier
                                             .align(Alignment.TopEnd)
                                             .size(14.dp)
-                                            .clickable { sampleDiscoverUsers.remove(candidate) }
+                                            .clickable { discoverUsersState.remove(candidate) }
                                     )
 
                                     Column(
@@ -814,7 +846,21 @@ fun UserProfileScreen(
                                                 .clip(CircleShape)
                                                 .background(Color(0xFFE5E5EA))
                                         ) {
-                                            Text(candidate.name.take(1), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                                            if (candidate.avatarUrl.isNotBlank()) {
+                                                AsyncImage(
+                                                    model = ImageRequest.Builder(context)
+                                                        .data(candidate.avatarUrl)
+                                                        .diskCachePolicy(CachePolicy.ENABLED)
+                                                        .memoryCachePolicy(CachePolicy.ENABLED)
+                                                        .crossfade(true)
+                                                        .build(),
+                                                    contentDescription = candidate.name,
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier.fillMaxSize().clip(CircleShape)
+                                                )
+                                            } else {
+                                                Text(candidate.name.take(1).uppercase(), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                                            }
                                         }
 
                                         Spacer(modifier = Modifier.height(6.dp))

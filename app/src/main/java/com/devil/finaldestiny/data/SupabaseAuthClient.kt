@@ -339,9 +339,12 @@ object SupabaseAuthClient {
         return storedId!!
     }
 
+    private var currentUserAvatarUrl: String? = null
+
     fun getSessionToken(): String? = currentSessionToken
     fun getUserEmail(): String? = currentUserEmail
     fun getUserId(): String? = currentUserId
+    fun getUserAvatarUrl(): String? = currentUserAvatarUrl
 
     fun signOut(context: Context? = null) {
         currentSessionToken = null
