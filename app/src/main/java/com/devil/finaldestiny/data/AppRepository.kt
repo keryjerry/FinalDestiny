@@ -969,11 +969,10 @@ class AppRepository {
     suspend fun refreshMomentsAndReels() {
         try {
             val remotePosts = SupabaseAuthClient.fetchPostsFromSupabase()
+            android.util.Log.d("SUPABASE_FEED", "Fetched from remote DB: ${remotePosts.size} posts")
             if (remotePosts.isNotEmpty()) {
-                val existing = _momentPosts.value
-                val combined = (remotePosts + existing).distinctBy { it.id }
-                _momentPosts.value = combined
-                android.util.Log.d("[DestinyPosts]", "Fetched ${remotePosts.size} remote posts from Supabase. Total feed count: ${combined.size}")
+                _momentPosts.value = remotePosts
+                android.util.Log.d("[DestinyPosts]", "Fetched ${remotePosts.size} remote posts from Supabase.")
             }
         } catch (e: Exception) {
             android.util.Log.e("[DestinyPosts]", "Failed to refresh moments and reels from Supabase", e)

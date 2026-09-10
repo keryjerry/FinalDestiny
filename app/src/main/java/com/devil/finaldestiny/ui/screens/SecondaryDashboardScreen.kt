@@ -282,6 +282,10 @@ fun SecondaryDashboardScreen(
         }
     }
 
+    LaunchedEffect(Unit) {
+        onRefresh()
+    }
+
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = {
@@ -607,15 +611,16 @@ fun SecondaryDashboardScreen(
 
             // FULL-BLEED EDGE-TO-EDGE FEED POSTS WITH FULL INSTAGRAM OVERLAYS
             itemsIndexed(momentPosts, key = { _, post -> post.id }) { index, post ->
+                val effectiveMediaUrl = post.mediaUrl.ifBlank { post.mediaUri ?: "" }
                 val localBitmap = rememberLoadedImage(context, post.mediaUri)
-                val isReel = post.mediaType == MediaType.REEL_VIDEO || (!post.mediaUri.isNullOrEmpty() && (post.mediaUri.endsWith(".mp4") || post.mediaUri.contains("video")))
+                val isReel = post.mediaType == MediaType.REEL_VIDEO || (effectiveMediaUrl.isNotBlank() && (effectiveMediaUrl.endsWith(".mp4", ignoreCase = true) || effectiveMediaUrl.contains("video", ignoreCase = true)))
                 val isActivePlaying = isReel && post.id == activePlayingPostId
                 var isExpandedCaption by remember { mutableStateOf(false) }
 
-                LaunchedEffect(isActivePlaying, post.mediaUri) {
-                    if (isActivePlaying && !post.mediaUri.isNullOrEmpty()) {
-                        val mediaItem = androidx.media3.common.MediaItem.fromUri(Uri.parse(post.mediaUri))
-                        if (sharedExoPlayer.currentMediaItem?.localConfiguration?.uri?.toString() != post.mediaUri) {
+                LaunchedEffect(isActivePlaying, effectiveMediaUrl) {
+                    if (isActivePlaying && effectiveMediaUrl.isNotBlank()) {
+                        val mediaItem = androidx.media3.common.MediaItem.fromUri(Uri.parse(effectiveMediaUrl))
+                        if (sharedExoPlayer.currentMediaItem?.localConfiguration?.uri?.toString() != effectiveMediaUrl) {
                             sharedExoPlayer.setMediaItem(mediaItem)
                             sharedExoPlayer.prepare()
                         }
@@ -641,7 +646,10 @@ fun SecondaryDashboardScreen(
                                 detectTapGestures(
                                     onTap = {
                                         if (isReel) {
-                                            val reelsOnly = momentPosts.filter { it.mediaType == MediaType.REEL_VIDEO || (!it.mediaUri.isNullOrEmpty() && (it.mediaUri.endsWith(".mp4") || it.mediaUri.contains("video"))) }
+                                            val reelsOnly = momentPosts.filter {
+                                                val url = it.mediaUrl.ifBlank { it.mediaUri ?: "" }
+                                                it.mediaType == MediaType.REEL_VIDEO || (url.isNotBlank() && (url.endsWith(".mp4", ignoreCase = true) || url.contains("video", ignoreCase = true)))
+                                            }
                                             val reelIdx = reelsOnly.indexOfFirst { r -> r.id == post.id }.coerceAtLeast(0)
                                             onNavigateToReelViewer(reelIdx)
                                         }
@@ -653,7 +661,7 @@ fun SecondaryDashboardScreen(
                                 )
                             }
                     ) {
-                        if (isActivePlaying && !post.mediaUri.isNullOrEmpty()) {
+                        if (isActivePlaying && effectiveMediaUrl.isNotBlank()) {
                             androidx.compose.ui.viewinterop.AndroidView(
                                 factory = { ctx ->
                                     androidx.media3.ui.PlayerView(ctx).apply {
@@ -690,6 +698,16 @@ fun SecondaryDashboardScreen(
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
+                        } else if (effectiveMediaUrl.isNotBlank()) {
+                            coil.compose.AsyncImage(
+                                model = coil.request.ImageRequest.Builder(context)
+                                    .data(effectiveMediaUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Uploaded Media",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
                         } else if (localBitmap != null) {
                             Image(
                                 bitmap = localBitmap,
