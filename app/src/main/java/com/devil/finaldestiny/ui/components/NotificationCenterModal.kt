@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -75,7 +77,8 @@ fun NotificationCenterModal(
     onDismiss: () -> Unit,
     onNotificationClick: (AppNotification) -> Unit,
     onMarkAllRead: () -> Unit,
-    onClearAll: () -> Unit
+    onClearAll: () -> Unit,
+    onNavigateToFeed: () -> Unit = {}
 ) {
     val unreadCount = notifications.count { !it.isRead }
 
@@ -88,8 +91,24 @@ fun NotificationCenterModal(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
+                // Top Left Back Arrow Icon Button ('<')
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(WineRedMedium)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = MetallicGold,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("🔔 Notifications", color = MetallicGold, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("🔔 Notifications", color = MetallicGold, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                     if (unreadCount > 0) {
                         Spacer(modifier = Modifier.width(6.dp))
                         Box(
@@ -101,6 +120,25 @@ fun NotificationCenterModal(
                             Text("$unreadCount NEW", fontSize = 9.sp, color = Color.White, fontWeight = FontWeight.Bold)
                         }
                     }
+                }
+
+                // Top Right Home Feed Shortcut Button ('🏠')
+                IconButton(
+                    onClick = {
+                        onDismiss()
+                        onNavigateToFeed()
+                    },
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(WineRedMedium)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Home,
+                        contentDescription = "Go to Reel Feed",
+                        tint = MetallicGold,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             }
         },

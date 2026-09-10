@@ -672,6 +672,7 @@ fun FinalDestinyApp(repository: AppRepository) {
             onDismiss = { showNotificationModal = false },
             onMarkAllRead = { repository.markAllNotificationsAsRead() },
             onClearAll = { repository.clearAllNotifications() },
+            onNavigateToFeed = { currentScreen = Screen.SECONDARY_FEED },
             onNotificationClick = { notification ->
                 repository.markNotificationAsRead(notification.id)
                 showNotificationModal = false
