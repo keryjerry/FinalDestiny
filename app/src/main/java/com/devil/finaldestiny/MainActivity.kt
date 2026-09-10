@@ -3,6 +3,7 @@ package com.devil.finaldestiny
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
@@ -617,9 +618,36 @@ fun FinalDestinyApp(repository: AppRepository) {
         )
     }
 
+    val permissionsLauncher = rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val cameraGranted = permissions[android.Manifest.permission.CAMERA] ?: false
+        val micGranted = permissions[android.Manifest.permission.RECORD_AUDIO] ?: false
+        if (cameraGranted || micGranted) {
+            Toast.makeText(context, "✅ Camera & Audio OS Permissions Granted!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     if (showPermissionModal) {
         PermissionModalDialog(
-            onAcceptPermissions = { showPermissionModal = false },
+            onAcceptPermissions = {
+                showPermissionModal = false
+                try {
+                    val perms = mutableListOf(
+                        android.Manifest.permission.CAMERA,
+                        android.Manifest.permission.RECORD_AUDIO
+                    )
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                        perms.add(android.Manifest.permission.READ_MEDIA_IMAGES)
+                        perms.add(android.Manifest.permission.READ_MEDIA_VIDEO)
+                    } else {
+                        perms.add(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+                    }
+                    permissionsLauncher.launch(perms.toTypedArray())
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            },
             onDismiss = { showPermissionModal = false }
         )
     }

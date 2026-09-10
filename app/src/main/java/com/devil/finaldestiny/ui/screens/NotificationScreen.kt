@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
@@ -37,6 +38,8 @@ fun NotificationScreen(
     user: UserProfile = UserProfile(),
     notificationsList: List<AppNotification> = emptyList(),
     onRefresh: suspend () -> Unit = {},
+    onNavigateToFeed: () -> Unit = {},
+    onSelectNotification: (AppNotification) -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -48,46 +51,65 @@ fun NotificationScreen(
             .fillMaxSize()
             .background(SkyBlueBgLight)
     ) {
-        // TOP HEADER BAR WITH UNIVERSAL BACK ARROW ('<') & PAGE TITLE "Notifications"
+        // TOP HEADER BAR WITH UNIVERSAL BACK ARROW ('<') & HOME FEED ICON
         Surface(
             color = SkyBlueCardBg,
             shadowElevation = 2.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp, vertical = 12.dp)
             ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(SkyBlueHeader)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = NavyTextPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column {
+                        Text(
+                            text = "Notifications",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = NavyTextPrimary
+                        )
+                        Text(
+                            text = user.handle,
+                            fontSize = 11.sp,
+                            color = SlateTextSecondary
+                        )
+                    }
+                }
+
+                // Right Action Icon: Home / Feed Shortcut
                 IconButton(
-                    onClick = onBack,
+                    onClick = onNavigateToFeed,
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
                         .background(SkyBlueHeader)
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
+                        imageVector = Icons.Default.Home,
+                        contentDescription = "Home Feed",
                         tint = NavyTextPrimary,
                         modifier = Modifier.size(20.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column {
-                    Text(
-                        text = "Notifications",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = NavyTextPrimary
-                    )
-                    Text(
-                        text = user.handle,
-                        fontSize = 11.sp,
-                        color = SlateTextSecondary
                     )
                 }
             }
@@ -147,6 +169,7 @@ fun NotificationScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .border(1.dp, SkyBlueBorder, RoundedCornerShape(16.dp))
+                                .clickable { onSelectNotification(notification) }
                         ) {
                             Row(
                                 horizontalArrangement = Arrangement.SpaceBetween,

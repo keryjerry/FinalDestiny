@@ -115,8 +115,8 @@ data class MomentPost(
     val audioArtist: String? = null,
     val audioUrl: String? = null,
     val collaboratorName: String? = null,
-    val repostsCount: Int = 2327,
-    val sharesCount: Int = 1969,
+    val repostsCount: Int = 0,
+    val sharesCount: Int = 0,
     val isSaved: Boolean = false,
     val primaryCategory: String = "Entertainment",
     val subCategories: List<String> = listOf("Dance", "Music", "Vlog"),
@@ -299,71 +299,20 @@ data class CreatorMilestoneAlert(
 )
 
 data class CreatorAnalytics(
-    val totalViews: Int = 124500,
-    val viewsGrowthPct: Double = 18.4,
-    val totalLikes: Int = 14820,
-    val likesGrowthPct: Double = 12.6,
-    val totalFollowers: Int = 145,
-    val followersGrowthPct: Double = 35.2,
-    val totalImpressions: Int = 340000,
-    val avgWatchDuration: String = "0:24",
-    val completionRatePct: Double = 78.5,
-    val reachEngagementRatioPct: Double = 12.8,
-    val dailyPoints7D: List<DailyAnalyticsPoint> = listOf(
-        DailyAnalyticsPoint("Mon", 12000, 1400),
-        DailyAnalyticsPoint("Tue", 18500, 2100),
-        DailyAnalyticsPoint("Wed", 25400, 3200),
-        DailyAnalyticsPoint("Thu", 19200, 2200),
-        DailyAnalyticsPoint("Fri", 32100, 4100),
-        DailyAnalyticsPoint("Sat", 45600, 5800),
-        DailyAnalyticsPoint("Sun", 28400, 3600)
-    ),
-    val dailyPoints30D: List<DailyAnalyticsPoint> = listOf(
-        DailyAnalyticsPoint("W1", 45000, 5600),
-        DailyAnalyticsPoint("W2", 72000, 8900),
-        DailyAnalyticsPoint("W3", 110000, 14200),
-        DailyAnalyticsPoint("W4", 154000, 19800)
-    ),
-    val postInsights: List<PostGranularInsight> = listOf(
-        PostGranularInsight(
-            id = "p1",
-            title = "🎬 Dance Choreography to Trending Beats",
-            thumbnailUrl = "https://picsum.photos/300/400?random=88",
-            totalViews = 45200,
-            peakViewingHours = "8:00 PM - 10:30 PM",
-            likeToViewRatioPct = 11.4,
-            commentsCount = 480,
-            sharesCount = 1240,
-            viralVelocityBadge = "🔥 Trending: Gaining 500+ views/hr"
-        ),
-        PostGranularInsight(
-            id = "p2",
-            title = "Sunset Acoustic Jam Session",
-            thumbnailUrl = "https://picsum.photos/300/400?random=30",
-            totalViews = 28400,
-            peakViewingHours = "9:30 PM - 11:30 PM",
-            likeToViewRatioPct = 14.2,
-            commentsCount = 310,
-            sharesCount = 890,
-            viralVelocityBadge = "⚡ High Engagement"
-        ),
-        PostGranularInsight(
-            id = "p3",
-            title = "Late Night 10-Mic Sofa Talk",
-            thumbnailUrl = "https://picsum.photos/300/400?random=31",
-            totalViews = 18900,
-            peakViewingHours = "11:00 PM - 1:30 AM",
-            likeToViewRatioPct = 9.8,
-            commentsCount = 195,
-            sharesCount = 420,
-            viralVelocityBadge = "🎙️ Room Driver"
-        )
-    ),
-    val milestoneAlerts: List<CreatorMilestoneAlert> = listOf(
-        CreatorMilestoneAlert("m1", "🎉 Milestone Unlocked!", "Passed 100,000 Cumulative Views milestone on your reels!", "10m ago"),
-        CreatorMilestoneAlert("m2", "🔥 Reel Viral Alert", "'Dance Choreography' reached 45,000 views!", "2h ago"),
-        CreatorMilestoneAlert("m3", "📈 Audience Spurt", "+35 Followers joined from your recent live audio stream!", "5h ago")
-    )
+    val totalViews: Int = 0,
+    val viewsGrowthPct: Double = 0.0,
+    val totalLikes: Int = 0,
+    val likesGrowthPct: Double = 0.0,
+    val totalFollowers: Int = 0,
+    val followersGrowthPct: Double = 0.0,
+    val totalImpressions: Int = 0,
+    val avgWatchDuration: String = "0:00",
+    val completionRatePct: Double = 0.0,
+    val reachEngagementRatioPct: Double = 0.0,
+    val dailyPoints7D: List<DailyAnalyticsPoint> = emptyList(),
+    val dailyPoints30D: List<DailyAnalyticsPoint> = emptyList(),
+    val postInsights: List<PostGranularInsight> = emptyList(),
+    val milestoneAlerts: List<CreatorMilestoneAlert> = emptyList()
 )
 
 enum class EventType {

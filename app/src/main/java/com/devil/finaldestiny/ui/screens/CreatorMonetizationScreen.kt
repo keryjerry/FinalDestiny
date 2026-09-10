@@ -29,6 +29,41 @@ import com.devil.finaldestiny.model.*
 import com.devil.finaldestiny.ui.theme.*
 import kotlinx.coroutines.launch
 
+@Composable
+fun MetricVelocityCard(
+    title: String,
+    value: String,
+    trendLabel: String,
+    isPositive: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        shape = RoundedCornerShape(14.dp),
+        modifier = modifier
+            .border(1.dp, CrimsonVelvet, RoundedCornerShape(14.dp))
+            .padding(8.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, fontSize = 10.sp, color = LightGold.copy(0.7f))
+            Text(value, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = if (isPositive) "↗ " else "↘ ",
+                    fontSize = 10.sp,
+                    color = if (isPositive) LiveIndicatorGreen else Color.Red
+                )
+                Text(
+                    text = trendLabel,
+                    fontSize = 9.sp,
+                    color = if (isPositive) LiveIndicatorGreen else Color.Red,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreatorMonetizationScreen(
@@ -371,7 +406,35 @@ fun CreatorMonetizationScreen(
                     Text("🎬 Per-Post Granular Insights", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
                 }
 
-                items(analytics.postInsights) { post ->
+                if (analytics.postInsights.isEmpty()) {
+                    item {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = CardBackground),
+                            shape = RoundedCornerShape(18.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .border(1.dp, CrimsonVelvet, RoundedCornerShape(18.dp))
+                                .padding(24.dp)
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("🎬", fontSize = 36.sp)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text("No posts uploaded yet", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    "Upload a Reel to view real-time per-post analytics & insights.",
+                                    fontSize = 11.sp,
+                                    color = LightGold.copy(0.7f),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    items(analytics.postInsights) { post ->
                     Card(
                         colors = CardDefaults.cardColors(containerColor = CardBackground),
                         shape = RoundedCornerShape(18.dp),
@@ -434,6 +497,7 @@ fun CreatorMonetizationScreen(
                         }
                     }
                 }
+            }
             }
 
             // TAB 2: 🎯 MONETIZATION & LIVE ELIGIBILITY MILESTONES
@@ -704,41 +768,6 @@ fun CreatorMonetizationScreen(
                         }
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MetricVelocityCard(
-    title: String,
-    value: String,
-    trendLabel: String,
-    isPositive: Boolean,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        shape = RoundedCornerShape(14.dp),
-        modifier = modifier
-            .border(1.dp, CrimsonVelvet, RoundedCornerShape(14.dp))
-            .padding(8.dp)
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, fontSize = 10.sp, color = LightGold.copy(0.7f))
-            Text(value, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = MetallicGold)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = if (isPositive) "↗ " else "↘ ",
-                    fontSize = 10.sp,
-                    color = if (isPositive) LiveIndicatorGreen else Color.Red
-                )
-                Text(
-                    text = trendLabel,
-                    fontSize = 9.sp,
-                    color = if (isPositive) LiveIndicatorGreen else Color.Red,
-                    fontWeight = FontWeight.SemiBold
-                )
             }
         }
     }

@@ -55,6 +55,8 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -88,8 +90,20 @@ import com.devil.finaldestiny.ui.components.ProfileAvatarView
 import com.devil.finaldestiny.ui.theme.*
 import com.devil.finaldestiny.utils.TimeUtils
 
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import kotlinx.coroutines.launch
+fun getRelativeTime(isoString: String?): String {
+    if (isoString.isNullOrBlank()) return "Just now"
+    return try {
+        val postTime = java.time.OffsetDateTime.parse(isoString).toInstant()
+        val diff = java.time.Duration.between(postTime, java.time.Instant.now()).seconds
+        when {
+            diff < 60 -> "Just now"
+            diff < 3600 -> "${diff / 60}m ago"
+            diff < 86400 -> "${diff / 3600}h ago"
+            diff < 604800 -> "${diff / 86400}d ago"
+            else -> "${diff / 604800}w ago"
+        }
+    } catch (e: Exception) { "Just now" }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1027,7 +1041,7 @@ fun SecondaryDashboardScreen(
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
-                                        text = "${post.repostsCount}",
+                                        text = "${post.sharesCount}",
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = NavyTextPrimary
@@ -1136,7 +1150,7 @@ fun SecondaryDashboardScreen(
 
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = post.timestamp,
+                            text = getRelativeTime(post.timestamp),
                             fontSize = 10.sp,
                             color = SlateTextSecondary
                         )

@@ -878,5 +878,128 @@ object SupabaseAuthClient {
         profiles
     }
 
+    suspend fun fetchNotificationsFromSupabase(currentUserId: String?): List<com.devil.finaldestiny.model.AppNotification> = withContext(Dispatchers.IO) {
+        val notifications = mutableListOf<com.devil.finaldestiny.model.AppNotification>()
+        if (currentUserId.isNullOrBlank()) return@withContext notifications
+        try {
+            val baseUrl = supabaseUrl.trimEnd('/')
+            val endpoint = "$baseUrl/rest/v1/notifications?recipient_id=eq.$currentUserId&select=*,profiles:sender_id(username,avatar_url)&order=created_at.desc"
+            val url = URL(endpoint)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 8000
+                readTimeout = 8000
+                setRequestProperty("apikey", supabaseAnonKey)
+                setRequestProperty("Authorization", "Bearer ${currentSessionToken ?: supabaseAnonKey}")
+                setRequestProperty("Accept", "application/json")
+            }
+            val resCode = connection.responseCode
+            val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
+            val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
+            if (resCode in 200..299 && resText.isNotBlank()) {
+                val jsonArray = org.json.JSONArray(resText)
+                for (i in 0 until jsonArray.length()) {
+                    val obj = jsonArray.getJSONObject(i)
+                    val id = obj.optString("id", UUID.randomUUID().toString())
+                    val senderId = obj.optString("sender_id", "")
+                    val typeStr = obj.optString("type", "SYSTEM")
+                    val message = obj.optString("message", "New activity on your profile")
+                    val createdAt = obj.optString("created_at", "")
+                    val senderProfile = obj.optJSONObject("profiles")
+                    val senderUsername = senderProfile?.optString("username", "Someone") ?: "Someone"
+
+                    val (typeEnum, symbol, title) = when (typeStr) {
+                        "NEW_FOLLOWER" -> Triple(com.devil.finaldestiny.model.NotificationType.FOLLOW, "👥", "$senderUsername started following you")
+                        "POST_LIKED" -> Triple(com.devil.finaldestiny.model.NotificationType.LIKE, "❤️", "$senderUsername liked your post")
+                        "LIVE_INVITE" -> Triple(com.devil.finaldestiny.model.NotificationType.MATCH, "🎙️", "$senderUsername invited you to Go-Live")
+                        else -> Triple(com.devil.finaldestiny.model.NotificationType.SYSTEM, "🔔", "$senderUsername sent you an update")
+                    }
+
+                    val relTime = TimeUtils.formatTimestamp(createdAt)
+
+                    notifications.add(
+                        com.devil.finaldestiny.model.AppNotification(
+                            id = id,
+                            title = title,
+                            message = message,
+                            type = typeEnum,
+                            iconSymbol = symbol,
+                            timestamp = relTime,
+                            isRead = false,
+                            actionTargetScreen = senderId
+                        )
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch notifications from Supabase", e)
+        }
+        notifications
+    }
+
+    suspend fun fetchFollowersCount(userId: String?): Int = withContext(Dispatchers.IO) {
+        if (userId.isNullOrBlank()) return@withContext 0
+        try {
+            val baseUrl = supabaseUrl.trimEnd('/')
+            val endpoint = "$baseUrl/rest/v1/follows?following_id=eq.$userId&select=id"
+            val url = URL(endpoint)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 6000
+                readTimeout = 6000
+                setRequestProperty("apikey", supabaseAnonKey)
+                setRequestProperty("Authorization", "Bearer ${currentSessionToken ?: supabaseAnonKey}")
+                setRequestProperty("Prefer", "count=exact")
+            }
+            val contentRange = connection.getHeaderField("Content-Range")
+            if (!contentRange.isNullOrBlank() && contentRange.contains("/")) {
+                val total = contentRange.substringAfter("/").trim().toIntOrNull()
+                if (total != null) return@withContext total
+            }
+            val resCode = connection.responseCode
+            val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
+            val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
+            if (resCode in 200..299 && resText.isNotBlank()) {
+                val array = org.json.JSONArray(resText)
+                return@withContext array.length()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch followers count", e)
+        }
+        0
+    }
+
+    suspend fun fetchFollowingCount(userId: String?): Int = withContext(Dispatchers.IO) {
+        if (userId.isNullOrBlank()) return@withContext 0
+        try {
+            val baseUrl = supabaseUrl.trimEnd('/')
+            val endpoint = "$baseUrl/rest/v1/follows?follower_id=eq.$userId&select=id"
+            val url = URL(endpoint)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 6000
+                readTimeout = 6000
+                setRequestProperty("apikey", supabaseAnonKey)
+                setRequestProperty("Authorization", "Bearer ${currentSessionToken ?: supabaseAnonKey}")
+                setRequestProperty("Prefer", "count=exact")
+            }
+            val contentRange = connection.getHeaderField("Content-Range")
+            if (!contentRange.isNullOrBlank() && contentRange.contains("/")) {
+                val total = contentRange.substringAfter("/").trim().toIntOrNull()
+                if (total != null) return@withContext total
+            }
+            val resCode = connection.responseCode
+            val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
+            val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
+            if (resCode in 200..299 && resText.isNotBlank()) {
+                val array = org.json.JSONArray(resText)
+                return@withContext array.length()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch following count", e)
+        }
+        0
+    }
+
     private fun String?.isNull_or_blank_custom(): Boolean = this == null || this.trim().isEmpty()
 }

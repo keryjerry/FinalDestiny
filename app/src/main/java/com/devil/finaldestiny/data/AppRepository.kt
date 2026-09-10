@@ -254,14 +254,7 @@ class AppRepository {
     val matchedCard: StateFlow<SwipeCard?> = _matchedCard.asStateFlow()
 
     // Story Trays (24h status updates)
-    private val _storyTrays = MutableStateFlow(
-        listOf(
-            StoryItem("s1", "Aria Rose", "https://picsum.photos/100/100?random=20", "https://picsum.photos/300/500?random=21", "2h ago"),
-            StoryItem("s2", "Salman", "https://picsum.photos/100/100?random=22", "https://picsum.photos/300/500?random=23", "5h ago"),
-            StoryItem("s3", "Simran", "https://picsum.photos/100/100?random=24", "https://picsum.photos/300/500?random=25", "8h ago"),
-            StoryItem("s4", "Farman Ali", "https://picsum.photos/100/100?random=26", "https://picsum.photos/300/500?random=27", "12h ago")
-        )
-    )
+    private val _storyTrays = MutableStateFlow<List<StoryItem>>(emptyList())
     val storyTrays: StateFlow<List<StoryItem>> = _storyTrays.asStateFlow()
 
     init {
@@ -1056,6 +1049,32 @@ class AppRepository {
                     }
                     val resCode = connection.responseCode
                     android.util.Log.d("[DestinyFollow]", "Supabase Follow Insert -> Code $resCode")
+
+                    // Insert notification row into public.notifications
+                    try {
+                        val notifEndpoint = "$baseUrl/rest/v1/notifications"
+                        val notifConn = (java.net.URL(notifEndpoint).openConnection() as java.net.HttpURLConnection).apply {
+                            requestMethod = "POST"
+                            connectTimeout = 6000
+                            readTimeout = 6000
+                            setRequestProperty("apikey", anonKey)
+                            setRequestProperty("Authorization", "Bearer $token")
+                            setRequestProperty("Content-Type", "application/json")
+                            doOutput = true
+                        }
+                        val notifPayload = org.json.JSONObject().apply {
+                            put("recipient_id", targetUserId)
+                            put("sender_id", myId)
+                            put("type", "NEW_FOLLOWER")
+                            put("message", "started following you")
+                        }
+                        notifConn.outputStream.use { os ->
+                            os.write(notifPayload.toString().toByteArray(Charsets.UTF_8))
+                        }
+                        android.util.Log.d("[DestinyNotif]", "Supabase Notification Insert -> Code ${notifConn.responseCode}")
+                    } catch (e: Exception) {
+                        android.util.Log.e("[DestinyNotif]", "Failed to insert follow notification", e)
+                    }
                 } else {
                     val endpoint = "$baseUrl/rest/v1/follows?follower_id=eq.$myId&following_id=eq.$targetUserId"
                     val url = java.net.URL(endpoint)
