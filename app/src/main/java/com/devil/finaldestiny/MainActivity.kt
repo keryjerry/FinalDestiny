@@ -206,7 +206,7 @@ fun FinalDestinyApp(repository: AppRepository) {
 
                 Screen.USER_PROFILE -> UserProfileScreen(
                     user = user,
-                    userPosts = momentPosts.filter { it.authorHandle == user.handle || it.authorName == user.name },
+                    userPosts = momentPosts.filter { it.userId == user.id || it.authorHandle == user.handle || it.authorName == user.name },
                     savedAccounts = savedAccounts,
                     onSaveProfile = { updated -> repository.updateUserProfile(updated) },
                     onNavigateToStore = { currentScreen = Screen.VIP_STORE },

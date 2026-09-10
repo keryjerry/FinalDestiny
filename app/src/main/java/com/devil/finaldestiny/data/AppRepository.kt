@@ -131,7 +131,7 @@ class AppRepository {
 
         if (SupabaseAuthClient.isAuthenticated && !email.isNullOrBlank()) {
             syncAuthenticatedUser(uniqueId, email)
-        } else if (current.id == "u101" || current.handle == "@DarkDevil") {
+        } else if (current.id == "u101" || current.handle == "@destiny_user") {
             _currentUser.value = current.copy(
                 id = uniqueId,
                 name = "User_$shortId",
@@ -314,8 +314,8 @@ class AppRepository {
             ),
             MomentPost(
                 id = "m2",
-                authorName = "Dark Devil",
-                authorHandle = "@DarkDevil",
+                authorName = "Aarav Sharma",
+                authorHandle = "@Aarav_Sharma",
                 authorAvatar = "https://picsum.photos/100/100?random=1",
                 mediaUrl = "https://picsum.photos/600/750?random=31",
                 caption = "Late night acoustic jam in Room #2088! Hosted 10-mic sofa session with amazing creators 🎸🔥",
@@ -346,7 +346,7 @@ class AppRepository {
             AppNotification(
                 id = "n2",
                 title = "Live Room Invite 🎙️",
-                message = "DarkDevil invited you to join sofa seat #1 in Audio Room!",
+                message = "Host invited you to join sofa seat #1 in Audio Room!",
                 type = NotificationType.ROOM_INVITE,
                 iconSymbol = "👑",
                 timestamp = "5 mins ago",
@@ -439,7 +439,7 @@ class AppRepository {
             isVideoMode = true,
             hostUser = _currentUser.value,
             viewerCount = 5410,
-            topGifterName = "DarkDevil",
+            topGifterName = "Top Supporter",
             topGifterDiamonds = 18900,
             youtubeVideoUrl = "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
             seats = createDefaultSeats()
@@ -452,7 +452,7 @@ class AppRepository {
         listOf(
             ChatMessage("c1", "System Moderation", "", 10, "Welcome to Final Destiny Live Connect! Please respect each other and chat in a decent manner.", "13:50", isSystemAlert = true),
             ChatMessage("c2", "Aria Rose", "https://picsum.photos/100/100?random=20", 6, "Hello everyone! Loving the red velvet sofa setup 🛋️❤️", "13:51"),
-            ChatMessage("c3", "SRK Fan", "https://picsum.photos/100/100?random=22", 2, "DarkDevil host is on mic seat #1 🔥 🔥", "13:52"),
+            ChatMessage("c3", "SRK Fan", "https://picsum.photos/100/100?random=22", 2, "Host is on mic seat #1 🔥 🔥", "13:52"),
             ChatMessage("c4", "LAKSHYA", "https://picsum.photos/100/100?random=25", 9, "Sent Night Luxury Car to Room Host!", "13:53", giftSentName = "Night Luxury Car", giftSentValueDiamonds = 5000),
             ChatMessage("c5", "Rina Star", "https://picsum.photos/100/100?random=27", 5, "NO love so much ❤️✨", "13:54")
         )
@@ -483,7 +483,7 @@ class AppRepository {
         KycData(
             aadhaarNumber = "1234-5678-9012",
             panNumber = "ABCDE1234F",
-            legalName = "Dark Devil (Aadhaar Verified)",
+            legalName = "Verified Creator (Aadhaar Verified)",
             selfieVerified = true,
             followerCountCheck = 145,
             isSubmitted = true,
@@ -498,10 +498,10 @@ class AppRepository {
             netInrEarnings = 10000.0,    // 25% net host share = ₹10,000
             pendingPayoutInr = 10000.0,
             paymentMethodType = PaymentMethodType.UPI,
-            upiId = "darkdevil@okicici",
+            upiId = "creator@upi",
             bankAccount = "987654321012",
             bankIfsc = "SBIN0001234",
-            bankHolderName = "Dark Devil",
+            bankHolderName = "Verified Beneficiary",
             isNameMatched = true
         )
     )
@@ -857,7 +857,7 @@ class AppRepository {
     }
 
     fun submitKycForm(aadhaar: String, pan: String, legalName: String) {
-        val isNameMatch = legalName.trim().equals(_currentUser.value.name, ignoreCase = true) || legalName.contains("Dark", ignoreCase = true)
+        val isNameMatch = legalName.trim().equals(_currentUser.value.name, ignoreCase = true)
         _kycData.value = KycData(
             aadhaarNumber = aadhaar,
             panNumber = pan,

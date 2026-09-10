@@ -94,7 +94,7 @@ data class UserSettingsState(
     val hideLikeShareCounts: Boolean = false,
     val hideFollowerFollowingList: Boolean = false,
     val closeFriendsLists: List<CloseFriendsList> = listOf(
-        CloseFriendsList("cf1", "Best Travel Buddies", 4, listOf("@Anurag_Ray", "@Sahil_Khan", "@Sagarika_S", "@DarkDevil")),
+        CloseFriendsList("cf1", "Best Travel Buddies", 4, listOf("@Anurag_Ray", "@Sahil_Khan", "@Sagarika_S", "@Aarav_Sharma")),
         CloseFriendsList("cf2", "VIP Creators", 2, listOf("@AriaRose", "@SRK_King"))
     ),
     val tagApprovalRequired: Boolean = true,

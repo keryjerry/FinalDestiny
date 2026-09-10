@@ -1622,7 +1622,7 @@ fun UserProfileScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text("App Name: Final Destiny", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                    Text("Founder & Creator: DarkDevil", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                    Text("Platform: Final Destiny App", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
                     Text("Version: 2.4.0 (Official Build)", fontSize = 11.sp, color = Color.Gray)
                     HorizontalDivider(color = Color(0xFFE5E5EA))
 

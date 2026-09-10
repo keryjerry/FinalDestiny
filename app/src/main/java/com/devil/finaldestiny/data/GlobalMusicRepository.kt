@@ -67,7 +67,7 @@ object GlobalMusicRepository {
                     AudioTrack("tr_f2", "Kesariya", "Arijit Singh", "https://picsum.photos/200/200?random=802", duration = "0:30"),
                     AudioTrack("tr_f3", "Pasoori", "Ali Sethi & Shae Gill", "https://picsum.photos/200/200?random=803", duration = "0:30"),
                     AudioTrack("tr_f4", "Velvet Hour", "Thunder", "https://picsum.photos/200/200?random=804", duration = "0:30"),
-                    AudioTrack("tr_f5", "Living My Life", "DarkDevil", "https://picsum.photos/200/200?random=805", duration = "0:30")
+                    AudioTrack("tr_f5", "Living My Life", "Aarav Sharma", "https://picsum.photos/200/200?random=805", duration = "0:30")
                 )
             )
         }

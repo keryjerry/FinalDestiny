@@ -675,6 +675,7 @@ object SupabaseAuthClient {
                     posts.add(
                         MomentPost(
                             id = id,
+                            userId = userId,
                             authorName = authorName,
                             authorHandle = authorHandle,
                             authorAvatar = authorAvatar,

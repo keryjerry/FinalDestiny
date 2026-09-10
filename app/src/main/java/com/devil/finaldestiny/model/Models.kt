@@ -86,6 +86,7 @@ data class MomentComment(
 
 data class MomentPost(
     val id: String,
+    val userId: String = "",
     val authorName: String,
     val authorHandle: String,
     val authorAvatar: String,
@@ -151,7 +152,19 @@ data class StoryItem(
     val mediaUri: String? = null,
     val createdAtEpochMs: Long = System.currentTimeMillis(),
     val primaryCategory: String = "General",
-    val authorId: String = "usr_author"
+    val authorId: String = "",
+    val caption: String? = null,
+    val backgroundStyle: String = "classic",
+    val musicTrackTitle: String? = null,
+    val musicArtistName: String? = null,
+    val isCloseFriendsOnly: Boolean = false,
+    val interactiveStickerType: String? = null,
+    val interactiveStickerQuestion: String? = null,
+    val interactiveStickerOptions: List<String> = emptyList(),
+    val locationTag: String? = null,
+    val mentorTag: String? = null,
+    val isAiEnhanced: Boolean = false,
+    val micLinkTitle: String? = null
 )
 
 data class SofaSeat(
@@ -172,7 +185,7 @@ data class LiveRoom(
     val isVideoMode: Boolean = false,
     val hostUser: UserProfile,
     val viewerCount: Int = 1420,
-    val topGifterName: String = "DarkDevil",
+    val topGifterName: String = "Top Supporter",
     val topGifterDiamonds: Int = 8500,
     val youtubeVideoUrl: String = "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
     val seats: List<SofaSeat>

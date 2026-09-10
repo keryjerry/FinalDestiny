@@ -419,7 +419,7 @@ fun PrimaryDashboardScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("App Version: FinalDestiny v1.0.0", fontSize = 12.sp, color = LightGold)
-                    Text("Founder: DarkDevil", fontSize = 12.sp, color = MetallicGold, fontWeight = FontWeight.Bold)
+                    Text("Official Platform: Final Destiny", fontSize = 12.sp, color = MetallicGold, fontWeight = FontWeight.Bold)
                     HorizontalDivider(color = CrimsonVelvet, thickness = 1.dp)
 
                     Text("App Language: $selectedLanguage", fontSize = 12.sp, color = LightGold)
