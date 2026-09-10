@@ -153,7 +153,17 @@ fun FinalDestinyApp(repository: AppRepository) {
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
-        val releaseInfo = AppInstallerEngine.checkSupabaseAppVersion(currentVersionCode = 1)
+        val localVerCode = try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode.toInt()
+            } else {
+                @Suppress("DEPRECATION")
+                context.packageManager.getPackageInfo(context.packageName, 0).versionCode
+            }
+        } catch (e: Exception) {
+            1
+        }
+        val releaseInfo = AppInstallerEngine.checkSupabaseAppVersion(currentVersionCode = localVerCode)
         if (releaseInfo != null) {
             updateInfoState = releaseInfo
         }

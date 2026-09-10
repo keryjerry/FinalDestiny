@@ -139,7 +139,8 @@ data class MomentPost(
     val ctaLabel: String? = null,
     val isPaidPartnership: Boolean = false,
     val promotionStatus: String = "none",
-    val promotionBudget: Double = 0.0
+    val promotionBudget: Double = 0.0,
+    val profile: ProfileBriefDto? = null
 )
 
 data class StoryItem(

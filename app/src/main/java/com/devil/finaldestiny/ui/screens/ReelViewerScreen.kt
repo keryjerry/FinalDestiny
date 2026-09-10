@@ -268,7 +268,9 @@ fun ReelViewerScreen(
                 ) {
                     // Creator Info: Avatar + @username + "Follow" Pill
                     val creatorTitle = when {
-                        !reel.authorName.isNullOrBlank() && reel.authorName.trim().lowercase() != "null" -> reel.authorName.trim()
+                        !reel.profile?.fullName.isNullOrBlank() -> reel.profile!!.fullName!!
+                        !reel.profile?.username.isNullOrBlank() -> if (reel.profile!!.username!!.startsWith("@")) reel.profile!!.username!! else "@${reel.profile!!.username!!}"
+                        !reel.authorName.isNullOrBlank() && reel.authorName.trim().lowercase() != "null" && !reel.authorName.startsWith("User_") -> reel.authorName.trim()
                         !reel.authorHandle.isNullOrBlank() && reel.authorHandle.trim().lowercase() != "null" -> reel.authorHandle.trim()
                         !reel.userId.isNullOrBlank() && reel.userId.trim().lowercase() != "null" -> "User_${reel.userId.take(5)}"
                         else -> "Creator"

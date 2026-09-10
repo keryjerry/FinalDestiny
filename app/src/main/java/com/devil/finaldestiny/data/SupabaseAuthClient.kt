@@ -632,8 +632,8 @@ object SupabaseAuthClient {
         val posts = mutableListOf<MomentPost>()
         try {
             val baseUrl = supabaseUrl.trimEnd('/')
-            val endpoint = "$baseUrl/rest/v1/posts?select=*&order=created_at.desc"
-            Log.d(TAG, "GET /rest/v1/posts -> Fetching real posts from Supabase")
+            val endpoint = "$baseUrl/rest/v1/posts?select=*,profiles:user_id(id,username,full_name,avatar_url,name,handle)&order=created_at.desc"
+            Log.d(TAG, "GET /rest/v1/posts -> Fetching real posts with joined profiles from Supabase")
             val url = URL(endpoint)
             val connection = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
@@ -670,9 +670,31 @@ object SupabaseAuthClient {
 
                     val rawName = obj.optString("author_name", "").takeIf { it.isNotBlank() && it.trim().lowercase() != "null" }
                     val rawHandle = obj.optString("author_handle", "").takeIf { it.isNotBlank() && it.trim().lowercase() != "null" }
-                    val authorName = rawName ?: if (userId.isNotBlank()) "User_${userId.take(5)}" else "Destiny User"
-                    val authorHandle = rawHandle ?: if (userId.isNotBlank()) "@User_${userId.take(5)}" else "@destiny_user"
-                    val authorAvatar = obj.optString("author_avatar", "https://picsum.photos/200/200?random=$i")
+
+                    val profileObj = when {
+                        obj.has("profiles") && !obj.isNull("profiles") -> {
+                            val rawProf = obj.opt("profiles")
+                            if (rawProf is org.json.JSONObject) rawProf
+                            else if (rawProf is org.json.JSONArray && rawProf.length() > 0) rawProf.getJSONObject(0)
+                            else null
+                        }
+                        else -> null
+                    }
+
+                    val profileBrief = if (profileObj != null) {
+                        val un = profileObj.optString("username", profileObj.optString("handle", "")).takeIf { it.isNotBlank() && it != "null" }
+                        val fn = profileObj.optString("full_name", profileObj.optString("name", "")).takeIf { it.isNotBlank() && it != "null" }
+                        val av = profileObj.optString("avatar_url", "").takeIf { it.isNotBlank() && it != "null" }
+                        com.devil.finaldestiny.model.ProfileBriefDto(
+                            username = un,
+                            fullName = fn,
+                            avatarUrl = av
+                        )
+                    } else null
+
+                    val authorName = profileBrief?.fullName ?: rawName ?: if (userId.isNotBlank()) "User_${userId.take(5)}" else "Destiny User"
+                    val authorHandle = profileBrief?.username?.let { if (it.startsWith("@")) it else "@$it" } ?: rawHandle ?: if (userId.isNotBlank()) "@User_${userId.take(5)}" else "@destiny_user"
+                    val authorAvatar = profileBrief?.avatarUrl ?: obj.optString("author_avatar", "https://picsum.photos/200/200?random=$i")
 
                     val audioTitleRaw = if (obj.has("audio_title") && !obj.isNull("audio_title")) obj.optString("audio_title") else null
                     val audioTitle = audioTitleRaw?.takeIf { it.isNotBlank() && it.trim().lowercase() != "null" }
@@ -692,6 +714,7 @@ object SupabaseAuthClient {
                             timestamp = TimeUtils.formatTimestamp(createdAt),
                             audioTitle = audioTitle,
                             collaboratorName = collaboratorName,
+                            profile = profileBrief,
                             likesCount = obj.optInt("likes_count", 0),
                             commentsCount = obj.optInt("comments_count", 0),
                             viewsCount = viewsCount,

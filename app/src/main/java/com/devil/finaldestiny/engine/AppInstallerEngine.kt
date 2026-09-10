@@ -15,6 +15,8 @@ import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
+import android.util.Log
+
 data class UpdateReleaseInfo(
     val versionCode: Int,
     val versionName: String,
@@ -32,7 +34,7 @@ object AppInstallerEngine {
     ): UpdateReleaseInfo? = withContext(Dispatchers.IO) {
         val supabaseUrl = "https://twwezpogwtmjavoemdvi.supabase.co"
         val anonKey = "sb_publishable_RiDqsSCPgbWGxd6570P1FA_y_L10U_w"
-        val endpoint = "$supabaseUrl/rest/v1/app_version_config?select=*&order=latest_version.desc&limit=1"
+        val endpoint = "$supabaseUrl/rest/v1/app_version_config?select=*&limit=1"
 
         try {
             val url = URL(endpoint)
@@ -51,9 +53,20 @@ object AppInstallerEngine {
                 if (jsonArray.length() > 0) {
                     val obj = jsonArray.getJSONObject(0)
                     val minSupported = obj.optInt("min_supported_version", 1)
-                    val latestVer = obj.optInt("latest_version", 2)
-                    val downloadUrl = obj.optString("download_url", "$supabaseUrl/storage/v1/object/public/reels/app-debug.apk")
-                    val releaseNotes = obj.optString("release_notes", "• New 9:16 Live Video Stage with aspect-ratio camera preview\n• ExoPlayer Media3 Feed Video Reels\n• Dynamic Multi-User Profiles & Supabase Avatars\n• Creator Studio Velocity Analytics & Refresh Engine")
+                    val latestVer = when {
+                        obj.has("latest_version_code") -> obj.optInt("latest_version_code", 2)
+                        else -> obj.optInt("latest_version", 2)
+                    }
+                    val downloadUrl = when {
+                        obj.has("apk_download_url") -> obj.optString("apk_download_url", "$supabaseUrl/storage/v1/object/public/reels/app-debug.apk")
+                        else -> obj.optString("download_url", "$supabaseUrl/storage/v1/object/public/reels/app-debug.apk")
+                    }
+                    val releaseNotes = when {
+                        obj.has("release_notes") -> obj.optString("release_notes")
+                        else -> obj.optString("changelog", "• New 9:16 Live Video Stage with aspect-ratio camera preview\n• ExoPlayer Media3 Feed Video Reels\n• Dynamic Multi-User Profiles & Supabase Avatars\n• Creator Studio Velocity Analytics & Refresh Engine")
+                    }
+
+                    Log.d("APP_UPDATE", "Current: $currentVersionCode, Remote: $latestVer")
 
                     if (latestVer > currentVersionCode) {
                         return@withContext UpdateReleaseInfo(
@@ -67,7 +80,7 @@ object AppInstallerEngine {
                 }
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("APP_UPDATE", "Error checking Supabase app version", e)
         }
 
         return@withContext null

@@ -762,7 +762,9 @@ fun SecondaryDashboardScreen(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 val creatorTitle = when {
-                                    !post.authorName.isNullOrBlank() && post.authorName.trim().lowercase() != "null" -> post.authorName.trim()
+                                    !post.profile?.fullName.isNullOrBlank() -> post.profile!!.fullName!!
+                                    !post.profile?.username.isNullOrBlank() -> if (post.profile!!.username!!.startsWith("@")) post.profile!!.username!! else "@${post.profile!!.username!!}"
+                                    !post.authorName.isNullOrBlank() && post.authorName.trim().lowercase() != "null" && !post.authorName.startsWith("User_") -> post.authorName.trim()
                                     !post.authorHandle.isNullOrBlank() && post.authorHandle.trim().lowercase() != "null" -> post.authorHandle.trim()
                                     !post.userId.isNullOrBlank() && post.userId.trim().lowercase() != "null" -> "User_${post.userId.take(5)}"
                                     else -> "Creator"
