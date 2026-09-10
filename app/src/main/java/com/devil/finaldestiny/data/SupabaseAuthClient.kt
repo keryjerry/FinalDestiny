@@ -700,6 +700,7 @@ object SupabaseAuthClient {
         }
         Log.d("SUPABASE_SYNC", "Successfully loaded ${posts.size} posts from Supabase")
         Log.d("SUPABASE_FEED", "Fetched from remote DB: ${posts.size} posts")
+        Log.d("FEED_SYNC", "SUCCESS: Decoded ${posts.size} posts from Supabase")
         posts
     }
 
