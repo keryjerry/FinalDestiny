@@ -1094,7 +1094,9 @@ class AppRepository {
                 val baseUrl = SupabaseAuthClient.supabaseUrl.trimEnd('/')
                 val anonKey = SupabaseAuthClient.supabaseAnonKey
                 val token = SupabaseAuthClient.getSessionToken() ?: anonKey
-                val myId = user.id
+                val myId = user.id.takeIf { it.isNotBlank() && it != "u101" && it != "usr_me" }
+                    ?: SupabaseAuthClient.getCurrentUserId()
+                    ?: "u101"
 
                 if (isFollowing) {
                     val endpoint = "$baseUrl/rest/v1/follows"
@@ -1117,7 +1119,7 @@ class AppRepository {
                         os.write(payload.toString().toByteArray(Charsets.UTF_8))
                     }
                     val resCode = connection.responseCode
-                    android.util.Log.d("[DestinyFollow]", "Supabase Follow Insert -> Code $resCode")
+                    android.util.Log.d("[DestinyFollow]", "Supabase Follow Insert -> Code $resCode | follower: $myId -> following: $targetUserId")
 
                     // Insert notification row into public.notifications
                     try {
@@ -1155,10 +1157,12 @@ class AppRepository {
                         setRequestProperty("Authorization", "Bearer $token")
                     }
                     val resCode = connection.responseCode
-                    android.util.Log.d("[DestinyFollow]", "Supabase Follow Delete -> Code $resCode")
+                    android.util.Log.d("[DestinyFollow]", "Supabase Follow Delete -> Code $resCode | follower: $myId -> following: $targetUserId")
                 }
             } catch (e: Exception) {
                 android.util.Log.e("[DestinyFollow]", "Failed to sync follow state to Supabase", e)
+            } finally {
+                refreshUserProfile()
             }
         }
     }

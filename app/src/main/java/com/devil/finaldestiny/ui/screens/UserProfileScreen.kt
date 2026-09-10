@@ -187,17 +187,21 @@ fun UserProfileScreen(
 
     LaunchedEffect(user.id) {
         try {
-            val remoteProfiles = com.devil.finaldestiny.data.SupabaseAuthClient.fetchDiscoverProfilesFromSupabase(user.id)
+            val myUid = user.id.takeIf { it.isNotBlank() && it != "u101" && it != "usr_me" }
+                ?: com.devil.finaldestiny.data.SupabaseAuthClient.getCurrentUserId()
+            val remoteProfiles = com.devil.finaldestiny.data.SupabaseAuthClient.fetchDiscoverProfilesFromSupabase(myUid)
+            val myFollowingSet = com.devil.finaldestiny.data.SupabaseAuthClient.fetchMyFollowingUserIds(myUid)
             val items = remoteProfiles.map { p ->
                 val displayName = p.name.ifBlank { p.handle.removePrefix("@") }.ifBlank { "Creator" }
-                val displayHandle = p.handle.ifBlank { "@" + displayName.lowercase().replace(" ", "_") }
+                val displayHandle = if (p.handle.startsWith("@")) p.handle else "@${p.handle}"
                 DiscoverUserItem(
                     id = p.id,
                     name = displayName,
                     handle = displayHandle,
                     avatarUrl = p.profilePictureUri ?: "",
                     mutualsLabel = "Suggested for you",
-                    isFollowBack = false
+                    isFollowBack = false,
+                    isFollowing = myFollowingSet.contains(p.id)
                 )
             }
             discoverUsersState.clear()

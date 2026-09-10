@@ -69,6 +69,8 @@ object SupabaseAuthClient {
         return isAuthenticated && !currentSessionToken.isNull_or_blank_custom() && !currentUserId.isNull_or_blank_custom()
     }
 
+    fun getCurrentUserId(): String? = currentUserId
+
     /**
      * Real Google OAuth 2.0 Sign-In launcher via Supabase Authorize endpoint
      */
@@ -874,11 +876,20 @@ object SupabaseAuthClient {
                     val id = obj.optString("id", "")
                     if (id.isBlank() || id == excludeUserId) continue
 
-                    val name = obj.optString("name", "Destiny Member")
-                    val handle = obj.optString("handle", "@destiny_member")
+                    val rawFullName = obj.optString("full_name", obj.optString("name", ""))
+                    val rawUsername = obj.optString("username", obj.optString("handle", ""))
                     val bio = obj.optString("bio", "Loving live talks & genuine connections ✨")
                     val avatarUrl = obj.optString("avatar_url", "").takeIf { !it.isNullOrBlank() && it != "null" }
                     val accountType = obj.optString("account_type", "Personal")
+
+                    val name = rawFullName.takeIf { it.isNotBlank() && it != "null" }
+                        ?: rawUsername.takeIf { it.isNotBlank() && it != "null" }
+                        ?: "Destiny User"
+                    val handle = if (rawUsername.isNotBlank() && rawUsername != "null") {
+                        if (rawUsername.startsWith("@")) rawUsername else "@$rawUsername"
+                    } else {
+                        "@user_${id.take(4)}"
+                    }
 
                     profiles.add(
                         UserProfile(
@@ -896,6 +907,37 @@ object SupabaseAuthClient {
             Log.e(TAG, "Failed to fetch discover profiles from Supabase", e)
         }
         profiles
+    }
+
+    suspend fun fetchMyFollowingUserIds(currentUserId: String?): Set<String> = withContext(Dispatchers.IO) {
+        val followingIds = mutableSetOf<String>()
+        if (currentUserId.isNullOrBlank()) return@withContext followingIds
+        try {
+            val baseUrl = supabaseUrl.trimEnd('/')
+            val endpoint = "$baseUrl/rest/v1/follows?follower_id=eq.$currentUserId&select=following_id"
+            val url = URL(endpoint)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 6000
+                readTimeout = 6000
+                setRequestProperty("apikey", supabaseAnonKey)
+                setRequestProperty("Authorization", "Bearer ${currentSessionToken ?: supabaseAnonKey}")
+                setRequestProperty("Accept", "application/json")
+            }
+            if (connection.responseCode in 200..299) {
+                val text = connection.inputStream.bufferedReader().use { it.readText() }
+                if (text.isNotBlank()) {
+                    val array = org.json.JSONArray(text)
+                    for (i in 0 until array.length()) {
+                        val targetId = array.getJSONObject(i).optString("following_id", "")
+                        if (targetId.isNotBlank()) followingIds.add(targetId)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch my following IDs from Supabase", e)
+        }
+        followingIds
     }
 
     suspend fun fetchNotificationsFromSupabase(currentUserId: String?): List<com.devil.finaldestiny.model.AppNotification> = withContext(Dispatchers.IO) {
