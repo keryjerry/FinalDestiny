@@ -107,10 +107,12 @@ fun ReelViewerScreen(
         // FULL-SCREEN VERTICAL PAGER
         VerticalPager(
             state = pagerState,
+            beyondViewportPageCount = 1,
             modifier = Modifier.fillMaxSize()
         ) { page ->
             val reel = reels[page]
-            val isCurrentPage = pagerState.currentPage == page
+            val distanceFromCurrentPage = kotlin.math.abs(page - pagerState.currentPage)
+            val isCurrentPage = distanceFromCurrentPage == 0
             var isCaptionExpanded by remember { mutableStateOf(false) }
 
             Box(
@@ -128,7 +130,7 @@ fun ReelViewerScreen(
                 // EDGE-TO-EDGE EXOPLAYER INSTANCE
                 ReelExoPlayerView(
                     videoUri = reel.mediaUrl.ifBlank { reel.mediaUri ?: "" },
-                    isPlaying = isCurrentPage,
+                    distanceFromCurrentPage = distanceFromCurrentPage,
                     modifier = Modifier.fillMaxSize()
                 )
 
@@ -490,37 +492,48 @@ fun ReelViewerScreen(
     }
 }
 
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
 fun ReelExoPlayerView(
     videoUri: String,
-    isPlaying: Boolean,
+    distanceFromCurrentPage: Int,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val isValidVideo = videoUri.startsWith("http") || videoUri.startsWith("content") || videoUri.endsWith(".mp4")
+    val isValidVideo = videoUri.startsWith("http") || videoUri.startsWith("content") || videoUri.endsWith(".mp4") || videoUri.contains("video")
 
-    if (!isValidVideo) {
+    if (!isValidVideo || distanceFromCurrentPage > 1) {
         Box(
-            contentAlignment = Alignment.Center,
-            modifier = modifier.background(Color.DarkGray)
-        ) {
-            Text("Media preview not available", color = Color.White, fontSize = 14.sp)
-        }
+            modifier = modifier.background(Color.Black)
+        )
         return
     }
 
-    val exoPlayer = remember(videoUri) {
-        ExoPlayer.Builder(context).build().apply {
-            setMediaItem(MediaItem.fromUri(Uri.parse(videoUri)))
-            repeatMode = Player.REPEAT_MODE_ONE
-            prepare()
-        }
+    val cacheDataSourceFactory = remember(context) {
+        com.devil.finaldestiny.utils.ReelVideoCache.createCacheDataSourceFactory(context)
     }
 
-    LaunchedEffect(isPlaying) {
-        if (isPlaying) {
+    val exoPlayer = remember(videoUri) {
+        val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(context)
+            .setDataSourceFactory(cacheDataSourceFactory)
+
+        ExoPlayer.Builder(context)
+            .setMediaSourceFactory(mediaSourceFactory)
+            .build().apply {
+                setMediaItem(MediaItem.fromUri(Uri.parse(videoUri)))
+                repeatMode = Player.REPEAT_MODE_ONE
+                prepare()
+            }
+    }
+
+    val isCurrentPage = distanceFromCurrentPage == 0
+
+    LaunchedEffect(isCurrentPage) {
+        if (isCurrentPage) {
+            exoPlayer.playWhenReady = true
             exoPlayer.play()
         } else {
+            exoPlayer.playWhenReady = false
             exoPlayer.pause()
         }
     }

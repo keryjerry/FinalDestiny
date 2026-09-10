@@ -564,12 +564,32 @@ fun FinalDestinyApp(repository: AppRepository) {
                 }
 
                 if (currentScreen == Screen.PRIMARY_DASHBOARD || currentScreen == Screen.SECONDARY_FEED) {
-                    FloatingGalaxyNavPill(
-                        currentScreen = currentScreen,
-                        user = user,
-                        unreadNotificationCount = notifications.count { !it.isRead },
-                        onNavigate = { destination -> currentScreen = destination }
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        FloatingGalaxyNavPill(
+                            currentScreen = currentScreen,
+                            user = user,
+                            unreadNotificationCount = notifications.count { !it.isRead },
+                            onNavigate = { destination -> currentScreen = destination },
+                            modifier = Modifier.weight(1f)
+                        )
+                        FloatingActionButton(
+                            onClick = { showMediaPickerSheet = true },
+                            shape = CircleShape,
+                            containerColor = Color(0xFF1E88E5),
+                            contentColor = Color.White,
+                            modifier = Modifier.size(56.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Create Post",
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
