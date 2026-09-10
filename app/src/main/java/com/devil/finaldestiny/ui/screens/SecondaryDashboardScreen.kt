@@ -761,10 +761,17 @@ fun SecondaryDashboardScreen(
                                 .padding(horizontal = 12.dp, vertical = 10.dp)
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
+                                val creatorTitle = when {
+                                    !post.authorName.isNullOrBlank() && post.authorName.trim().lowercase() != "null" -> post.authorName.trim()
+                                    !post.authorHandle.isNullOrBlank() && post.authorHandle.trim().lowercase() != "null" -> post.authorHandle.trim()
+                                    !post.userId.isNullOrBlank() && post.userId.trim().lowercase() != "null" -> "User_${post.userId.take(5)}"
+                                    else -> "Creator"
+                                }
+
                                 // ARROW 1: Profile Avatar & Co-Author Header
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     ProfileAvatarView(
-                                        name = post.authorName,
+                                        name = creatorTitle,
                                         profilePictureUri = post.authorAvatar,
                                         size = 32.dp,
                                         showBorder = true,
@@ -772,21 +779,21 @@ fun SecondaryDashboardScreen(
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = post.authorHandle.removePrefix("@"),
+                                        text = creatorTitle.removePrefix("@"),
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White,
                                         fontSize = 13.sp
                                     )
                                     Text(" ✓", fontSize = 10.sp, color = VerifiedBlue, fontWeight = FontWeight.Bold)
 
-                                    if (!post.collaboratorName.isNullOrBlank()) {
+                                    if (!post.collaboratorName.isNullOrBlank() && post.collaboratorName.trim().lowercase() != "null") {
                                         Text(
                                             text = " and ",
                                             color = Color.White.copy(0.85f),
                                             fontSize = 12.sp
                                         )
                                         Text(
-                                            text = "${post.collaboratorName}",
+                                            text = post.collaboratorName.trim(),
                                             fontWeight = FontWeight.Bold,
                                             color = Color.White,
                                             fontSize = 13.sp
@@ -797,7 +804,7 @@ fun SecondaryDashboardScreen(
 
                                 Spacer(modifier = Modifier.height(4.dp))
 
-                                // ARROW 2: Tilted Arrow Music Pill (Susheela Raman • Ye Meera Deewanapan...)
+                                // ARROW 2: Tilted Arrow Music Pill
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.clickable { showAudioDetailSheetForPost = post }
@@ -816,8 +823,12 @@ fun SecondaryDashboardScreen(
                                         modifier = Modifier.size(12.dp)
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
+                                    val displayAudioTitle = when {
+                                        !post.audioTitle.isNullOrBlank() && post.audioTitle.trim().lowercase() != "null" -> post.audioTitle.trim()
+                                        else -> "Original Audio"
+                                    }
                                     Text(
-                                        text = post.audioTitle ?: "Susheela Raman • Ye Meera Deewanapan...",
+                                        text = displayAudioTitle,
                                         color = Color.White.copy(0.9f),
                                         fontSize = 11.sp,
                                         maxLines = 1,
@@ -1058,36 +1069,25 @@ fun SecondaryDashboardScreen(
 
                         Spacer(modifier = Modifier.height(4.dp))
 
-                        // Liked by Summary
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Dynamic Likes Summary
+                        val likesCount = post.likesCount
+                        if (likesCount > 0) {
                             Text(
-                                text = "Liked by ",
-                                fontSize = 12.sp,
-                                color = SlateTextSecondary
-                            )
-                            Text(
-                                text = "tithismily ",
+                                text = "$likesCount likes",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = NavyTextPrimary
                             )
-                            Text(
-                                text = "and ",
-                                fontSize = 12.sp,
-                                color = SlateTextSecondary
-                            )
-                            Text(
-                                text = "others",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = NavyTextPrimary
-                            )
+                            Spacer(modifier = Modifier.height(4.dp))
                         }
 
-                        Spacer(modifier = Modifier.height(4.dp))
-
                         // INLINE CAPTION CLAMPING (REPAIRS VERTICAL LETTER-BY-LETTER WRAP BUG)
-                        val authorHandleText = post.authorHandle.removePrefix("@")
+                        val authorHandleText = when {
+                            !post.authorName.isNullOrBlank() && post.authorName.trim().lowercase() != "null" -> post.authorName.trim()
+                            !post.authorHandle.isNullOrBlank() && post.authorHandle.trim().lowercase() != "null" -> post.authorHandle.trim().removePrefix("@")
+                            !post.userId.isNullOrBlank() && post.userId.trim().lowercase() != "null" -> "User_${post.userId.take(5)}"
+                            else -> "Creator"
+                        }
                         val isLongCaptionText = post.caption.length > 42
 
                         val annotatedCaptionText = remember(authorHandleText, post.caption, isExpandedCaption) {

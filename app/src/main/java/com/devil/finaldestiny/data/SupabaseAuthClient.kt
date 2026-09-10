@@ -668,9 +668,17 @@ object SupabaseAuthClient {
                     val isVideo = mediaUrl.endsWith(".mp4", ignoreCase = true) || mediaUrl.contains("video", ignoreCase = true)
                     val mediaType = if (isVideo) com.devil.finaldestiny.model.MediaType.REEL_VIDEO else com.devil.finaldestiny.model.MediaType.PHOTO
 
-                    val authorName = obj.optString("author_name", if (userId.isNotBlank()) "User_${userId.takeLast(4)}" else "Destiny User")
-                    val authorHandle = obj.optString("author_handle", if (userId.isNotBlank()) "@User_${userId.takeLast(4)}" else "@destiny_user")
+                    val rawName = obj.optString("author_name", "").takeIf { it.isNotBlank() && it.trim().lowercase() != "null" }
+                    val rawHandle = obj.optString("author_handle", "").takeIf { it.isNotBlank() && it.trim().lowercase() != "null" }
+                    val authorName = rawName ?: if (userId.isNotBlank()) "User_${userId.take(5)}" else "Destiny User"
+                    val authorHandle = rawHandle ?: if (userId.isNotBlank()) "@User_${userId.take(5)}" else "@destiny_user"
                     val authorAvatar = obj.optString("author_avatar", "https://picsum.photos/200/200?random=$i")
+
+                    val audioTitleRaw = if (obj.has("audio_title") && !obj.isNull("audio_title")) obj.optString("audio_title") else null
+                    val audioTitle = audioTitleRaw?.takeIf { it.isNotBlank() && it.trim().lowercase() != "null" }
+
+                    val collabRaw = if (obj.has("collaborator_name") && !obj.isNull("collaborator_name")) obj.optString("collaborator_name") else null
+                    val collaboratorName = collabRaw?.takeIf { it.isNotBlank() && it.trim().lowercase() != "null" }
 
                     posts.add(
                         MomentPost(
@@ -682,6 +690,8 @@ object SupabaseAuthClient {
                             mediaUrl = mediaUrl,
                             caption = caption,
                             timestamp = TimeUtils.formatTimestamp(createdAt),
+                            audioTitle = audioTitle,
+                            collaboratorName = collaboratorName,
                             likesCount = obj.optInt("likes_count", 0),
                             commentsCount = obj.optInt("comments_count", 0),
                             viewsCount = viewsCount,

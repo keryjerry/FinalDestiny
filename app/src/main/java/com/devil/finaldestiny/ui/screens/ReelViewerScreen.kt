@@ -267,12 +267,19 @@ fun ReelViewerScreen(
                         .padding(start = 14.dp, bottom = 32.dp, end = 80.dp)
                 ) {
                     // Creator Info: Avatar + @username + "Follow" Pill
+                    val creatorTitle = when {
+                        !reel.authorName.isNullOrBlank() && reel.authorName.trim().lowercase() != "null" -> reel.authorName.trim()
+                        !reel.authorHandle.isNullOrBlank() && reel.authorHandle.trim().lowercase() != "null" -> reel.authorHandle.trim()
+                        !reel.userId.isNullOrBlank() && reel.userId.trim().lowercase() != "null" -> "User_${reel.userId.take(5)}"
+                        else -> "Creator"
+                    }
+
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         ProfileAvatarView(
-                            name = reel.authorName,
+                            name = creatorTitle,
                             profilePictureUri = reel.authorAvatar,
                             size = 38.dp,
                             showBorder = true,
@@ -280,7 +287,7 @@ fun ReelViewerScreen(
                         )
 
                         Text(
-                            text = reel.authorHandle,
+                            text = creatorTitle,
                             color = Color.White,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
@@ -341,8 +348,12 @@ fun ReelViewerScreen(
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
+                        val displayAudioTitle = when {
+                            !reel.audioTitle.isNullOrBlank() && reel.audioTitle.trim().lowercase() != "null" -> reel.audioTitle.trim()
+                            else -> "Original Audio • $creatorTitle"
+                        }
                         Text(
-                            text = reel.audioTitle ?: "Original Audio • ${reel.authorName}",
+                            text = displayAudioTitle,
                             color = Color.White,
                             fontSize = 11.sp,
                             maxLines = 1,
