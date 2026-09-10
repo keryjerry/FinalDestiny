@@ -527,6 +527,18 @@ object SupabaseAuthClient {
         }
     }
 
+    fun getSanitizedUuid(context: Context): String {
+        val uid = getUserId() ?: getOrCreateUserId(context)
+        if (!uid.isNullOrEmpty()) {
+            try {
+                return UUID.fromString(uid).toString()
+            } catch (e: Exception) {
+                return UUID.nameUUIDFromBytes("destiny_user_$uid".toByteArray(Charsets.UTF_8)).toString()
+            }
+        }
+        return UUID.randomUUID().toString()
+    }
+
     /**
      * Inserts row directly into Supabase table 'public.posts'
      */
@@ -536,17 +548,18 @@ object SupabaseAuthClient {
     ): Boolean = withContext(Dispatchers.IO) {
         val baseUrl = supabaseUrl.trimEnd('/')
         val endpoint = "$baseUrl/rest/v1/posts"
-        val uid = getUserId() ?: getOrCreateUserId(context)
+        val validUuid = getSanitizedUuid(context)
+        val isVideo = post.mediaType == com.devil.finaldestiny.model.MediaType.REEL_VIDEO ||
+                (!post.mediaUrl.isNullOrEmpty() && (post.mediaUrl.endsWith(".mp4", ignoreCase = true) || post.mediaUrl.contains("video", ignoreCase = true)))
 
-        Log.d(TAG, "POST /rest/v1/posts -> Ingesting Post ID: ${post.id} for User UID: $uid")
+        Log.d(TAG, "POST /rest/v1/posts -> Ingesting Post ID: ${post.id} for User UUID: $validUuid | Media Type: ${if (isVideo) "video" else "image"}")
 
         val payload = JSONObject().apply {
-            put("user_id", uid)
+            put("user_id", validUuid)
             put("caption", post.caption)
             put("media_url", post.mediaUrl)
-            put("cta_link", if (post.ctaUrl.isNullOrBlank()) JSONObject.NULL else post.ctaUrl)
-            put("cta_label", if (post.ctaLabel.isNullOrBlank()) JSONObject.NULL else post.ctaLabel)
-            put("is_paid_partnership", post.isPaidPartnership)
+            put("media_type", if (isVideo) "video" else "image")
+            put("views_count", 0L)
             put("created_at", TimeUtils.formatIsoTimestamp(System.currentTimeMillis()))
         }
 
@@ -575,6 +588,7 @@ object SupabaseAuthClient {
         var (resCode, resText) = try {
             executeInsert(activeToken)
         } catch (e: Exception) {
+            Log.e("SupabaseInsert", "Payload: $payload, Error: ${e.message}")
             Pair(400, e.message ?: "Insert exception")
         }
 
@@ -586,7 +600,7 @@ object SupabaseAuthClient {
                     resCode = retryCode
                     resText = retryText
                 } catch (e: Exception) {
-                    Log.e(TAG, "Posts DB Insert Retry Exception", e)
+                    Log.e("SupabaseInsert", "Payload: $payload, Error: ${e.message}")
                 }
             }
         }
@@ -594,11 +608,11 @@ object SupabaseAuthClient {
         Log.d(TAG, "Posts DB Insert HTTP Response Code: $resCode | Body: $resText")
 
         if (resCode in 200..299) {
-            Log.d(TAG, "Posts DB Insert SUCCESS")
+            Log.d(TAG, "Posts DB Insert SUCCESS (Code $resCode)")
             return@withContext true
         } else {
             val errMsg = parseSupabaseError(resText, resCode)
-            Log.e(TAG, "Posts DB Insert Failed -> Code $resCode | Error: $errMsg")
+            Log.e("SupabaseInsert", "Payload: $payload, Error: (HTTP $resCode) $resText")
             throw Exception("Database insert failed (HTTP $resCode): $errMsg")
         }
     }
@@ -635,8 +649,8 @@ object SupabaseAuthClient {
                     val userId = obj.optString("user_id", "")
                     val caption = obj.optString("caption", "")
                     val mediaUrl = obj.optString("media_url", "")
-                    val ctaLink = obj.optString("cta_link", null).takeIf { !it.isNullOrBlank() && it != "null" }
-                    val ctaLabel = obj.optString("cta_label", null).takeIf { !it.isNullOrBlank() && it != "null" }
+                    val ctaLink = if (obj.has("cta_link") && !obj.isNull("cta_link")) obj.optString("cta_link") else null
+                    val ctaLabel = if (obj.has("cta_label") && !obj.isNull("cta_label")) obj.optString("cta_label") else null
                     val isPaidPartnership = obj.optBoolean("is_paid_partnership", false)
                     val createdAt = obj.optString("created_at", "")
                     val viewsCount = obj.optInt("views_count", 0)
