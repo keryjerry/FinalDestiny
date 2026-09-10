@@ -390,15 +390,104 @@ object SupabaseAuthClient {
     }
 
     /**
-     * Fetches public profiles from Supabase 'public.profiles' excluding current user
+     * Calls Supabase RPC function 'get_discover_people(current_user_uuid, user_limit)'
      */
     suspend fun fetchDiscoverProfilesFromSupabase(excludeUserId: String? = null): List<UserProfile> = withContext(Dispatchers.IO) {
         val profiles = mutableListOf<UserProfile>()
+        val currentUserId = excludeUserId.takeIf { !it.isNullOrBlank() && it != "u101" && it != "usr_me" }
+            ?: getUserId()
+            ?: "00000000-0000-0000-0000-000000000000"
+
+        try {
+            val baseUrl = supabaseUrl.trimEnd('/')
+            val endpoint = "$baseUrl/rest/v1/rpc/get_discover_people"
+            Log.d(TAG, "POST /rest/v1/rpc/get_discover_people -> User: $currentUserId, Limit: 15")
+            val url = URL(endpoint)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 8000
+                readTimeout = 8000
+                setRequestProperty("apikey", supabaseAnonKey)
+                setRequestProperty("Authorization", "Bearer ${currentSessionToken ?: supabaseAnonKey}")
+                setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                setRequestProperty("Accept", "application/json")
+                doOutput = true
+            }
+
+            val payload = JSONObject().apply {
+                put("current_user_uuid", currentUserId)
+                put("user_limit", 15)
+            }
+
+            connection.outputStream.use { os ->
+                os.write(payload.toString().toByteArray(Charsets.UTF_8))
+            }
+
+            val resCode = connection.responseCode
+            val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
+            val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
+            Log.d(TAG, "RPC get_discover_people HTTP Code: $resCode | Response length: ${resText.length}")
+
+            if (resCode in 200..299 && resText.isNotBlank()) {
+                val jsonArray = org.json.JSONArray(resText)
+                for (i in 0 until jsonArray.length()) {
+                    val obj = jsonArray.getJSONObject(i)
+                    val id = obj.optString("id", "")
+                    if (id.isBlank() || id == currentUserId) continue
+
+                    val username = obj.optString("username", obj.optString("handle", ""))
+                    val fullName = if (obj.has("full_name") && !obj.isNull("full_name")) obj.optString("full_name") else if (obj.has("name") && !obj.isNull("name")) obj.optString("name") else null
+                    val rawAvatar = if (obj.has("avatar_url") && !obj.isNull("avatar_url")) obj.optString("avatar_url") else null
+                    val isFollowing = obj.optBoolean("is_following", false)
+
+                    val name = fullName.takeIf { !it.isNullOrBlank() && it != "null" }
+                        ?: username.takeIf { it.isNotBlank() && it != "null" }
+                        ?: "User_${id.take(5)}"
+                    val handle = if (username.isNotBlank() && username != "null") {
+                        if (username.startsWith("@")) username else "@$username"
+                    } else {
+                        "@user_${id.take(5)}"
+                    }
+
+                    val avatarUrl = if (!rawAvatar.isNullOrBlank() && rawAvatar != "null") {
+                        when {
+                            rawAvatar.startsWith("http://", ignoreCase = true) ||
+                            rawAvatar.startsWith("https://", ignoreCase = true) ||
+                            rawAvatar.startsWith("content://", ignoreCase = true) ||
+                            rawAvatar.startsWith("file://", ignoreCase = true) ||
+                            rawAvatar.startsWith("data:", ignoreCase = true) -> rawAvatar
+                            rawAvatar.startsWith("avatars/") -> "$baseUrl/storage/v1/object/public/$rawAvatar"
+                            else -> "$baseUrl/storage/v1/object/public/avatars/$rawAvatar"
+                        }
+                    } else null
+
+                    profiles.add(
+                        UserProfile(
+                            id = id,
+                            handle = handle,
+                            name = name,
+                            bio = "Loving live talks & genuine connections ✨",
+                            profilePictureUri = avatarUrl,
+                            photos = if (avatarUrl != null) listOf(avatarUrl) else emptyList(),
+                            accountType = "Personal",
+                            crosspostingEnabled = isFollowing
+                        )
+                    )
+                }
+                if (profiles.isNotEmpty()) {
+                    return@withContext profiles
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "RPC get_discover_people Exception: ${e.message}", e)
+        }
+
+        // REST Fallback for public.profiles if RPC function is not yet created or returns 0 items
         try {
             val baseUrl = supabaseUrl.trimEnd('/')
             val queryParam = if (!excludeUserId.isNullOrBlank()) "?id=neq.$excludeUserId&select=*&limit=15" else "?select=*&limit=15"
             val endpoint = "$baseUrl/rest/v1/profiles$queryParam"
-            Log.d(TAG, "GET /rest/v1/profiles -> Fetching discover profiles from Supabase")
+            Log.d(TAG, "GET /rest/v1/profiles -> Fetching discover profiles fallback")
             val url = URL(endpoint)
             val connection = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
@@ -412,7 +501,6 @@ object SupabaseAuthClient {
             val resCode = connection.responseCode
             val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
             val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
-            Log.d(TAG, "Fetch Discover Profiles HTTP Code: $resCode | Response: $resText")
 
             if (resCode in 200..299 && resText.isNotBlank()) {
                 val jsonArray = org.json.JSONArray(resText)
@@ -432,12 +520,6 @@ object SupabaseAuthClient {
                         .ifBlank { obj.optString("profile_pic", "") }
                         .ifBlank { obj.optString("image_url", "") }
                         .ifBlank { obj.optString("photo_url", "") }
-                        .ifBlank {
-                            if (obj.has("photos")) {
-                                val photosArr = obj.optJSONArray("photos")
-                                photosArr?.optString(0, "") ?: obj.optString("photos", "")
-                            } else ""
-                        }
                         .trim()
 
                     val avatarUrl = if (rawAvatar.isNotBlank() && rawAvatar != "null") {
@@ -447,12 +529,10 @@ object SupabaseAuthClient {
                             rawAvatar.startsWith("content://", ignoreCase = true) ||
                             rawAvatar.startsWith("file://", ignoreCase = true) ||
                             rawAvatar.startsWith("data:", ignoreCase = true) -> rawAvatar
-                            rawAvatar.startsWith("avatars/") -> "${supabaseUrl.trimEnd('/')}/storage/v1/object/public/$rawAvatar"
-                            else -> "${supabaseUrl.trimEnd('/')}/storage/v1/object/public/avatars/$rawAvatar"
+                            rawAvatar.startsWith("avatars/") -> "$baseUrl/storage/v1/object/public/$rawAvatar"
+                            else -> "$baseUrl/storage/v1/object/public/avatars/$rawAvatar"
                         }
                     } else null
-
-                    val accountType = obj.optString("account_type", "Personal")
 
                     val name = rawFullName.takeIf { it.isNotBlank() && it != "null" }
                         ?: rawUsername.takeIf { it.isNotBlank() && it != "null" }
@@ -471,13 +551,13 @@ object SupabaseAuthClient {
                             bio = bio,
                             profilePictureUri = avatarUrl,
                             photos = if (avatarUrl != null) listOf(avatarUrl) else emptyList(),
-                            accountType = accountType
+                            accountType = "Personal"
                         )
                     )
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to fetch discover profiles from Supabase", e)
+            Log.e(TAG, "Failed to fetch discover profiles fallback", e)
         }
         profiles
     }

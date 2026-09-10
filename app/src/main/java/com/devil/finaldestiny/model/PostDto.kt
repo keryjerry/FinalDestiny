@@ -26,3 +26,12 @@ data class PostDto(
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("profiles") val profile: ProfileBriefDto? = null
 )
+
+@Serializable
+data class DiscoverUserDto(
+    @SerialName("id") val id: String,
+    @SerialName("username") val username: String,
+    @SerialName("full_name") val full_name: String? = null,
+    @SerialName("avatar_url") val avatar_url: String? = null,
+    @SerialName("is_following") val is_following: Boolean = false
+)
