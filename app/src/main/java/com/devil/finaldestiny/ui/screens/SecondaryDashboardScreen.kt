@@ -142,6 +142,7 @@ fun SecondaryDashboardScreen(
     onIncrementView: (String) -> Unit = {},
     onStartLiveStream: () -> Unit = {},
     onRefresh: suspend () -> Unit = {},
+    onOpenMediaPicker: () -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -335,22 +336,39 @@ fun SecondaryDashboardScreen(
                         )
                     }
 
-                    // Top-Right Heart Icon for Notifications
-                    Box(contentAlignment = Alignment.TopEnd) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(
-                            onClick = onOpenNotifications,
+                            onClick = onOpenMediaPicker,
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
                                 .background(SkyBlueHeader)
                         ) {
                             Icon(
-                                imageVector = if (notifications.any { !it.isRead }) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                contentDescription = "Social Notifications",
-                                tint = HeartRed,
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Create Post or Reel",
+                                tint = NavyTextPrimary,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        // Top-Right Heart Icon for Notifications
+                        Box(contentAlignment = Alignment.TopEnd) {
+                            IconButton(
+                                onClick = onOpenNotifications,
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(SkyBlueHeader)
+                            ) {
+                                Icon(
+                                    imageVector = if (notifications.any { !it.isRead }) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                    contentDescription = "Social Notifications",
+                                    tint = HeartRed,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         if (notifications.any { !it.isRead }) {
                             Box(
                                 modifier = Modifier
@@ -363,6 +381,7 @@ fun SecondaryDashboardScreen(
                     }
                 }
             }
+        }
 
             // INSTAGRAM-STYLE STORIES TRAY
             item {

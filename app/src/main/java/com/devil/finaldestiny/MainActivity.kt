@@ -30,6 +30,7 @@ import com.devil.finaldestiny.engine.UpdateReleaseInfo
 import com.devil.finaldestiny.model.GiftItem
 import com.devil.finaldestiny.model.PaymentMethodType
 import com.devil.finaldestiny.ui.components.FloatingGalaxyNavPill
+import com.devil.finaldestiny.ui.components.MediaPickerBottomSheet
 import com.devil.finaldestiny.ui.components.MonetizationAnnouncementModal
 import com.devil.finaldestiny.ui.components.NotificationCenterModal
 import com.devil.finaldestiny.ui.components.PermissionModalDialog
@@ -60,7 +61,8 @@ enum class Screen {
     CREATOR_TOOLS,
     SETTINGS_ACTIVITY,
     FINAL_DESTINY_DATING,
-    ABOUT_US
+    ABOUT_US,
+    NEW_POST
 }
 
 class MainActivity : ComponentActivity(), PaymentResultWithDataListener {
@@ -120,6 +122,7 @@ fun FinalDestinyApp(repository: AppRepository) {
     var isVideoRoomKeptInBackground by remember { mutableStateOf(false) }
 
     val user by repository.currentUser.collectAsState()
+    val userSettingsState by repository.userSettingsState.collectAsState()
     val savedAccounts by repository.savedAccounts.collectAsState()
     val swipeCards by repository.swipeCards.collectAsState()
     val matchedCard by repository.matchedCard.collectAsState()
@@ -135,8 +138,11 @@ fun FinalDestinyApp(repository: AppRepository) {
     val isVisionBlackoutTriggered by repository.isVisionBlackoutTriggered.collectAsState()
     val notifications by repository.notifications.collectAsState()
     val creatorAnalytics by repository.creatorAnalytics.collectAsState()
-    val userSettings by repository.userSettingsState.collectAsState()
     var showNotificationModal by remember { mutableStateOf(false) }
+
+    var showMediaPickerSheet by remember { mutableStateOf(false) }
+    var pickedMediaUri by remember { mutableStateOf<String?>(null) }
+    var isPickedMediaReel by remember { mutableStateOf(false) }
 
     // Auto-Update Checker State (Supabase Remote Config)
     var updateInfoState by remember { mutableStateOf<UpdateReleaseInfo?>(null) }
@@ -218,6 +224,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onSwitchAccount = { targetId -> repository.switchAccount(targetId, context) },
                     onAddAccount = { email, name -> repository.addAccount(email, name, context) },
                     onRemoveAccount = { targetId -> repository.removeAccount(targetId, context) },
+                    onOpenMediaPicker = { showMediaPickerSheet = true },
                     onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
                 )
 
@@ -236,7 +243,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                 )
 
                 Screen.SETTINGS_ACTIVITY -> SettingsActivityScreen(
-                    userSettings = userSettings,
+                    userSettings = userSettingsState,
                     onUpdateSettings = { updated -> repository.updateSettingsState(updated) },
                     onLogOutAllSessions = {
                         com.devil.finaldestiny.data.SupabaseAuthClient.signOut(context)
@@ -244,7 +251,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                     },
                     onClearSearchHistory = { repository.clearSearchHistory() },
                     onRequestDataExport = {
-                        Toast.makeText(context, "📩 Asynchronous data export requested! Download link will be emailed to ${userSettings.email}.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, "📩 Asynchronous data export requested! Download link will be emailed to ${userSettingsState.email}.", Toast.LENGTH_LONG).show()
                     },
                     onAddKeywordToBlacklist = { keyword -> repository.addKeywordToBlacklist(keyword) },
                     onUnblockUser = { targetId -> repository.unblockUser(targetId) },
@@ -277,6 +284,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                         currentScreen = Screen.LIVE_VIDEO_ROOM
                     },
                     onRefresh = { repository.refreshMomentsAndReels() },
+                    onOpenMediaPicker = { showMediaPickerSheet = true },
                     onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
                 )
 
@@ -382,6 +390,33 @@ fun FinalDestinyApp(repository: AppRepository) {
 
                 Screen.ABOUT_US -> AboutUsScreen(
                     onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
+                )
+
+                Screen.NEW_POST -> InstagramNewPostScreen(
+                    mediaUri = pickedMediaUri,
+                    isReel = isPickedMediaReel,
+                    user = user,
+                    onBack = { currentScreen = Screen.PRIMARY_DASHBOARD },
+                    onPublish = { caption, mediaUri, audioTitle, audioArtist, audioUrl, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText, ctaLink, ctaLabel, isPaidPartnership, promotionStatus, promotionBudget ->
+                        coroutineScope.launch {
+                            if (isPickedMediaReel) {
+                                repository.postReelVideo(
+                                    context, caption, mediaUri, audioTitle, audioArtist, audioUrl,
+                                    isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt,
+                                    altText, appliedFilter, overlayText, ctaLink, ctaLabel,
+                                    isPaidPartnership, promotionStatus, promotionBudget
+                                )
+                            } else {
+                                repository.postMoment(
+                                    context, caption, mediaUri, isAiGenerated, commentsDisabled,
+                                    hideLikes, hideShares, scheduledAt, altText, appliedFilter,
+                                    overlayText, ctaLink, ctaLabel, isPaidPartnership,
+                                    promotionStatus, promotionBudget
+                                )
+                            }
+                        }
+                        currentScreen = Screen.PRIMARY_DASHBOARD
+                    }
                 )
             }
         }
@@ -527,6 +562,18 @@ fun FinalDestinyApp(repository: AppRepository) {
         PermissionModalDialog(
             onAcceptPermissions = { showPermissionModal = false },
             onDismiss = { showPermissionModal = false }
+        )
+    }
+
+    if (showMediaPickerSheet) {
+        MediaPickerBottomSheet(
+            onDismiss = { showMediaPickerSheet = false },
+            onMediaSelected = { uri, isVideo ->
+                pickedMediaUri = uri.toString()
+                isPickedMediaReel = isVideo
+                showMediaPickerSheet = false
+                currentScreen = Screen.NEW_POST
+            }
         )
     }
 

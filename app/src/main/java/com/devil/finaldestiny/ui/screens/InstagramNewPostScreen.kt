@@ -210,6 +210,35 @@ fun InstagramNewPostScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.Black)
                     }
                 },
+                actions = {
+                    TextButton(
+                        onClick = {
+                            val finalCaption = captionText.ifBlank { if (isReel) "New Reel Video! 🎬" else "New Post Moment 📸" }
+                            onPublish(
+                                finalCaption,
+                                mediaUri,
+                                selectedAudioTrack?.title ?: "Original Audio",
+                                selectedAudioTrack?.artist ?: "Creator",
+                                selectedAudioTrack?.audioUrl,
+                                isAiLabelEnabled,
+                                isCommentsDisabled,
+                                isHideLikesEnabled,
+                                isHideSharesEnabled,
+                                scheduledDateTimeStr,
+                                altTextValue.ifBlank { null },
+                                samplePhotoFilters[selectedFilterIndex].name,
+                                overlayTextValue.ifBlank { null },
+                                ctaLinkInput.ifBlank { null },
+                                ctaLabelSelected,
+                                isPaidPartnership,
+                                if (isPromotionActive) "active" else "none",
+                                promotionBudgetInput.toDoubleOrNull() ?: 0.0
+                            )
+                        }
+                    ) {
+                        Text("Share", color = Color(0xFF3897F0), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
         },
@@ -258,6 +287,7 @@ fun InstagramNewPostScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
+                .padding(bottom = 80.dp)
         ) {
             // 1. MEDIA PREVIEW & FILTER CAROUSEL
             Box(

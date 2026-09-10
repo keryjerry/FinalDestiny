@@ -58,6 +58,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devil.finaldestiny.model.UserProfile
+import coil.request.videoFrameMillis
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import kotlinx.coroutines.launch
 import java.io.File
@@ -100,6 +101,7 @@ fun UserProfileScreen(
     onSwitchAccount: (String) -> Unit = {},
     onAddAccount: (String, String) -> Unit = { _, _ -> },
     onRemoveAccount: (String) -> Unit = {},
+    onOpenMediaPicker: (() -> Unit)? = null,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -118,6 +120,16 @@ fun UserProfileScreen(
     var newAccName by remember { mutableStateOf("") }
     var showDiscoverPeople by remember { mutableStateOf(true) }
     var dialogTitle by remember { mutableStateOf("Followers List") }
+
+    var showCreateTravelPlaylistDialog by remember { mutableStateOf(false) }
+    var newPlaylistNameInput by remember { mutableStateOf("") }
+    val travelPlaylists = remember {
+        mutableStateListOf(
+            StoryHighlightItem("h1", "Darjeeling 🏔️", "https://picsum.photos/200/200?random=50"),
+            StoryHighlightItem("h2", "Kalimpong 🌿", "https://picsum.photos/200/200?random=51"),
+            StoryHighlightItem("h3", "Mumbai 🏙️", "https://picsum.photos/200/200?random=52")
+        )
+    }
 
     var activeTabState by remember { mutableIntStateOf(0) } // 0: Grid, 1: Reels, 2: Tagged/Saved
 
@@ -198,7 +210,9 @@ fun UserProfileScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
                 .verticalScroll(scrollState)
+                .padding(bottom = 100.dp)
         ) {
             // 1. TOP APP BAR (INSTAGRAM OFFICIAL LIGHT THEME)
             Row(
@@ -227,10 +241,14 @@ fun UserProfileScreen(
 
                     IconButton(
                         onClick = {
-                            try {
-                                visualMediaLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                            } catch (e: Exception) {
-                                galleryLauncher.launch("image/*")
+                            if (onOpenMediaPicker != null) {
+                                onOpenMediaPicker()
+                            } else {
+                                try {
+                                    visualMediaLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                } catch (e: Exception) {
+                                    galleryLauncher.launch("image/*")
+                                }
                             }
                         },
                         modifier = Modifier.size(28.dp)
@@ -836,12 +854,12 @@ fun UserProfileScreen(
                 Spacer(modifier = Modifier.height(10.dp))
             }
 
-            // 6. STORY HIGHLIGHTS TRAY
+            // 6. STORY HIGHLIGHTS TRAY (TRAVEL PLAYLISTS)
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // First item: '+' New Highlight Circle ONLY
+                // First item: '+' New Highlight / Travel Playlist Launcher
                 item {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Box(
@@ -850,20 +868,96 @@ fun UserProfileScreen(
                                 .size(64.dp)
                                 .clip(CircleShape)
                                 .border(1.dp, Color(0xFFC7C7CC), CircleShape)
-                                .clickable {
-                                    try {
-                                        visualMediaLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                                    } catch (e: Exception) {
-                                        galleryLauncher.launch("image/*")
-                                    }
-                                }
+                                .clickable { showCreateTravelPlaylistDialog = true }
                         ) {
-                            Icon(Icons.Default.Add, contentDescription = "New Highlight", tint = Color.Black, modifier = Modifier.size(24.dp))
+                            Icon(Icons.Default.Add, contentDescription = "New Playlist", tint = Color.Black, modifier = Modifier.size(24.dp))
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text("New", fontSize = 11.sp, color = Color.Black)
                     }
                 }
+
+                items(travelPlaylists) { item ->
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.clickable {
+                            Toast.makeText(context, "Opening ${item.title} Playlist ✈️", Toast.LENGTH_SHORT).show()
+                        }
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .border(1.5.dp, Color(0xFFE5E5EA), CircleShape)
+                        ) {
+                            val bitmap = rememberProfileLoadedImage(context, item.coverUrl)
+                            if (bitmap != null) {
+                                Image(
+                                    bitmap = bitmap,
+                                    contentDescription = item.title,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize().clip(CircleShape)
+                                )
+                            } else {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier.fillMaxSize().background(Color(0xFFF1F5F9))
+                                ) {
+                                    Text(item.title.take(1), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                                }
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(item.title, fontSize = 11.sp, color = Color.Black, maxLines = 1)
+                    }
+                }
+            }
+
+            if (showCreateTravelPlaylistDialog) {
+                AlertDialog(
+                    onDismissRequest = { showCreateTravelPlaylistDialog = false },
+                    title = { Text("Create Travel Playlist ✈️", fontWeight = FontWeight.Bold) },
+                    text = {
+                        Column {
+                            Text("Name your trip or travel collection (e.g. Darjeeling, Kalimpong, Mumbai):", fontSize = 13.sp, color = Color.Gray)
+                            Spacer(modifier = Modifier.height(10.dp))
+                            OutlinedTextField(
+                                value = newPlaylistNameInput,
+                                onValueChange = { newPlaylistNameInput = it },
+                                placeholder = { Text("Enter trip title...") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    },
+                    confirmButton = {
+                        Button(
+                            onClick = {
+                                if (newPlaylistNameInput.isNotBlank()) {
+                                    travelPlaylists.add(
+                                        StoryHighlightItem(
+                                            id = "hl_${System.currentTimeMillis()}",
+                                            title = newPlaylistNameInput.trim(),
+                                            coverUrl = "https://picsum.photos/200/200?random=${(100..999).random()}"
+                                        )
+                                    )
+                                    newPlaylistNameInput = ""
+                                    showCreateTravelPlaylistDialog = false
+                                    Toast.makeText(context, "✈️ Travel Playlist Created!", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3897F0))
+                        ) {
+                            Text("Save", color = Color.White)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showCreateTravelPlaylistDialog = false }) {
+                            Text("Cancel", color = Color.Gray)
+                        }
+                    }
+                )
             }
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -1025,6 +1119,7 @@ fun UserProfileScreen(
                         ) {
                             items(reelPosts) { reel ->
                                 val bitmap = rememberProfileLoadedImage(context, reel.mediaUrl)
+                                val videoFrameBitmap = rememberVideoFrameBitmap(context, reel.mediaUrl)
                                 val realViews = reel.viewsCount.toLong()
                                 val displayViews = when {
                                     realViews >= 1_000_000 -> String.format(java.util.Locale.US, "%.1fM", realViews / 1_000_000.0)
@@ -1039,9 +1134,28 @@ fun UserProfileScreen(
                                         .background(Color(0xFF1C1C1E))
                                         .clickable { onNavigateToSecondaryFeed() }
                                 ) {
-                                    if (bitmap != null) {
+                                    if (!reel.mediaUrl.isNullOrBlank()) {
+                                        coil.compose.AsyncImage(
+                                            model = coil.request.ImageRequest.Builder(LocalContext.current)
+                                                .data(reel.mediaUrl)
+                                                .decoderFactory(coil.decode.VideoFrameDecoder.Factory())
+                                                .videoFrameMillis(1000)
+                                                .crossfade(true)
+                                                .build(),
+                                            contentDescription = "Video Thumbnail",
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else if (bitmap != null) {
                                         Image(
                                             bitmap = bitmap,
+                                            contentDescription = reel.caption,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else if (videoFrameBitmap != null) {
+                                        Image(
+                                            bitmap = videoFrameBitmap,
                                             contentDescription = reel.caption,
                                             contentScale = ContentScale.Crop,
                                             modifier = Modifier.fillMaxSize()
@@ -1689,4 +1803,27 @@ fun rememberProfileLoadedImage(context: Context, uriString: String?): ImageBitma
         }
     }
     return imageBitmap
+}
+
+@Composable
+fun rememberVideoFrameBitmap(context: Context, videoUrl: String?): ImageBitmap? {
+    var frameBitmap by remember(videoUrl) { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(videoUrl) {
+        if (!videoUrl.isNullOrBlank() && (videoUrl.contains("video", ignoreCase = true) || videoUrl.endsWith(".mp4", ignoreCase = true))) {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    val retriever = android.media.MediaMetadataRetriever()
+                    retriever.setDataSource(videoUrl, HashMap<String, String>())
+                    val bitmap = retriever.getFrameAtTime(1000000, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                    retriever.release()
+                    bitmap?.let {
+                        frameBitmap = it.asImageBitmap()
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
+    return frameBitmap
 }
