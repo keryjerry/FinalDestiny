@@ -62,7 +62,8 @@ enum class Screen {
     SETTINGS_ACTIVITY,
     FINAL_DESTINY_DATING,
     ABOUT_US,
-    NEW_POST
+    NEW_POST,
+    REEL_VIEWER
 }
 
 class MainActivity : ComponentActivity(), PaymentResultWithDataListener {
@@ -143,6 +144,7 @@ fun FinalDestinyApp(repository: AppRepository) {
     var showMediaPickerSheet by remember { mutableStateOf(false) }
     var pickedMediaUri by remember { mutableStateOf<String?>(null) }
     var isPickedMediaReel by remember { mutableStateOf(false) }
+    var selectedReelInitialIndex by remember { mutableIntStateOf(0) }
 
     // Auto-Update Checker State (Supabase Remote Config)
     var updateInfoState by remember { mutableStateOf<UpdateReleaseInfo?>(null) }
@@ -225,6 +227,10 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onAddAccount = { email, name -> repository.addAccount(email, name, context) },
                     onRemoveAccount = { targetId -> repository.removeAccount(targetId, context) },
                     onOpenMediaPicker = { showMediaPickerSheet = true },
+                    onNavigateToReelViewer = { index ->
+                        selectedReelInitialIndex = index
+                        currentScreen = Screen.REEL_VIEWER
+                    },
                     onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
                 )
 
@@ -285,6 +291,10 @@ fun FinalDestinyApp(repository: AppRepository) {
                     },
                     onRefresh = { repository.refreshMomentsAndReels() },
                     onOpenMediaPicker = { showMediaPickerSheet = true },
+                    onNavigateToReelViewer = { index ->
+                        selectedReelInitialIndex = index
+                        currentScreen = Screen.REEL_VIEWER
+                    },
                     onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
                 )
 
@@ -418,11 +428,29 @@ fun FinalDestinyApp(repository: AppRepository) {
                         currentScreen = Screen.PRIMARY_DASHBOARD
                     }
                 )
+
+                Screen.REEL_VIEWER -> {
+                    val reels = momentPosts.filter {
+                        it.mediaType == com.devil.finaldestiny.model.MediaType.REEL_VIDEO ||
+                                (!it.mediaUri.isNullOrEmpty() && (it.mediaUri.endsWith(".mp4") || it.mediaUri.contains("video"))) ||
+                                (!it.mediaUrl.isNullOrEmpty() && (it.mediaUrl.endsWith(".mp4") || it.mediaUrl.contains("video")))
+                    }
+                    ReelViewerScreen(
+                        reels = if (reels.isNotEmpty()) reels else momentPosts,
+                        initialIndex = selectedReelInitialIndex,
+                        onLikePost = { repository.toggleLikePost(it) },
+                        onAddComment = { id, text -> repository.addCommentToPost(id, text) },
+                        onToggleFollowAuthor = { repository.toggleFollowPostAuthor(it) },
+                        onToggleSavePost = { repository.toggleSavePost(it) },
+                        onIncrementView = { repository.incrementPostView(it) },
+                        onBack = { currentScreen = Screen.SECONDARY_FEED }
+                    )
+                }
             }
         }
 
         // EDGE-TO-EDGE FLOATING GALAXY NAVIGATION PILL CONTAINER (iOS DYNAMIC ISLAND STYLE)
-        if (currentScreen != Screen.AUTH_SPLASH && currentScreen != Screen.LIVENESS_CHECK && currentScreen != Screen.ABOUT_US) {
+        if (currentScreen != Screen.AUTH_SPLASH && currentScreen != Screen.LIVENESS_CHECK && currentScreen != Screen.ABOUT_US && currentScreen != Screen.REEL_VIEWER) {
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)

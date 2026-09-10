@@ -143,6 +143,7 @@ fun SecondaryDashboardScreen(
     onStartLiveStream: () -> Unit = {},
     onRefresh: suspend () -> Unit = {},
     onOpenMediaPicker: () -> Unit = {},
+    onNavigateToReelViewer: (Int) -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -581,8 +582,15 @@ fun SecondaryDashboardScreen(
                             .fillMaxWidth()
                             .aspectRatio(if (isReel) 9f / 16f else 4f / 5f)
                             .background(NavyTextPrimary)
-                            .pointerInput(Unit) {
+                            .pointerInput(post.id) {
                                 detectTapGestures(
+                                    onTap = {
+                                        if (isReel) {
+                                            val reelsOnly = momentPosts.filter { it.mediaType == MediaType.REEL_VIDEO || (!it.mediaUri.isNullOrEmpty() && (it.mediaUri.endsWith(".mp4") || it.mediaUri.contains("video"))) }
+                                            val index = reelsOnly.indexOfFirst { r -> r.id == post.id }.coerceAtLeast(0)
+                                            onNavigateToReelViewer(index)
+                                        }
+                                    },
                                     onDoubleTap = {
                                         onLikePost(post.id)
                                         Toast.makeText(context, "❤️ Loved!", Toast.LENGTH_SHORT).show()

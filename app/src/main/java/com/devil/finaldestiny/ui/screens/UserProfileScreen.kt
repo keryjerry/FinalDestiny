@@ -102,6 +102,7 @@ fun UserProfileScreen(
     onAddAccount: (String, String) -> Unit = { _, _ -> },
     onRemoveAccount: (String) -> Unit = {},
     onOpenMediaPicker: (() -> Unit)? = null,
+    onNavigateToReelViewer: (Int) -> Unit = {},
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -1132,7 +1133,10 @@ fun UserProfileScreen(
                                     modifier = Modifier
                                         .aspectRatio(1f)
                                         .background(Color(0xFF1C1C1E))
-                                        .clickable { onNavigateToSecondaryFeed() }
+                                        .clickable {
+                                            val index = reelPosts.indexOfFirst { r -> r.id == reel.id }.coerceAtLeast(0)
+                                            onNavigateToReelViewer(index)
+                                        }
                                 ) {
                                     if (!reel.mediaUrl.isNullOrBlank()) {
                                         coil.compose.AsyncImage(
