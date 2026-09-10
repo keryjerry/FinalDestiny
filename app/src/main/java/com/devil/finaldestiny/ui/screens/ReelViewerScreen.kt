@@ -273,7 +273,7 @@ fun ReelViewerScreen(
                         !reel.authorName.isNullOrBlank() && reel.authorName.trim().lowercase() != "null" && !reel.authorName.startsWith("User_") -> reel.authorName.trim()
                         !reel.authorHandle.isNullOrBlank() && reel.authorHandle.trim().lowercase() != "null" -> reel.authorHandle.trim()
                         !reel.userId.isNullOrBlank() && reel.userId.trim().lowercase() != "null" -> "User_${reel.userId.take(5)}"
-                        else -> "Creator"
+                        else -> "User_${reel.id.take(5)}"
                     }
 
                     Row(

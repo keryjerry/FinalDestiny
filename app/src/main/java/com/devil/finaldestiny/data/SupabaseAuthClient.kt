@@ -390,7 +390,7 @@ object SupabaseAuthClient {
     }
 
     /**
-     * Calls Supabase RPC function 'get_discover_people(current_user_uuid, user_limit)'
+     * Calls Supabase RPC function 'get_community_members(current_uid)'
      */
     suspend fun fetchDiscoverProfilesFromSupabase(excludeUserId: String? = null): List<UserProfile> = withContext(Dispatchers.IO) {
         val profiles = mutableListOf<UserProfile>()
@@ -400,8 +400,8 @@ object SupabaseAuthClient {
 
         try {
             val baseUrl = supabaseUrl.trimEnd('/')
-            val endpoint = "$baseUrl/rest/v1/rpc/get_discover_people"
-            Log.d(TAG, "POST /rest/v1/rpc/get_discover_people -> User: $currentUserId, Limit: 15")
+            val endpoint = "$baseUrl/rest/v1/rpc/get_community_members"
+            Log.d(TAG, "POST /rest/v1/rpc/get_community_members -> User: $currentUserId")
             val url = URL(endpoint)
             val connection = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
@@ -415,8 +415,8 @@ object SupabaseAuthClient {
             }
 
             val payload = JSONObject().apply {
+                put("current_uid", currentUserId)
                 put("current_user_uuid", currentUserId)
-                put("user_limit", 15)
             }
 
             connection.outputStream.use { os ->
@@ -426,7 +426,7 @@ object SupabaseAuthClient {
             val resCode = connection.responseCode
             val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
             val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
-            Log.d(TAG, "RPC get_discover_people HTTP Code: $resCode | Response length: ${resText.length}")
+            Log.d(TAG, "RPC get_community_members HTTP Code: $resCode | Response length: ${resText.length}")
 
             if (resCode in 200..299 && resText.isNotBlank()) {
                 val jsonArray = org.json.JSONArray(resText)
@@ -479,7 +479,7 @@ object SupabaseAuthClient {
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "RPC get_discover_people Exception: ${e.message}", e)
+            Log.e(TAG, "RPC get_community_members Exception: ${e.message}", e)
         }
 
         // REST Fallback for public.profiles if RPC function is not yet created or returns 0 items
@@ -829,14 +829,16 @@ object SupabaseAuthClient {
     }
 
     /**
-     * Fetches all real community posts ordered by newest first from Supabase 'public.posts'
+     * Fetches all real community posts ordered by newest first from Supabase 'feed_posts_view'
      */
     suspend fun fetchPostsFromSupabase(): List<MomentPost> = withContext(Dispatchers.IO) {
         val posts = mutableListOf<MomentPost>()
         try {
             val baseUrl = supabaseUrl.trimEnd('/')
-            val endpoint = "$baseUrl/rest/v1/posts?select=*&order=created_at.desc"
-            fun executeGet(tokenToUse: String): Pair<Int, String> {
+            val endpointView = "$baseUrl/rest/v1/feed_posts_view?select=*&order=created_at.desc"
+            val endpointTable = "$baseUrl/rest/v1/posts?select=*&order=created_at.desc"
+
+            fun executeGet(endpoint: String, tokenToUse: String): Pair<Int, String> {
                 val url = URL(endpoint)
                 val conn = (url.openConnection() as HttpURLConnection).apply {
                     requestMethod = "GET"
@@ -854,15 +856,27 @@ object SupabaseAuthClient {
 
             val activeToken = currentSessionToken ?: supabaseAnonKey
             var (resCode, resText) = try {
-                executeGet(activeToken)
+                executeGet(endpointView, activeToken)
             } catch (e: Exception) {
                 Pair(400, e.message ?: "")
             }
 
-            if (resCode !in 200..299 && (resCode == 400 || resCode == 401) && activeToken != supabaseAnonKey) {
+            // Fallback to table if view fails or returns HTTP error
+            if (resCode !in 200..299) {
+                Log.w(TAG, "feed_posts_view returned HTTP $resCode. Falling back to public.posts table...")
+                val (fallbackCode, fallbackText) = try {
+                    executeGet(endpointTable, activeToken)
+                } catch (e: Exception) {
+                    Pair(400, e.message ?: "")
+                }
+                resCode = fallbackCode
+                resText = fallbackText
+            }
+
+            if (resCode !in 200..299 && activeToken != supabaseAnonKey) {
                 Log.w(TAG, "Fetch Posts HTTP $resCode with JWT. Retrying GET with public anon key...")
                 try {
-                    val (retryCode, retryText) = executeGet(supabaseAnonKey)
+                    val (retryCode, retryText) = executeGet(endpointTable, supabaseAnonKey)
                     resCode = retryCode
                     resText = retryText
                 } catch (e: Exception) {
@@ -929,16 +943,25 @@ object SupabaseAuthClient {
 
                     val profileBrief = profilesMap[userId]
 
-                    val rawName = obj.optString("author_name", "").takeIf {
-                        it.isNotBlank() && it.trim().lowercase() != "null" && !it.startsWith("User_")
-                    }
-                    val rawHandle = obj.optString("author_handle", "").takeIf {
-                        it.isNotBlank() && it.trim().lowercase() != "null" && !it.startsWith("@User_") && !it.startsWith("User_")
-                    }
+                    val liveAuthorUsername = profileBrief?.username
+                        ?: obj.optString("author_username", "").takeIf { it.isNotBlank() && it != "null" }
+                        ?: obj.optString("author_handle", "").takeIf { it.isNotBlank() && it != "null" }
+                        ?: "user_${userId.take(5)}"
 
-                    val authorName = profileBrief?.fullName ?: profileBrief?.username ?: rawName ?: "Creator"
-                    val authorHandle = profileBrief?.username?.let { if (it.startsWith("@")) it else "@$it" } ?: rawHandle ?: "@creator"
-                    val authorAvatar = profileBrief?.avatarUrl ?: obj.optString("author_avatar", "https://picsum.photos/200/200?random=$i")
+                    val liveDisplayAuthorName = profileBrief?.fullName
+                        ?: profileBrief?.username
+                        ?: obj.optString("display_author_name", "").takeIf { it.isNotBlank() && it != "null" }
+                        ?: obj.optString("author_name", "").takeIf { it.isNotBlank() && it != "null" }
+                        ?: liveAuthorUsername
+
+                    val liveAuthorAvatar = profileBrief?.avatarUrl
+                        ?: obj.optString("author_avatar", "").takeIf { it.isNotBlank() && it != "null" }
+                        ?: obj.optString("avatar_url", "").takeIf { it.isNotBlank() && it != "null" }
+                        ?: "https://images.unsplash.com/photo-1534528741775-53994a69daeb"
+
+                    val authorHandle = if (liveAuthorUsername.startsWith("@")) liveAuthorUsername else "@$liveAuthorUsername"
+                    val authorName = liveDisplayAuthorName
+                    val authorAvatar = liveAuthorAvatar
 
                     val audioTitleRaw = if (obj.has("audio_title") && !obj.isNull("audio_title")) obj.optString("audio_title") else null
                     val audioTitle = audioTitleRaw?.takeIf { it.isNotBlank() && it.trim().lowercase() != "null" }

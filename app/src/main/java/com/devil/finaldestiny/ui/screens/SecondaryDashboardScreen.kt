@@ -781,7 +781,7 @@ fun SecondaryDashboardScreen(
                                     !post.authorName.isNullOrBlank() && post.authorName.trim().lowercase() != "null" && !post.authorName.startsWith("User_") -> post.authorName.trim()
                                     !post.authorHandle.isNullOrBlank() && post.authorHandle.trim().lowercase() != "null" -> post.authorHandle.trim()
                                     !post.userId.isNullOrBlank() && post.userId.trim().lowercase() != "null" -> "User_${post.userId.take(5)}"
-                                    else -> "Creator"
+                                    else -> "User_${post.id.take(5)}"
                                 }
 
                                 // ARROW 1: Profile Avatar & Co-Author Header
@@ -1102,7 +1102,7 @@ fun SecondaryDashboardScreen(
                             !post.authorName.isNullOrBlank() && post.authorName.trim().lowercase() != "null" -> post.authorName.trim()
                             !post.authorHandle.isNullOrBlank() && post.authorHandle.trim().lowercase() != "null" -> post.authorHandle.trim().removePrefix("@")
                             !post.userId.isNullOrBlank() && post.userId.trim().lowercase() != "null" -> "User_${post.userId.take(5)}"
-                            else -> "Creator"
+                            else -> "User_${post.id.take(5)}"
                         }
                         val isLongCaptionText = post.caption.length > 42
 
