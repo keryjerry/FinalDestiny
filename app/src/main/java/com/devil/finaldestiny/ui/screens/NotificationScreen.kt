@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,46 +22,26 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import com.devil.finaldestiny.model.AppNotification
 import com.devil.finaldestiny.model.UserProfile
 import com.devil.finaldestiny.ui.components.ProfileAvatarView
 import com.devil.finaldestiny.ui.theme.*
-
-data class ActivityNotificationItem(
-    val id: String,
-    val senderName: String,
-    val senderAvatar: String?,
-    val actionText: String,
-    val relativeTime: String,
-    val timeGroup: String, // "New", "Last 7 days", "Last 30 days"
-    val actionType: String, // "FOLLOW", "MESSAGE", "MEDIA_THUMBNAIL"
-    val mediaThumbnailUrl: String? = null,
-    var isFollowingBack: Boolean = false
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotificationScreen(
     user: UserProfile = UserProfile(),
     notificationsList: List<AppNotification> = emptyList(),
+    onRefresh: suspend () -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
-
-    val sampleNotifications = remember {
-        listOf(
-            ActivityNotificationItem("n1", "Aria Rose", null, "liked your reel video 🎬", "2h ago", "New", "MEDIA_THUMBNAIL", "https://picsum.photos/100/100?random=301"),
-            ActivityNotificationItem("n2", "Farman Ali", null, "started following you", "5h ago", "New", "FOLLOW"),
-            ActivityNotificationItem("n3", "Simran Kaur", null, "commented: \"Amazing room vibes! 🔥\"", "1d ago", "Last 7 days", "MEDIA_THUMBNAIL", "https://picsum.photos/100/100?random=302"),
-            ActivityNotificationItem("n4", "Aarav Sharma", null, "tipped 100 Diamonds 💎 in Live Room", "3d ago", "Last 7 days", "MESSAGE"),
-            ActivityNotificationItem("n5", "Riya Kapoor", null, "started following you", "12d ago", "Last 30 days", "FOLLOW"),
-            ActivityNotificationItem("n6", "Vikram Malhotra", null, "liked your photo post 📸", "18d ago", "Last 30 days", "MEDIA_THUMBNAIL", "https://picsum.photos/100/100?random=303")
-        )
-    }
-
-    val groupedMap = sampleNotifications.groupBy { it.timeGroup }
+    var isRefreshing by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -112,28 +93,54 @@ fun NotificationScreen(
             }
         }
 
-        // GROUPED ACTIVITY LIST ("New", "Last 7 days", "Last 30 days")
-        LazyColumn(
-            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                coroutineScope.launch {
+                    isRefreshing = true
+                    try {
+                        onRefresh()
+                    } finally {
+                        isRefreshing = false
+                    }
+                }
+            },
             modifier = Modifier.fillMaxSize()
         ) {
-            listOf("New", "Last 7 days", "Last 30 days").forEach { groupKey ->
-                val itemsInGroup = groupedMap[groupKey] ?: emptyList()
-                if (itemsInGroup.isNotEmpty()) {
-                    item {
+            if (notificationsList.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier.padding(24.dp)
+                    ) {
+                        Text("✨", fontSize = 48.sp)
+                        Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = groupKey,
-                            fontSize = 13.sp,
+                            text = "No new notifications yet ✨",
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = SkyBluePrimary,
-                            modifier = Modifier.padding(vertical = 4.dp)
+                            color = NavyTextPrimary
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "When someone follows you or likes your posts, updates will appear here.",
+                            fontSize = 12.sp,
+                            color = SlateTextSecondary,
+                            textAlign = TextAlign.Center
                         )
                     }
-
-                    items(itemsInGroup) { item ->
-                        var isFollowing by remember { mutableStateOf(item.isFollowingBack) }
-
+                }
+            } else {
+                LazyColumn(
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    items(notificationsList) { notification ->
                         Card(
                             colors = CardDefaults.cardColors(containerColor = SkyBlueCardBg),
                             shape = RoundedCornerShape(16.dp),
@@ -152,95 +159,32 @@ fun NotificationScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    ProfileAvatarView(
-                                        name = item.senderName,
-                                        profilePictureUri = item.senderAvatar,
-                                        size = 44.dp,
-                                        showBorder = true,
-                                        borderColor = SkyBluePrimary
+                                    Text(
+                                        text = notification.iconSymbol.ifBlank { "🔔" },
+                                        fontSize = 24.sp
                                     )
 
                                     Spacer(modifier = Modifier.width(12.dp))
 
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = buildString {
-                                                append(item.senderName)
-                                                append(" ")
-                                                append(item.actionText)
-                                            },
-                                            fontSize = 12.sp,
+                                            text = notification.title,
+                                            fontSize = 13.sp,
                                             color = NavyTextPrimary,
-                                            fontWeight = FontWeight.Medium
+                                            fontWeight = FontWeight.Bold
                                         )
                                         Spacer(modifier = Modifier.height(2.dp))
                                         Text(
-                                            text = item.relativeTime,
+                                            text = notification.message,
+                                            fontSize = 11.sp,
+                                            color = NavyTextPrimary.copy(0.85f)
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = notification.timestamp,
                                             fontSize = 10.sp,
                                             color = SlateTextSecondary
                                         )
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.width(8.dp))
-
-                                // Action Button / Media Thumbnail Preview on Far Right
-                                when (item.actionType) {
-                                    "FOLLOW" -> {
-                                        Button(
-                                            onClick = {
-                                                isFollowing = !isFollowing
-                                                Toast.makeText(context, if (isFollowing) "Followed ${item.senderName}" else "Unfollowed ${item.senderName}", Toast.LENGTH_SHORT).show()
-                                            },
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = if (isFollowing) SkyBlueHeader else SkyBluePrimary
-                                            ),
-                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                                            modifier = Modifier.height(30.dp)
-                                        ) {
-                                            Text(
-                                                text = if (isFollowing) "✓ Following" else "Follow Back",
-                                                fontSize = 10.sp,
-                                                color = if (isFollowing) NavyTextPrimary else Color.White,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
-                                    }
-
-                                    "MESSAGE" -> {
-                                        Button(
-                                            onClick = {
-                                                Toast.makeText(context, "Opening Chat with ${item.senderName}", Toast.LENGTH_SHORT).show()
-                                            },
-                                            colors = ButtonDefaults.buttonColors(containerColor = SkyBlueHeader),
-                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                                            modifier = Modifier.height(30.dp)
-                                        ) {
-                                            Text(
-                                                text = "Message 💬",
-                                                fontSize = 10.sp,
-                                                color = NavyTextPrimary,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        }
-                                    }
-
-                                    "MEDIA_THUMBNAIL" -> {
-                                        Box(
-                                            contentAlignment = Alignment.Center,
-                                            modifier = Modifier
-                                                .size(40.dp)
-                                                .clip(RoundedCornerShape(8.dp))
-                                                .background(NavyTextPrimary)
-                                                .border(1.dp, SkyBlueBorder, RoundedCornerShape(8.dp))
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Favorite,
-                                                contentDescription = "Media Preview",
-                                                tint = HeartRed,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                        }
                                     }
                                 }
                             }

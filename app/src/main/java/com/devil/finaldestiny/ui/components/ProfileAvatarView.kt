@@ -53,6 +53,8 @@ fun ProfileAvatarView(
         Brush.linearGradient(listOf(WineRedDark, WineRedMedium))
     }
 
+    val isRemoteUrl = !profilePictureUri.isNullOrBlank() && (profilePictureUri.startsWith("http://") || profilePictureUri.startsWith("https://"))
+
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
@@ -64,7 +66,17 @@ fun ProfileAvatarView(
                 else Modifier
             )
     ) {
-        if (loadedBitmap != null) {
+        if (isRemoteUrl) {
+            coil.compose.AsyncImage(
+                model = coil.request.ImageRequest.Builder(LocalContext.current)
+                    .data(profilePictureUri)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else if (loadedBitmap != null) {
             Image(
                 bitmap = loadedBitmap,
                 contentDescription = name,

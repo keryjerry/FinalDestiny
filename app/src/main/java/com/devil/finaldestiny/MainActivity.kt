@@ -321,6 +321,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                 Screen.NOTIFICATION -> NotificationScreen(
                     user = user,
                     notificationsList = notifications,
+                    onRefresh = { repository.refreshDashboardData() },
                     onBack = { currentScreen = Screen.SECONDARY_FEED }
                 )
 
