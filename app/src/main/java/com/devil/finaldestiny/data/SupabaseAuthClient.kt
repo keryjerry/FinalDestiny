@@ -851,7 +851,7 @@ object SupabaseAuthClient {
         val profiles = mutableListOf<UserProfile>()
         try {
             val baseUrl = supabaseUrl.trimEnd('/')
-            val queryParam = if (!excludeUserId.isNullOrBlank()) "?id=neq.$excludeUserId&select=*" else "?select=*"
+            val queryParam = if (!excludeUserId.isNullOrBlank()) "?id=neq.$excludeUserId&select=*&limit=15" else "?select=*&limit=15"
             val endpoint = "$baseUrl/rest/v1/profiles$queryParam"
             Log.d(TAG, "GET /rest/v1/profiles -> Fetching discover profiles from Supabase")
             val url = URL(endpoint)
@@ -884,11 +884,11 @@ object SupabaseAuthClient {
 
                     val name = rawFullName.takeIf { it.isNotBlank() && it != "null" }
                         ?: rawUsername.takeIf { it.isNotBlank() && it != "null" }
-                        ?: "Destiny User"
+                        ?: "User_${id.take(5)}"
                     val handle = if (rawUsername.isNotBlank() && rawUsername != "null") {
                         if (rawUsername.startsWith("@")) rawUsername else "@$rawUsername"
                     } else {
-                        "@user_${id.take(4)}"
+                        "@user_${id.take(5)}"
                     }
 
                     profiles.add(

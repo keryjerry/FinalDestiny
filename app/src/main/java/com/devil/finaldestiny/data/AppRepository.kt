@@ -1138,6 +1138,7 @@ class AppRepository {
                             put("sender_id", myId)
                             put("type", "NEW_FOLLOWER")
                             put("message", "started following you")
+                            put("is_read", false)
                         }
                         notifConn.outputStream.use { os ->
                             os.write(notifPayload.toString().toByteArray(Charsets.UTF_8))
