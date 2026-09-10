@@ -549,18 +549,26 @@ object SupabaseAuthClient {
         val baseUrl = supabaseUrl.trimEnd('/')
         val endpoint = "$baseUrl/rest/v1/posts"
         val validUuid = getSanitizedUuid(context)
+
+        // Ensure matching profile row exists in public.profiles before post insert to prevent foreign key (409) violation
+        try {
+            val userEmail = getUserEmail() ?: "user_${validUuid.take(8)}@finaldestiny.app"
+            upsertUserProfile(validUuid, userEmail, userEmail.substringBefore("@"))
+        } catch (e: Exception) {
+            Log.w(TAG, "Pre-insert profile sync warning: ${e.message}")
+        }
+
         val isVideo = post.mediaType == com.devil.finaldestiny.model.MediaType.REEL_VIDEO ||
                 (!post.mediaUrl.isNullOrEmpty() && (post.mediaUrl.endsWith(".mp4", ignoreCase = true) || post.mediaUrl.contains("video", ignoreCase = true)))
 
-        Log.d(TAG, "POST /rest/v1/posts -> Ingesting Post ID: ${post.id} for User UUID: $validUuid | Media Type: ${if (isVideo) "video" else "image"}")
+        Log.d(TAG, "POST /rest/v1/posts -> Ingesting Post for User UUID: $validUuid | Media Type: ${if (isVideo) "video" else "image"}")
 
         val payload = JSONObject().apply {
             put("user_id", validUuid)
-            put("caption", post.caption)
+            put("caption", if (post.caption.isBlank()) JSONObject.NULL else post.caption)
             put("media_url", post.mediaUrl)
             put("media_type", if (isVideo) "video" else "image")
             put("views_count", 0L)
-            put("created_at", TimeUtils.formatIsoTimestamp(System.currentTimeMillis()))
         }
 
         fun executeInsert(tokenToUse: String): Pair<Int, String> {

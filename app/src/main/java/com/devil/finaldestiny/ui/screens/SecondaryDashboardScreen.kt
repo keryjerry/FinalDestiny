@@ -1343,17 +1343,24 @@ fun SecondaryDashboardScreen(
 
                         if (isReelUploadMode) {
                             onPublishReel(caption, mediaUri, audioTitle, audioArtist, audioUrl, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText, ctaLink, ctaLabel, isPaidPartnership, promotionStatus, promotionBudget)
+                            uploadProgressPercentage = 1.0f
+                            kotlinx.coroutines.delay(200)
+                            isUploadingMedia = false
+                            uploadProgressPercentage = 0f
+                            showCreatePostDialog = false
+                            selectedMediaUri = null
+                            Toast.makeText(context, "Reel published successfully! 🚀", Toast.LENGTH_LONG).show()
+                            onNavigateToReelViewer(0)
                         } else {
                             onPublishPost(caption, mediaUri, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText, ctaLink, ctaLabel, isPaidPartnership, promotionStatus, promotionBudget)
+                            uploadProgressPercentage = 1.0f
+                            kotlinx.coroutines.delay(200)
+                            isUploadingMedia = false
+                            uploadProgressPercentage = 0f
+                            showCreatePostDialog = false
+                            selectedMediaUri = null
+                            Toast.makeText(context, "Post shared successfully! 🚀", Toast.LENGTH_LONG).show()
                         }
-
-                        uploadProgressPercentage = 1.0f
-                        kotlinx.coroutines.delay(200)
-                        isUploadingMedia = false
-                        uploadProgressPercentage = 0f
-                        showCreatePostDialog = false
-                        selectedMediaUri = null
-                        Toast.makeText(context, "Post shared successfully! 🚀", Toast.LENGTH_LONG).show()
                     } catch (e: Exception) {
                         isUploadingMedia = false
                         uploadProgressPercentage = 0f
