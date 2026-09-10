@@ -134,27 +134,13 @@ fun NotificationScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                        modifier = Modifier.padding(24.dp)
-                    ) {
-                        Text("✨", fontSize = 48.sp)
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "No new notifications yet ✨",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = NavyTextPrimary
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "When someone follows you or likes your posts, updates will appear here.",
-                            fontSize = 12.sp,
-                            color = SlateTextSecondary,
-                            textAlign = TextAlign.Center
-                        )
-                    }
+                    Text(
+                        text = "No notifications yet ✨",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.Gray,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
                 }
             } else {
                 LazyColumn(
@@ -182,10 +168,18 @@ fun NotificationScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Text(
-                                        text = notification.iconSymbol.ifBlank { "🔔" },
-                                        fontSize = 24.sp
-                                    )
+                                    if (!notification.senderAvatarUrl.isNullOrBlank()) {
+                                        ProfileAvatarView(
+                                            name = notification.title,
+                                            profilePictureUri = notification.senderAvatarUrl,
+                                            size = 40.dp
+                                        )
+                                    } else {
+                                        Text(
+                                            text = notification.iconSymbol.ifBlank { "🔔" },
+                                            fontSize = 24.sp
+                                        )
+                                    }
 
                                     Spacer(modifier = Modifier.width(12.dp))
 

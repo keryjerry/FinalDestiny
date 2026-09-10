@@ -154,6 +154,7 @@ fun FinalDestinyApp(repository: AppRepository) {
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
+        repository.refreshNotifications()
         val localVerCode = try {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
                 context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode.toInt()
@@ -219,7 +220,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                     user = user,
                     userPosts = momentPosts.filter { it.userId == user.id || it.authorHandle == user.handle || it.authorName == user.name },
                     savedAccounts = savedAccounts,
-                    onSaveProfile = { updated -> repository.updateUserProfile(updated) },
+                    onSaveProfile = { updated -> repository.updateUserProfile(updated, context) },
                     onNavigateToStore = { currentScreen = Screen.VIP_STORE },
                     onNavigateToSecondaryFeed = { currentScreen = Screen.SECONDARY_FEED },
                     onNavigateToMonetization = { currentScreen = Screen.CREATOR_MONETIZATION },
@@ -247,7 +248,7 @@ fun FinalDestinyApp(repository: AppRepository) {
 
                 Screen.CREATOR_HUB -> CreatorHubScreen(
                     user = user,
-                    onSaveUser = { updated -> repository.updateUserProfile(updated) },
+                    onSaveUser = { updated -> repository.updateUserProfile(updated, context) },
                     onNavigateToEditProfile = { currentScreen = Screen.USER_PROFILE },
                     onNavigateToTools = { currentScreen = Screen.CREATOR_TOOLS },
                     onBack = { currentScreen = Screen.USER_PROFILE }
@@ -255,7 +256,7 @@ fun FinalDestinyApp(repository: AppRepository) {
 
                 Screen.CREATOR_TOOLS -> CreatorToolsScreen(
                     user = user,
-                    onSaveUser = { updated -> repository.updateUserProfile(updated) },
+                    onSaveUser = { updated -> repository.updateUserProfile(updated, context) },
                     onBack = { currentScreen = Screen.USER_PROFILE }
                 )
 
@@ -322,7 +323,8 @@ fun FinalDestinyApp(repository: AppRepository) {
                 Screen.NOTIFICATION -> NotificationScreen(
                     user = user,
                     notificationsList = notifications,
-                    onRefresh = { repository.refreshDashboardData() },
+                    onRefresh = { repository.refreshNotifications() },
+                    onNavigateToFeed = { currentScreen = Screen.SECONDARY_FEED },
                     onBack = { currentScreen = Screen.SECONDARY_FEED }
                 )
 

@@ -269,7 +269,8 @@ data class AppNotification(
     val iconSymbol: String,
     val timestamp: String,
     val isRead: Boolean = false,
-    val actionTargetScreen: String? = null
+    val actionTargetScreen: String? = null,
+    val senderAvatarUrl: String? = null
 )
 
 data class DailyAnalyticsPoint(

@@ -269,59 +269,21 @@ class AppRepository {
     val momentPosts: StateFlow<List<MomentPost>> = _momentPosts.asStateFlow()
 
     // Real-Time Activity Notifications List
-    private val _notifications = MutableStateFlow(
-        listOf(
-            AppNotification(
-                id = "n1",
-                title = "New Match Alert! 🎉",
-                message = "Simran liked your profile back! You can now start 1v1 video call.",
-                type = NotificationType.MATCH,
-                iconSymbol = "💖",
-                timestamp = "2 mins ago",
-                isRead = false,
-                actionTargetScreen = "DISCOVER_SWIPE"
-            ),
-            AppNotification(
-                id = "n2",
-                title = "Live Room Invite 🎙️",
-                message = "Host invited you to join sofa seat #1 in Audio Room!",
-                type = NotificationType.ROOM_INVITE,
-                iconSymbol = "👑",
-                timestamp = "5 mins ago",
-                isRead = false,
-                actionTargetScreen = "LIVE_AUDIO_ROOM"
-            ),
-            AppNotification(
-                id = "n3",
-                title = "New Follower ❤️",
-                message = "Stanbra started following your profile!",
-                type = NotificationType.FOLLOW,
-                iconSymbol = "👥",
-                timestamp = "15 mins ago",
-                isRead = false
-            ),
-            AppNotification(
-                id = "n4",
-                title = "Post Liked ❤️",
-                message = "Aria Rose liked your recent Moment post!",
-                type = NotificationType.LIKE,
-                iconSymbol = "❤️",
-                timestamp = "1 hour ago",
-                isRead = true
-            ),
-            AppNotification(
-                id = "n5",
-                title = "Live Stream Broadcast 🔴",
-                message = "Farman Ali started a live HD video stream!",
-                type = NotificationType.LIVE_ALERT,
-                iconSymbol = "📹",
-                timestamp = "2 hours ago",
-                isRead = true,
-                actionTargetScreen = "LIVE_VIDEO_ROOM"
-            )
-        )
-    )
+    private val _notifications = MutableStateFlow<List<AppNotification>>(emptyList())
     val notifications: StateFlow<List<AppNotification>> = _notifications.asStateFlow()
+
+    suspend fun refreshNotifications() {
+        try {
+            val myId = _currentUser.value.id
+            if (myId.isNotBlank()) {
+                val remoteNotifs = SupabaseAuthClient.fetchNotificationsFromSupabase(myId)
+                _notifications.value = remoteNotifs
+                android.util.Log.d("NOTIF_SYNC", "Fetched ${remoteNotifs.size} live notifications from Supabase for user $myId")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("NOTIF_SYNC", "Failed to refresh notifications from Supabase", e)
+        }
+    }
 
     fun markNotificationAsRead(notificationId: String) {
         _notifications.value = _notifications.value.map {
@@ -835,7 +797,7 @@ class AppRepository {
         )
     }
 
-    fun updateUserProfile(updatedProfile: UserProfile) {
+    fun updateUserProfile(updatedProfile: UserProfile, context: android.content.Context? = null) {
         _currentUser.value = updatedProfile
 
         // REAL-TIME SYNC: Update host profile picture and name across active Audio and Video Rooms
@@ -855,6 +817,20 @@ class AppRepository {
         // SYNC WITH SUPABASE BACKEND
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             try {
+                var finalAvatarUrl = updatedProfile.profilePictureUri
+                if (context != null && !finalAvatarUrl.isNullOrBlank() && (finalAvatarUrl.startsWith("content://") || finalAvatarUrl.startsWith("file://"))) {
+                    try {
+                        val uploadedUrl = SupabaseAuthClient.uploadMediaToSupabaseStorage(context, finalAvatarUrl, "avatars")
+                        finalAvatarUrl = uploadedUrl
+                        SupabaseAuthClient.saveUserAvatarUrl(context, uploadedUrl)
+                        _currentUser.value = _currentUser.value.copy(profilePictureUri = uploadedUrl)
+                    } catch (uploadErr: Exception) {
+                        android.util.Log.e("[DestinyProfile]", "Failed to upload avatar to Supabase storage 'avatars' bucket", uploadErr)
+                    }
+                } else if (context != null && !finalAvatarUrl.isNullOrBlank()) {
+                    SupabaseAuthClient.saveUserAvatarUrl(context, finalAvatarUrl)
+                }
+
                 val baseUrl = SupabaseAuthClient.supabaseUrl.trimEnd('/')
                 val anonKey = SupabaseAuthClient.supabaseAnonKey
                 val token = SupabaseAuthClient.getSessionToken() ?: anonKey
@@ -875,6 +851,7 @@ class AppRepository {
                 val payload = org.json.JSONObject().apply {
                     put("name", updatedProfile.name)
                     put("bio", updatedProfile.bio)
+                    put("avatar_url", finalAvatarUrl ?: "")
                     put("account_type", updatedProfile.accountType)
                     put("creator_category", updatedProfile.creatorCategory)
                     put("display_category_on_profile", updatedProfile.displayCategoryOnProfile)
@@ -889,7 +866,7 @@ class AppRepository {
                     os.write(payload.toString().toByteArray(Charsets.UTF_8))
                 }
                 val resCode = connection.responseCode
-                android.util.Log.d("[DestinyProfile]", "Supabase Profile Update PATCH -> Code $resCode")
+                android.util.Log.d("[DestinyProfile]", "Supabase Profile Update PATCH -> Code $resCode | Avatar: $finalAvatarUrl")
             } catch (e: Exception) {
                 android.util.Log.e("[DestinyProfile]", "Failed to update profile on Supabase", e)
             }

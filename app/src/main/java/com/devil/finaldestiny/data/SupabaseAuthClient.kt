@@ -46,12 +46,17 @@ object SupabaseAuthClient {
 
         val isNonExpired = createdAt == 0L || (System.currentTimeMillis() - createdAt) < thirtyDaysMs
 
+        val savedAvatarUrl = prefs.getString("user_avatar_url", null)
+        if (!savedAvatarUrl.isNullOrBlank()) {
+            currentUserAvatarUrl = savedAvatarUrl
+        }
+
         if (!token.isNull_or_blank_custom() && !uid.isNull_or_blank_custom() && isNonExpired) {
             currentSessionToken = token
             currentUserId = uid
             currentUserEmail = email
             isAuthenticated = true
-            Log.d(TAG, "Restored active persistent session -> User UID: $uid, Email: $email")
+            Log.d(TAG, "Restored active persistent session -> User UID: $uid, Email: $email, Avatar: $currentUserAvatarUrl")
         } else {
             Log.d(TAG, "No active or valid auth session found in SharedPreferences.")
         }
@@ -345,6 +350,21 @@ object SupabaseAuthClient {
     fun getUserEmail(): String? = currentUserEmail
     fun getUserId(): String? = currentUserId
     fun getUserAvatarUrl(): String? = currentUserAvatarUrl
+
+    fun saveUserAvatarUrl(context: Context, avatarUrl: String) {
+        currentUserAvatarUrl = avatarUrl
+        val prefs = context.getSharedPreferences("destiny_auth_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putString("user_avatar_url", avatarUrl).apply()
+        Log.d(TAG, "Persisted avatar URL to SharedPreferences -> $avatarUrl")
+    }
+
+    fun getCachedAvatarUrl(context: Context): String? {
+        if (!currentUserAvatarUrl.isNullOrBlank()) return currentUserAvatarUrl
+        val prefs = context.getSharedPreferences("destiny_auth_prefs", Context.MODE_PRIVATE)
+        val cached = prefs.getString("user_avatar_url", null)
+        if (!cached.isNullOrBlank()) currentUserAvatarUrl = cached
+        return cached
+    }
 
     fun signOut(context: Context? = null) {
         currentSessionToken = null
@@ -907,6 +927,7 @@ object SupabaseAuthClient {
                     val createdAt = obj.optString("created_at", "")
                     val senderProfile = obj.optJSONObject("profiles")
                     val senderUsername = senderProfile?.optString("username", "Someone") ?: "Someone"
+                    val senderAvatarUrl = senderProfile?.optString("avatar_url", null)?.takeIf { it.isNotBlank() }
 
                     val (typeEnum, symbol, title) = when (typeStr) {
                         "NEW_FOLLOWER" -> Triple(com.devil.finaldestiny.model.NotificationType.FOLLOW, "👥", "$senderUsername started following you")
@@ -926,7 +947,8 @@ object SupabaseAuthClient {
                             iconSymbol = symbol,
                             timestamp = relTime,
                             isRead = false,
-                            actionTargetScreen = senderId
+                            actionTargetScreen = senderId,
+                            senderAvatarUrl = senderAvatarUrl
                         )
                     )
                 }
@@ -935,6 +957,60 @@ object SupabaseAuthClient {
             Log.e(TAG, "Failed to fetch notifications from Supabase", e)
         }
         notifications
+    }
+
+    suspend fun followUser(targetUserId: String, currentUserId: String) = withContext(Dispatchers.IO) {
+        try {
+            val baseUrl = supabaseUrl.trimEnd('/')
+            val token = getSessionToken() ?: supabaseAnonKey
+
+            val endpoint = "$baseUrl/rest/v1/follows"
+            val url = URL(endpoint)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 6000
+                readTimeout = 6000
+                setRequestProperty("apikey", supabaseAnonKey)
+                setRequestProperty("Authorization", "Bearer $token")
+                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("Prefer", "resolution=merge-duplicates")
+                doOutput = true
+            }
+            val payload = org.json.JSONObject().apply {
+                put("follower_id", currentUserId)
+                put("following_id", targetUserId)
+            }
+            connection.outputStream.use { os ->
+                os.write(payload.toString().toByteArray(Charsets.UTF_8))
+            }
+            val resCode = connection.responseCode
+            Log.d("FOLLOW_SUCCESS", "Followed $targetUserId and sent live notification. Status code $resCode")
+
+            // Generate real DB notification
+            val notifEndpoint = "$baseUrl/rest/v1/notifications"
+            val notifConn = (URL(notifEndpoint).openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 6000
+                readTimeout = 6000
+                setRequestProperty("apikey", supabaseAnonKey)
+                setRequestProperty("Authorization", "Bearer $token")
+                setRequestProperty("Content-Type", "application/json")
+                doOutput = true
+            }
+            val notifPayload = org.json.JSONObject().apply {
+                put("recipient_id", targetUserId)
+                put("sender_id", currentUserId)
+                put("type", "NEW_FOLLOWER")
+                put("message", "started following you")
+                put("is_read", false)
+            }
+            notifConn.outputStream.use { os ->
+                os.write(notifPayload.toString().toByteArray(Charsets.UTF_8))
+            }
+            Log.d("FOLLOW_SUCCESS", "Notification insert status code ${notifConn.responseCode}")
+        } catch (e: Exception) {
+            Log.e("FOLLOW_ERROR", "Error in follow pipeline: ${e.message}", e)
+        }
     }
 
     suspend fun fetchFollowersCount(userId: String?): Int = withContext(Dispatchers.IO) {
