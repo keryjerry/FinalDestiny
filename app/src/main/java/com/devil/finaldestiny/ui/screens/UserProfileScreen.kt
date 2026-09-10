@@ -852,7 +852,15 @@ fun UserProfileScreen(
                                                 .clip(CircleShape)
                                                 .background(Color(0xFFE5E5EA))
                                         ) {
-                                            if (candidate.avatarUrl.isNotBlank()) {
+                                            val candidateBitmap = rememberProfileLoadedImage(context, candidate.avatarUrl.takeIf { it.isNotBlank() })
+                                            if (candidateBitmap != null) {
+                                                Image(
+                                                    bitmap = candidateBitmap,
+                                                    contentDescription = candidate.name,
+                                                    contentScale = ContentScale.Crop,
+                                                    modifier = Modifier.fillMaxSize().clip(CircleShape)
+                                                )
+                                            } else if (candidate.avatarUrl.isNotBlank()) {
                                                 AsyncImage(
                                                     model = ImageRequest.Builder(context)
                                                         .data(candidate.avatarUrl)
