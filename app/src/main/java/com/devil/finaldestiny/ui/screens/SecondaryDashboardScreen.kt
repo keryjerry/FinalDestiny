@@ -23,6 +23,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
@@ -242,6 +245,43 @@ fun SecondaryDashboardScreen(
         }
     }
 
+    val sharedExoPlayer = remember(context) {
+        val cacheDataSourceFactory = com.devil.finaldestiny.utils.ReelVideoCache.createCacheDataSourceFactory(context)
+        val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(context)
+            .setDataSourceFactory(cacheDataSourceFactory)
+        androidx.media3.exoplayer.ExoPlayer.Builder(context)
+            .setMediaSourceFactory(mediaSourceFactory)
+            .build().apply {
+                repeatMode = androidx.media3.common.Player.REPEAT_MODE_ONE
+                volume = 0f
+            }
+    }
+
+    var isFeedAudioMuted by remember { mutableStateOf(true) }
+
+    DisposableEffect(sharedExoPlayer) {
+        onDispose {
+            sharedExoPlayer.release()
+        }
+    }
+
+    val feedListState = rememberLazyListState()
+
+    val activePlayingPostId by remember {
+        derivedStateOf {
+            val layoutInfo = feedListState.layoutInfo
+            val visibleItems = layoutInfo.visibleItemsInfo
+            if (visibleItems.isEmpty()) null
+            else {
+                val viewportCenter = layoutInfo.viewportStartOffset + (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset) / 2
+                visibleItems
+                    .filter { item -> item.key is String && (item.key as String).isNotBlank() }
+                    .minByOrNull { item -> kotlin.math.abs((item.offset + item.size / 2) - viewportCenter) }
+                    ?.key as? String
+            }
+        }
+    }
+
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = {
@@ -259,6 +299,7 @@ fun SecondaryDashboardScreen(
             .background(SkyBlueBgLight)
     ) {
         LazyColumn(
+            state = feedListState,
             contentPadding = PaddingValues(bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxSize()
@@ -565,10 +606,24 @@ fun SecondaryDashboardScreen(
             }
 
             // FULL-BLEED EDGE-TO-EDGE FEED POSTS WITH FULL INSTAGRAM OVERLAYS
-            items(momentPosts) { post ->
+            itemsIndexed(momentPosts, key = { _, post -> post.id }) { index, post ->
                 val localBitmap = rememberLoadedImage(context, post.mediaUri)
-                val isReel = post.mediaType == MediaType.REEL_VIDEO
+                val isReel = post.mediaType == MediaType.REEL_VIDEO || (!post.mediaUri.isNullOrEmpty() && (post.mediaUri.endsWith(".mp4") || post.mediaUri.contains("video")))
+                val isActivePlaying = isReel && post.id == activePlayingPostId
                 var isExpandedCaption by remember { mutableStateOf(false) }
+
+                LaunchedEffect(isActivePlaying, post.mediaUri) {
+                    if (isActivePlaying && !post.mediaUri.isNullOrEmpty()) {
+                        val mediaItem = androidx.media3.common.MediaItem.fromUri(Uri.parse(post.mediaUri))
+                        if (sharedExoPlayer.currentMediaItem?.localConfiguration?.uri?.toString() != post.mediaUri) {
+                            sharedExoPlayer.setMediaItem(mediaItem)
+                            sharedExoPlayer.prepare()
+                        }
+                        sharedExoPlayer.volume = if (isFeedAudioMuted) 0f else 1f
+                        sharedExoPlayer.playWhenReady = true
+                        onIncrementView(post.id)
+                    }
+                }
 
                 Column(
                     modifier = Modifier
@@ -587,8 +642,8 @@ fun SecondaryDashboardScreen(
                                     onTap = {
                                         if (isReel) {
                                             val reelsOnly = momentPosts.filter { it.mediaType == MediaType.REEL_VIDEO || (!it.mediaUri.isNullOrEmpty() && (it.mediaUri.endsWith(".mp4") || it.mediaUri.contains("video"))) }
-                                            val index = reelsOnly.indexOfFirst { r -> r.id == post.id }.coerceAtLeast(0)
-                                            onNavigateToReelViewer(index)
+                                            val reelIdx = reelsOnly.indexOfFirst { r -> r.id == post.id }.coerceAtLeast(0)
+                                            onNavigateToReelViewer(reelIdx)
                                         }
                                     },
                                     onDoubleTap = {
@@ -598,12 +653,43 @@ fun SecondaryDashboardScreen(
                                 )
                             }
                     ) {
-                        if (isReel && !post.mediaUri.isNullOrEmpty()) {
-                            ExoVideoPlayerView(
-                                videoUri = post.mediaUri,
-                                modifier = Modifier.fillMaxSize(),
-                                onVideoPlay = { onIncrementView(post.id) }
+                        if (isActivePlaying && !post.mediaUri.isNullOrEmpty()) {
+                            androidx.compose.ui.viewinterop.AndroidView(
+                                factory = { ctx ->
+                                    androidx.media3.ui.PlayerView(ctx).apply {
+                                        player = sharedExoPlayer
+                                        useController = false
+                                        resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                                    }
+                                },
+                                update = { playerView ->
+                                    if (playerView.player != sharedExoPlayer) {
+                                        playerView.player = sharedExoPlayer
+                                    }
+                                },
+                                modifier = Modifier.fillMaxSize()
                             )
+
+                            // Floating Mute/Unmute Audio Speaker Toggle
+                            IconButton(
+                                onClick = {
+                                    isFeedAudioMuted = !isFeedAudioMuted
+                                    sharedExoPlayer.volume = if (isFeedAudioMuted) 0f else 1f
+                                },
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(12.dp)
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Black.copy(alpha = 0.6f))
+                            ) {
+                                Icon(
+                                    imageVector = if (isFeedAudioMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                                    contentDescription = if (isFeedAudioMuted) "Unmute Video" else "Mute Video",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         } else if (localBitmap != null) {
                             Image(
                                 bitmap = localBitmap,
