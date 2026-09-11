@@ -124,18 +124,37 @@ class AppRepository {
         SupabaseAuthClient.init(context)
         val uniqueId = SupabaseAuthClient.getOrCreateUserId(context)
         val email = SupabaseAuthClient.getUserEmail()
-        val shortId = uniqueId.takeLast(6).uppercase()
+        val cachedAvatar = SupabaseAuthClient.getCachedAvatarUrl(context)
         val current = _currentUser.value
 
         loadSavedAccounts(context)
 
+        val cleanName = if (!email.isNullOrBlank()) {
+            val prefix = email.substringBefore("@")
+            prefix.replace(".", " ").replace("_", " ").split(" ").joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+        } else {
+            "Destiny User"
+        }
+        val cleanHandle = if (!email.isNullOrBlank()) {
+            "@" + email.substringBefore("@").replace(" ", "_")
+        } else {
+            "@user_${uniqueId.take(5)}"
+        }
+
         if (SupabaseAuthClient.isAuthenticated && !email.isNullOrBlank()) {
-            syncAuthenticatedUser(uniqueId, email)
-        } else if (current.id == "u101" || current.handle == "@destiny_user") {
             _currentUser.value = current.copy(
                 id = uniqueId,
-                name = "User_$shortId",
-                handle = "@User_$shortId"
+                name = cleanName,
+                handle = cleanHandle,
+                profilePictureUri = cachedAvatar ?: current.profilePictureUri
+            )
+            syncAuthenticatedUser(uniqueId, email, cleanName)
+        } else {
+            _currentUser.value = current.copy(
+                id = uniqueId,
+                name = cleanName,
+                handle = cleanHandle,
+                profilePictureUri = cachedAvatar ?: current.profilePictureUri
             )
         }
 
@@ -168,8 +187,14 @@ class AppRepository {
                     val jsonArray = org.json.JSONArray(jsonText)
                     if (jsonArray.length() > 0) {
                         val obj = jsonArray.getJSONObject(0)
-                        val name = obj.optString("name", _currentUser.value.name)
-                        val handle = obj.optString("handle", _currentUser.value.handle)
+                        val fullName = obj.optString("full_name").takeIf { !it.isNullOrBlank() && it != "null" }
+                        val nameField = obj.optString("name").takeIf { !it.isNullOrBlank() && it != "null" }
+                        val username = obj.optString("username").takeIf { !it.isNullOrBlank() && it != "null" }
+                        val handleField = obj.optString("handle").takeIf { !it.isNullOrBlank() && it != "null" }
+
+                        val resolvedName = fullName ?: nameField ?: username ?: _currentUser.value.name
+                        val resolvedHandle = handleField ?: (if (username != null) (if (username.startsWith("@")) username else "@$username") else _currentUser.value.handle)
+
                         val bio = obj.optString("bio", _currentUser.value.bio)
                         val avatarUrl = obj.optString("avatar_url", "").takeIf { it.isNotBlank() && it != "null" }
                         val accountType = obj.optString("account_type", _currentUser.value.accountType)
@@ -177,14 +202,14 @@ class AppRepository {
 
                         _currentUser.value = _currentUser.value.copy(
                             id = userId,
-                            name = name,
-                            handle = handle,
+                            name = resolvedName,
+                            handle = resolvedHandle,
                             bio = bio,
                             profilePictureUri = avatarUrl ?: _currentUser.value.profilePictureUri,
                             accountType = accountType,
                             creatorCategory = creatorCategory
                         )
-                        android.util.Log.d("[DestinyProfile]", "Restored Supabase Profile -> Name: $name, Avatar: $avatarUrl")
+                        android.util.Log.d("[DestinyProfile]", "Restored Supabase Profile -> Name: $resolvedName, Handle: $resolvedHandle, Avatar: $avatarUrl")
                     }
                 }
             } catch (e: Exception) {
@@ -604,10 +629,12 @@ class AppRepository {
         val newStory = StoryItem(
             id = "s_${System.currentTimeMillis()}",
             authorName = user.name,
-            authorAvatar = user.profilePictureUri ?: "https://picsum.photos/100/100?random=1",
-            previewMedia = "https://picsum.photos/300/500?random=88",
+            authorAvatar = user.profilePictureUri.takeIf { !it.isNullOrBlank() } ?: "",
+            previewMedia = mediaUri,
             timestamp = "Just now",
-            mediaUri = mediaUri
+            mediaUri = mediaUri,
+            authorId = user.id,
+            createdAtEpochMs = System.currentTimeMillis()
         )
         _storyTrays.value = listOf(newStory) + _storyTrays.value
     }
@@ -893,7 +920,7 @@ class AppRepository {
                     StoryItem(
                         id = "story_${post.id}",
                         authorName = post.authorName.ifBlank { "Creator" },
-                        authorAvatar = post.authorAvatar.takeIf { !it.isNullOrBlank() } ?: "https://images.unsplash.com/photo-1534528741775-53994a69daeb",
+                        authorAvatar = post.authorAvatar.takeIf { !it.isNullOrBlank() } ?: "",
                         previewMedia = post.mediaUrl,
                         mediaUri = post.mediaUrl,
                         timestamp = post.timestamp,

@@ -957,7 +957,7 @@ object SupabaseAuthClient {
                     val liveAuthorAvatar = profileBrief?.avatarUrl
                         ?: obj.optString("author_avatar", "").takeIf { it.isNotBlank() && it != "null" }
                         ?: obj.optString("avatar_url", "").takeIf { it.isNotBlank() && it != "null" }
-                        ?: "https://images.unsplash.com/photo-1534528741775-53994a69daeb"
+                        ?: ""
 
                     val authorHandle = if (liveAuthorUsername.startsWith("@")) liveAuthorUsername else "@$liveAuthorUsername"
                     val authorName = liveDisplayAuthorName
@@ -1081,7 +1081,7 @@ object SupabaseAuthClient {
         if (currentUserId.isNullOrBlank()) return@withContext notifications
         try {
             val baseUrl = supabaseUrl.trimEnd('/')
-            val endpoint = "$baseUrl/rest/v1/notifications?recipient_id=eq.$currentUserId&select=*,profiles:sender_id(username,avatar_url)&order=created_at.desc"
+            val endpoint = "$baseUrl/rest/v1/notifications?recipient_id=eq.$currentUserId&select=*&order=created_at.desc"
             val url = URL(endpoint)
             val connection = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
@@ -1094,18 +1094,64 @@ object SupabaseAuthClient {
             val resCode = connection.responseCode
             val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
             val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
+            
             if (resCode in 200..299 && resText.isNotBlank()) {
                 val jsonArray = org.json.JSONArray(resText)
+                val senderIds = mutableSetOf<String>()
+                val rawNotifs = mutableListOf<org.json.JSONObject>()
+                
                 for (i in 0 until jsonArray.length()) {
                     val obj = jsonArray.getJSONObject(i)
+                    rawNotifs.add(obj)
+                    val senderId = obj.optString("sender_id", "")
+                    if (senderId.isNotBlank()) senderIds.add(senderId)
+                }
+
+                // Fetch sender profiles in batch
+                val profileMap = mutableMapOf<String, Pair<String, String?>>() // senderId -> Pair(username, avatarUrl)
+                if (senderIds.isNotEmpty()) {
+                    try {
+                        val profileEndpoint = "$baseUrl/rest/v1/profiles?id=in.(${senderIds.joinToString(",")})&select=id,username,full_name,avatar_url"
+                        val pConn = (URL(profileEndpoint).openConnection() as HttpURLConnection).apply {
+                            requestMethod = "GET"
+                            connectTimeout = 5000
+                            readTimeout = 5000
+                            setRequestProperty("apikey", supabaseAnonKey)
+                            setRequestProperty("Authorization", "Bearer ${currentSessionToken ?: supabaseAnonKey}")
+                            setRequestProperty("Accept", "application/json")
+                        }
+                        if (pConn.responseCode in 200..299) {
+                            val pText = pConn.inputStream?.bufferedReader()?.use { it.readText() } ?: ""
+                            if (pText.isNotBlank()) {
+                                val pArray = org.json.JSONArray(pText)
+                                for (j in 0 until pArray.length()) {
+                                    val pObj = pArray.getJSONObject(j)
+                                    val pid = pObj.optString("id", "")
+                                    val pName = pObj.optString("full_name").takeIf { !it.isNullOrBlank() && it != "null" }
+                                        ?: pObj.optString("username").takeIf { !it.isNullOrBlank() && it != "null" }
+                                        ?: "User_${pid.take(5)}"
+                                    val pAvatar = pObj.optString("avatar_url").takeIf { !it.isNullOrBlank() && it != "null" }
+                                    if (pid.isNotBlank()) {
+                                        profileMap[pid] = Pair(pName, pAvatar)
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to batch fetch notification sender profiles", e)
+                    }
+                }
+
+                for (obj in rawNotifs) {
                     val id = obj.optString("id", UUID.randomUUID().toString())
                     val senderId = obj.optString("sender_id", "")
                     val typeStr = obj.optString("type", "SYSTEM")
                     val message = obj.optString("message", "New activity on your profile")
                     val createdAt = obj.optString("created_at", "")
-                    val senderProfile = obj.optJSONObject("profiles")
-                    val senderUsername = senderProfile?.optString("username", "Someone") ?: "Someone"
-                    val senderAvatarUrl = senderProfile?.optString("avatar_url", null)?.takeIf { it.isNotBlank() }
+                    
+                    val senderInfo = profileMap[senderId]
+                    val senderUsername = senderInfo?.first ?: "User_${senderId.take(5)}"
+                    val senderAvatarUrl = senderInfo?.second
 
                     val (typeEnum, symbol, title) = when (typeStr) {
                         "NEW_FOLLOWER" -> Triple(com.devil.finaldestiny.model.NotificationType.FOLLOW, "👥", "$senderUsername started following you")
@@ -1124,7 +1170,7 @@ object SupabaseAuthClient {
                             type = typeEnum,
                             iconSymbol = symbol,
                             timestamp = relTime,
-                            isRead = false,
+                            isRead = obj.optBoolean("is_read", false),
                             actionTargetScreen = senderId,
                             senderAvatarUrl = senderAvatarUrl
                         )

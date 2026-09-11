@@ -516,7 +516,7 @@ fun SecondaryDashboardScreen(
 
                     // Active Followers / Friends Stories List (Rotating Fire & Cosmic Plasma Ring Styles)
                     itemsIndexed(displayStoryTrays) { index, story ->
-                        val storyImageBitmap = rememberLoadedImage(context, story.mediaUri)
+                        val storyAvatarBitmap = rememberLoadedImage(context, story.authorAvatar)
                         val relativeTime = TimeUtils.formatTimestamp(story.timestamp, story.createdAtEpochMs)
                         val ringStyle = if (index % 2 == 0) StoryRingStyle.FIRE else StoryRingStyle.COSMIC_PLASMA
 
@@ -537,9 +537,9 @@ fun SecondaryDashboardScreen(
                                         .clip(CircleShape)
                                         .background(SkyBlueBgLight)
                                 ) {
-                                    if (storyImageBitmap != null) {
+                                    if (storyAvatarBitmap != null) {
                                         Image(
-                                            bitmap = storyImageBitmap,
+                                            bitmap = storyAvatarBitmap,
                                             contentDescription = story.authorName,
                                             contentScale = ContentScale.Crop,
                                             modifier = Modifier.fillMaxSize()
@@ -1612,20 +1612,41 @@ fun SecondaryDashboardScreen(
 
 @Composable
 internal fun rememberLoadedImage(context: Context, uriString: String?): ImageBitmap? {
-    return remember(uriString) {
-        if (uriString.isNullOrBlank()) null
-        else {
+    var imageBitmap by remember(uriString) { mutableStateOf<ImageBitmap?>(null) }
+
+    LaunchedEffect(uriString) {
+        if (uriString.isNullOrBlank()) {
+            imageBitmap = null
+            return@LaunchedEffect
+        }
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                val uri = Uri.parse(uriString)
-                val inputStream = context.contentResolver.openInputStream(uri)
-                val bitmap = BitmapFactory.decodeStream(inputStream)
-                bitmap?.asImageBitmap()
+                val bitmap = if (uriString.startsWith("http://") || uriString.startsWith("https://")) {
+                    val url = java.net.URL(uriString)
+                    val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+                        connectTimeout = 6000
+                        readTimeout = 6000
+                        doInput = true
+                    }
+                    connection.connect()
+                    val inputStream = connection.inputStream
+                    BitmapFactory.decodeStream(inputStream)
+                } else {
+                    val uri = Uri.parse(uriString)
+                    val inputStream = context.contentResolver.openInputStream(uri)
+                    BitmapFactory.decodeStream(inputStream)
+                }
+                if (bitmap != null) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        imageBitmap = bitmap.asImageBitmap()
+                    }
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
-                null
             }
         }
     }
+    return imageBitmap
 }
 
 @OptIn(androidx.media3.common.util.UnstableApi::class)

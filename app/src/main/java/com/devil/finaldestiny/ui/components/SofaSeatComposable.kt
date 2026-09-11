@@ -5,10 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -17,7 +17,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -47,131 +46,124 @@ fun SofaSeatComposable(
         animationSpec = infiniteRepeatable(tween(350, easing = LinearEasing), RepeatMode.Reverse), label = "w2"
     )
 
-    // Glassmorphism background: #2A0510 with 60% opacity
-    val glassmorphismBg = Color(0x992A0510)
     val goldBorderColor = Color(0xFFD4AF37)
 
-    Box(
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
         modifier = modifier
-            .width(74.dp)
-            .height(104.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(glassmorphismBg)
-            .border(
-                width = if (seat.isSpeaking) 2.dp else 1.dp,
-                color = if (seat.isSpeaking) LiveIndicatorGreen else goldBorderColor,
-                shape = RoundedCornerShape(16.dp)
-            )
+            .width(68.dp)
             .clickable { onClick() }
-            .padding(6.dp),
-        contentAlignment = Alignment.TopCenter
+            .padding(vertical = 4.dp)
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxSize()
+        // Seat Circle Container (Matching exact sleek mic seat circle)
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(54.dp)
+                .clip(CircleShape)
+                .background(Color.Black.copy(alpha = 0.45f))
+                .border(
+                    width = if (seat.isSpeaking && !seat.isMuted) 2.dp else 1.dp,
+                    color = when {
+                        seat.isSpeaking && !seat.isMuted -> LiveIndicatorGreen
+                        seat.role == SeatRole.HOST -> MetallicGold
+                        seat.isLocked -> Color.Gray.copy(alpha = 0.5f)
+                        else -> goldBorderColor.copy(alpha = 0.4f)
+                    },
+                    shape = CircleShape
+                )
         ) {
-            // Header Row: Seat Number & Role/Link Badge
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            if (isOccupied) {
+                // Occupied seat: Show User Profile Avatar
+                ProfileAvatarView(
+                    name = user?.name ?: "User",
+                    profilePictureUri = user?.profilePictureUri,
+                    gender = user?.gender ?: com.devil.finaldestiny.model.Gender.FEMALE,
+                    size = 50.dp,
+                    showBorder = false,
+                    modifier = Modifier.clip(CircleShape)
+                )
+
+                // Mute overlay on occupied seat if muted
+                if (seat.isMuted) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = 0.55f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.MicOff,
+                            contentDescription = "Muted",
+                            tint = HeartRed,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            } else {
+                // Empty seat: Show sleek white Mic vector icon or Lock icon
+                if (seat.isLocked) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = "Locked Seat",
+                        tint = LightGold.copy(alpha = 0.6f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Mic,
+                        contentDescription = "Empty Mic Seat",
+                        tint = Color.White.copy(alpha = 0.9f),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+
+            // Host Crown Badge overlay on top-left of circle
+            if (seat.role == SeatRole.HOST) {
                 Box(
                     modifier = Modifier
                         .size(16.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(WineRedDark),
+                        .align(Alignment.TopStart)
+                        .clip(CircleShape)
+                        .background(DarkGold),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "${seat.seatIndex}",
-                        fontSize = 9.sp,
-                        color = LightGold,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                if (seat.role == SeatRole.HOST) {
-                    Text(text = "👑", fontSize = 11.sp)
-                } else if (seat.micLinkTitle != null) {
-                    Text(text = "🔗", fontSize = 10.sp)
-                } else if (seat.isLocked) {
-                    Icon(Icons.Default.Lock, contentDescription = null, tint = LightGold.copy(0.6f), modifier = Modifier.size(11.dp))
+                    Text("👑", fontSize = 9.sp)
                 }
             }
+        }
 
-            // Avatar Tile (Rounded Square 12.dp)
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier
-                    .size(46.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(WineRedMedium, WineRedDark)
-                        )
-                    )
-                    .border(
-                        width = 1.dp,
-                        color = if (seat.isSpeaking) LiveIndicatorGreen else goldBorderColor.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(12.dp)
-                    )
-            ) {
-                if (isOccupied) {
-                    Text(
-                        text = user?.name?.take(1) ?: "U",
-                        color = MetallicGold,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+        Spacer(modifier = Modifier.height(4.dp))
 
-                    if (seat.isMuted) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Black.copy(alpha = 0.6f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.MicOff,
-                                contentDescription = "Muted",
-                                tint = HeartRed,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Invite",
-                        tint = LightGold.copy(alpha = 0.7f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-
-            // Animated Waveform indicator when speaking
+        // Text under circle: Seat Number or User Name
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
             if (seat.isSpeaking && !seat.isMuted) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
                     verticalAlignment = Alignment.Bottom,
-                    modifier = Modifier.height(12.dp)
+                    modifier = Modifier.height(10.dp)
                 ) {
                     Box(modifier = Modifier.width(2.dp).height(waveHeight1.dp).background(LiveIndicatorGreen))
                     Box(modifier = Modifier.width(2.dp).height(waveHeight2.dp).background(LiveIndicatorGreen))
                     Box(modifier = Modifier.width(2.dp).height(waveHeight1.dp).background(LiveIndicatorGreen))
                 }
-            } else {
-                Text(
-                    text = if (isOccupied) user?.name ?: "Guest" else "Empty",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (isOccupied) LightGold else LightGold.copy(alpha = 0.5f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Spacer(modifier = Modifier.width(4.dp))
             }
+
+            Text(
+                text = if (isOccupied) (user?.name ?: "User") else "${seat.seatIndex}",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (isOccupied) LightGold else Color.White.copy(alpha = 0.85f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
+
