@@ -1,5 +1,6 @@
 package com.devil.finaldestiny.ui.screens
 
+import com.devil.finaldestiny.ui.components.ProfileAvatarView
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -845,42 +846,31 @@ fun UserProfileScreen(
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        Box(
-                                            contentAlignment = Alignment.Center,
-                                            modifier = Modifier
-                                                .size(60.dp)
-                                                .clip(CircleShape)
-                                                .background(Color(0xFFE5E5EA))
-                                        ) {
-                                            val candidateBitmap = rememberProfileLoadedImage(context, candidate.avatarUrl.takeIf { it.isNotBlank() })
-                                            if (candidateBitmap != null) {
-                                                Image(
-                                                    bitmap = candidateBitmap,
-                                                    contentDescription = candidate.name,
-                                                    contentScale = ContentScale.Crop,
-                                                    modifier = Modifier.fillMaxSize().clip(CircleShape)
-                                                )
-                                            } else if (candidate.avatarUrl.isNotBlank()) {
-                                                AsyncImage(
-                                                    model = ImageRequest.Builder(context)
-                                                        .data(candidate.avatarUrl)
-                                                        .diskCachePolicy(CachePolicy.ENABLED)
-                                                        .memoryCachePolicy(CachePolicy.ENABLED)
-                                                        .crossfade(true)
-                                                        .build(),
-                                                    contentDescription = candidate.name,
-                                                    contentScale = ContentScale.Crop,
-                                                    modifier = Modifier.fillMaxSize().clip(CircleShape)
-                                                )
-                                            } else {
-                                                Text(candidate.name.take(1).uppercase(), fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                                            }
-                                        }
+                                        ProfileAvatarView(
+                                            name = candidate.name,
+                                            profilePictureUri = candidate.avatarUrl.takeIf { it.isNotBlank() },
+                                            size = 60.dp,
+                                            showBorder = true,
+                                            borderColor = Color(0xFF3897F0)
+                                        )
 
                                         Spacer(modifier = Modifier.height(6.dp))
 
-                                        Text(candidate.name, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.Black, maxLines = 1)
-                                        Text(candidate.mutualsLabel, fontSize = 11.sp, color = Color(0xFF8E8E93), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text(
+                                            text = candidate.name,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.Black,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = if (candidate.handle.isNotBlank()) candidate.handle else candidate.mutualsLabel,
+                                            fontSize = 11.sp,
+                                            color = Color(0xFF8E8E93),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
 
                                         Spacer(modifier = Modifier.height(10.dp))
 
@@ -889,7 +879,7 @@ fun UserProfileScreen(
                                                 val nextState = !candidate.isFollowing
                                                 candidate.isFollowing = nextState
                                                 onToggleFollowCandidate(candidate.id, nextState)
-                                                Toast.makeText(context, if (candidate.isFollowing) "Followed ${candidate.name}" else "Unfollowed", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, if (candidate.isFollowing) "Following ${candidate.name}" else "Unfollowed ${candidate.name}", Toast.LENGTH_SHORT).show()
                                             },
                                             colors = ButtonDefaults.buttonColors(containerColor = if (candidate.isFollowing) Color(0xFFEFEFEF) else Color(0xFF3897F0)),
                                             contentPadding = PaddingValues(0.dp),
@@ -899,7 +889,7 @@ fun UserProfileScreen(
                                                 .height(30.dp)
                                         ) {
                                             Text(
-                                                if (candidate.isFollowing) "Following" else if (candidate.isFollowBack) "Follow back" else "Follow",
+                                                text = if (candidate.isFollowing) "Following" else if (candidate.isFollowBack) "Follow back" else "Follow",
                                                 color = if (candidate.isFollowing) Color.Black else Color.White,
                                                 fontSize = 12.sp,
                                                 fontWeight = FontWeight.Bold

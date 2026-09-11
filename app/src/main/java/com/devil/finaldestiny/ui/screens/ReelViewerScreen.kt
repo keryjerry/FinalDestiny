@@ -270,10 +270,9 @@ fun ReelViewerScreen(
                     val creatorTitle = when {
                         !reel.profile?.fullName.isNullOrBlank() -> reel.profile!!.fullName!!
                         !reel.profile?.username.isNullOrBlank() -> if (reel.profile!!.username!!.startsWith("@")) reel.profile!!.username!! else "@${reel.profile!!.username!!}"
-                        !reel.authorName.isNullOrBlank() && reel.authorName.trim().lowercase() != "null" && !reel.authorName.startsWith("User_") -> reel.authorName.trim()
+                        !reel.authorName.isNullOrBlank() && reel.authorName.trim().lowercase() != "null" && !reel.authorName.startsWith("User_") && !reel.authorName.startsWith("user_") -> reel.authorName.trim()
                         !reel.authorHandle.isNullOrBlank() && reel.authorHandle.trim().lowercase() != "null" -> reel.authorHandle.trim()
-                        !reel.userId.isNullOrBlank() && reel.userId.trim().lowercase() != "null" -> "User_${reel.userId.take(5)}"
-                        else -> "User_${reel.id.take(5)}"
+                        else -> "Creator"
                     }
 
                     Row(
@@ -366,14 +365,15 @@ fun ReelViewerScreen(
             }
         }
 
-        // 4. TOP APP BAR OVERLAY & DISMISS (Floating Translucent Back Arrow)
+        // 4. TOP APP BAR OVERLAY & DISMISS (Floating Translucent Back Arrow + Camera Cutout Safety + Heart Notification Badge)
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .displayCutoutPadding()
+                .padding(top = 12.dp, start = 16.dp, end = 16.dp, bottom = 12.dp)
         ) {
             IconButton(
                 onClick = onBack,
@@ -397,7 +397,36 @@ fun ReelViewerScreen(
                 fontWeight = FontWeight.Bold
             )
 
-            Box(modifier = Modifier.size(38.dp)) // Spacer for alignment
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(contentAlignment = Alignment.TopEnd) {
+                    IconButton(
+                        onClick = {
+                            Toast.makeText(context, "❤️ Reel Activity & Notifications", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.45f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Favorite,
+                            contentDescription = "Reel Activity Notifications",
+                            tint = HeartRed,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(HeartRed)
+                            .border(1.5.dp, Color.White, CircleShape)
+                    )
+                }
+            }
         }
 
         // SLIDING TRANSLUCENT COMMENT SHEET

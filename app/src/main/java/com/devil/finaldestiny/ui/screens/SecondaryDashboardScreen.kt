@@ -1,9 +1,13 @@
 package com.devil.finaldestiny.ui.screens
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.res.painterResource
+import com.devil.finaldestiny.R
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -30,6 +34,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MonetizationOn
@@ -38,6 +43,7 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.NorthEast
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.PlayArrow
@@ -369,7 +375,9 @@ fun SecondaryDashboardScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .statusBarsPadding()
+                        .displayCutoutPadding()
+                        .padding(top = 10.dp, start = 16.dp, end = 16.dp, bottom = 8.dp)
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(
@@ -530,29 +538,12 @@ fun SecondaryDashboardScreen(
                                 ringStyle = ringStyle,
                                 rotationAngle = storyRingRotation
                             ) {
-                                Box(
-                                    contentAlignment = Alignment.Center,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(CircleShape)
-                                        .background(SkyBlueBgLight)
-                                ) {
-                                    if (storyAvatarBitmap != null) {
-                                        Image(
-                                            bitmap = storyAvatarBitmap,
-                                            contentDescription = story.authorName,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    } else {
-                                        Text(
-                                            text = story.authorName.take(1).uppercase(),
-                                            fontSize = 20.sp,
-                                            color = SkyBluePrimary,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
+                                com.devil.finaldestiny.ui.components.ProfileAvatarView(
+                                    name = story.authorName,
+                                    profilePictureUri = story.authorAvatar,
+                                    size = 56.dp,
+                                    showBorder = false
+                                )
                             }
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(story.authorName, fontSize = 10.sp, color = NavyTextPrimary, maxLines = 1, fontWeight = FontWeight.SemiBold)
@@ -778,10 +769,9 @@ fun SecondaryDashboardScreen(
                                 val creatorTitle = when {
                                     !post.profile?.fullName.isNullOrBlank() -> post.profile!!.fullName!!
                                     !post.profile?.username.isNullOrBlank() -> if (post.profile!!.username!!.startsWith("@")) post.profile!!.username!! else "@${post.profile!!.username!!}"
-                                    !post.authorName.isNullOrBlank() && post.authorName.trim().lowercase() != "null" && !post.authorName.startsWith("User_") -> post.authorName.trim()
+                                    !post.authorName.isNullOrBlank() && post.authorName.trim().lowercase() != "null" && !post.authorName.startsWith("User_") && !post.authorName.startsWith("user_") -> post.authorName.trim()
                                     !post.authorHandle.isNullOrBlank() && post.authorHandle.trim().lowercase() != "null" -> post.authorHandle.trim()
-                                    !post.userId.isNullOrBlank() && post.userId.trim().lowercase() != "null" -> "User_${post.userId.take(5)}"
-                                    else -> "User_${post.id.take(5)}"
+                                    else -> "Creator"
                                 }
 
                                 // ARROW 1: Profile Avatar & Co-Author Header
@@ -1099,10 +1089,9 @@ fun SecondaryDashboardScreen(
 
                         // INLINE CAPTION CLAMPING (REPAIRS VERTICAL LETTER-BY-LETTER WRAP BUG)
                         val authorHandleText = when {
-                            !post.authorName.isNullOrBlank() && post.authorName.trim().lowercase() != "null" -> post.authorName.trim()
+                            !post.authorName.isNullOrBlank() && post.authorName.trim().lowercase() != "null" && !post.authorName.startsWith("User_") && !post.authorName.startsWith("user_") -> post.authorName.trim()
                             !post.authorHandle.isNullOrBlank() && post.authorHandle.trim().lowercase() != "null" -> post.authorHandle.trim().removePrefix("@")
-                            !post.userId.isNullOrBlank() && post.userId.trim().lowercase() != "null" -> "User_${post.userId.take(5)}"
-                            else -> "User_${post.id.take(5)}"
+                            else -> "Creator"
                         }
                         val isLongCaptionText = post.caption.length > 42
 
@@ -1160,6 +1149,100 @@ fun SecondaryDashboardScreen(
                         color = SkyBlueBorder,
                         thickness = 0.5.dp
                     )
+                }
+            }
+
+            // SHARE THE APP & GROW COMMUNITY BANNER
+            item {
+                val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = SkyBlueCardBg),
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                        .border(1.5.dp, SkyBluePrimary, RoundedCornerShape(18.dp))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .border(1.5.dp, SkyBluePrimary, CircleShape)
+                            ) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.app_logo),
+                                    contentDescription = "App Logo",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Share the App & Grow Community ✨",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NavyTextPrimary
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Invite friends to Final Destiny & build your live circle!",
+                                    fontSize = 12.sp,
+                                    color = SlateTextSecondary
+                                )
+                            }
+                        }
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Button(
+                                onClick = {
+                                    val shareUrl = "https://twwezpogwtmjavoemdvi.supabase.co/storage/v1/object/public/app_updates/app-debug.apk"
+                                    val sendIntent = Intent().apply {
+                                        action = Intent.ACTION_SEND
+                                        putExtra(Intent.EXTRA_TEXT, "✨ Join me on Final Destiny - Where Hearts Connect & Voices Resonate! Download the app here: $shareUrl")
+                                        type = "text/plain"
+                                    }
+                                    val shareIntent = Intent.createChooser(sendIntent, "Share Final Destiny via")
+                                    context.startActivity(shareIntent)
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.weight(1f).height(44.dp)
+                            ) {
+                                Icon(Icons.Default.Share, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Share App", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    val shareUrl = "https://twwezpogwtmjavoemdvi.supabase.co/storage/v1/object/public/app_updates/app-debug.apk"
+                                    clipboardManager.setText(AnnotatedString(shareUrl))
+                                    Toast.makeText(context, "Link copied to clipboard! 📋", Toast.LENGTH_SHORT).show()
+                                },
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = SkyBluePrimary),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.weight(1f).height(44.dp)
+                            ) {
+                                Icon(Icons.Default.ContentCopy, contentDescription = null, tint = SkyBluePrimary, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Copy Link", color = SkyBluePrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            }
+                        }
+                    }
                 }
             }
         }

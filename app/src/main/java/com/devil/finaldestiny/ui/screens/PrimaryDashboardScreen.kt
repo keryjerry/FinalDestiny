@@ -1,6 +1,8 @@
 package com.devil.finaldestiny.ui.screens
 
+import android.content.Intent
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,6 +12,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.AnnotatedString
+import com.devil.finaldestiny.R
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -248,6 +254,100 @@ fun PrimaryDashboardScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                     Text("👥 Followers", fontSize = 9.sp, color = LightGold.copy(0.7f))
                     Text("${user.followerCount}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = LightGold)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // SHARE THE APP & GROW COMMUNITY BANNER
+        val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+        Card(
+            colors = CardDefaults.cardColors(containerColor = CardBackground),
+            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.5.dp, MetallicGold, RoundedCornerShape(18.dp))
+                .padding(4.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .border(1.5.dp, MetallicGold, CircleShape)
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.app_logo),
+                            contentDescription = "App Logo",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Share the App & Grow Community ✨",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = LightGold
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "Invite friends to Final Destiny & build your live circle!",
+                            fontSize = 11.sp,
+                            color = LightGold.copy(0.7f)
+                        )
+                    }
+                }
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Button(
+                        onClick = {
+                            val shareUrl = "https://twwezpogwtmjavoemdvi.supabase.co/storage/v1/object/public/app_updates/app-debug.apk"
+                            val sendIntent = Intent().apply {
+                                action = Intent.ACTION_SEND
+                                putExtra(Intent.EXTRA_TEXT, "✨ Join me on Final Destiny - Where Hearts Connect & Voices Resonate! Download the app here: $shareUrl")
+                                type = "text/plain"
+                            }
+                            val shareIntent = Intent.createChooser(sendIntent, "Share Final Destiny via")
+                            context.startActivity(shareIntent)
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = MetallicGold),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.weight(1f).height(40.dp)
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = null, tint = WineRedDark, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Share App", color = WineRedDark, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            val shareUrl = "https://twwezpogwtmjavoemdvi.supabase.co/storage/v1/object/public/app_updates/app-debug.apk"
+                            clipboardManager.setText(AnnotatedString(shareUrl))
+                            Toast.makeText(context, "Link copied to clipboard! 📋", Toast.LENGTH_SHORT).show()
+                        },
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MetallicGold),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.weight(1f).height(40.dp)
+                    ) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = null, tint = MetallicGold, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Copy Link", color = LightGold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
                 }
             }
         }

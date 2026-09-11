@@ -302,11 +302,38 @@ class AppRepository {
             val myId = _currentUser.value.id
             if (myId.isNotBlank()) {
                 val remoteNotifs = SupabaseAuthClient.fetchNotificationsFromSupabase(myId)
-                _notifications.value = remoteNotifs
+                if (remoteNotifs.isNotEmpty()) {
+                    _notifications.value = remoteNotifs
+                } else if (_notifications.value.isEmpty()) {
+                    _notifications.value = listOf(
+                        AppNotification(
+                            id = "notif_welcome",
+                            title = "Welcome to Final Destiny ✨",
+                            message = "Your live community space is active and ready.",
+                            type = NotificationType.SYSTEM,
+                            iconSymbol = "💖",
+                            timestamp = "Just now",
+                            isRead = false
+                        )
+                    )
+                }
                 android.util.Log.d("NOTIF_SYNC", "Fetched ${remoteNotifs.size} live notifications from Supabase for user $myId")
             }
         } catch (e: Exception) {
             android.util.Log.e("NOTIF_SYNC", "Failed to refresh notifications from Supabase", e)
+            if (_notifications.value.isEmpty()) {
+                _notifications.value = listOf(
+                    AppNotification(
+                        id = "notif_welcome",
+                        title = "Welcome to Final Destiny ✨",
+                        message = "Your live community space is active and ready.",
+                        type = NotificationType.SYSTEM,
+                        iconSymbol = "💖",
+                        timestamp = "Just now",
+                        isRead = false
+                    )
+                )
+            }
         }
     }
 
@@ -495,8 +522,8 @@ class AppRepository {
             id = "m_${System.currentTimeMillis()}",
             authorName = user.name,
             authorHandle = user.handle,
-            authorAvatar = user.profilePictureUri ?: "https://picsum.photos/100/100?random=1",
-            mediaUrl = uploadedPublicUrl ?: "https://picsum.photos/600/750?random=99",
+            authorAvatar = user.profilePictureUri.takeIf { !it.isNullOrBlank() } ?: "",
+            mediaUrl = uploadedPublicUrl ?: "",
             caption = caption,
             timestamp = if (!scheduledAt.isNullOrBlank()) "Scheduled: $scheduledAt" else "Just now",
             likesCount = 1,
@@ -572,8 +599,8 @@ class AppRepository {
             id = "reel_${System.currentTimeMillis()}",
             authorName = user.name,
             authorHandle = user.handle,
-            authorAvatar = user.profilePictureUri ?: "https://picsum.photos/100/100?random=1",
-            mediaUrl = uploadedPublicUrl ?: "https://picsum.photos/540/960?random=105",
+            authorAvatar = user.profilePictureUri.takeIf { !it.isNullOrBlank() } ?: "",
+            mediaUrl = uploadedPublicUrl ?: "",
             caption = caption,
             timestamp = if (!scheduledAt.isNullOrBlank()) "Scheduled: $scheduledAt" else "Just now",
             likesCount = 1,
@@ -668,10 +695,24 @@ class AppRepository {
     }
 
     fun toggleFollowPostAuthor(postId: String) {
+        val targetPost = _momentPosts.value.find { it.id == postId } ?: return
+        val nextState = !targetPost.isFollowingAuthor
+        val authorId: String = targetPost.userId
+        val authorHandle: String = targetPost.authorHandle
+        val authorName: String = targetPost.authorName
+
         _momentPosts.value = _momentPosts.value.map { post ->
-            if (post.id == postId) {
-                post.copy(isFollowingAuthor = !post.isFollowingAuthor)
+            val matchesId = authorId.isNotBlank() && post.userId == authorId
+            val matchesHandle = authorHandle.isNotBlank() && (post.authorHandle.equals(authorHandle, ignoreCase = true) || post.authorHandle.removePrefix("@").equals(authorHandle.removePrefix("@"), ignoreCase = true))
+            val matchesName = authorName.isNotBlank() && post.authorName.equals(authorName, ignoreCase = true)
+            if (post.id == postId || matchesId || matchesHandle || matchesName) {
+                post.copy(isFollowingAuthor = nextState)
             } else post
+        }
+
+        val targetIdToPersist = if (authorId.isNotBlank()) authorId else authorHandle.removePrefix("@")
+        if (targetIdToPersist.isNotBlank()) {
+            toggleFollowUserInternal(targetIdToPersist, nextState)
         }
     }
 
@@ -901,42 +942,62 @@ class AppRepository {
     }
 
     suspend fun refreshDashboardData() {
-        kotlinx.coroutines.delay(800)
-        // Refresh balances, active room stats & notifications
-        _currentUser.value = _currentUser.value.copy(
-            exp = _currentUser.value.exp + 10
-        )
+        try {
+            refreshNotifications()
+            refreshMomentsAndReels()
+            refreshDiscoverMatches()
+            refreshUserProfile()
+            _currentUser.value = _currentUser.value.copy(
+                exp = _currentUser.value.exp + 10
+            )
+            android.util.Log.d("[DestinyRefresh]", "Pull-to-refresh successfully synced live data from Supabase.")
+        } catch (e: Exception) {
+            android.util.Log.e("[DestinyRefresh]", "Pull-to-refresh sync failed", e)
+        }
     }
 
     suspend fun refreshMomentsAndReels() {
         try {
             val remotePosts = SupabaseAuthClient.fetchPostsFromSupabase()
+            val currentUser = _currentUser.value
             android.util.Log.d("SUPABASE_SYNC", "Successfully loaded ${remotePosts.size} posts from Supabase")
-            android.util.Log.d("SUPABASE_FEED", "Fetched from remote DB: ${remotePosts.size} posts")
-            if (remotePosts.isNotEmpty()) {
-                _momentPosts.value = remotePosts
-                // Hydrate Top Story Bar with live community creator stories & avatars
-                val communityStories = remotePosts.distinctBy { it.userId.ifBlank { it.authorHandle } }.map { post ->
+            
+            val fixedPosts = remotePosts.map { post ->
+                if (post.userId == currentUser.id || post.authorHandle == currentUser.handle || post.userId.isBlank()) {
+                    post.copy(
+                        authorName = currentUser.name.ifBlank { "User" },
+                        authorHandle = currentUser.handle,
+                        authorAvatar = currentUser.profilePictureUri ?: ""
+                    )
+                } else {
+                    post
+                }
+            }
+
+            if (fixedPosts.isNotEmpty()) {
+                _momentPosts.value = fixedPosts
+                val communityStories = fixedPosts.distinctBy { it.userId.ifBlank { it.authorHandle } }.map { post ->
                     StoryItem(
                         id = "story_${post.id}",
-                        authorName = post.authorName.ifBlank { "Creator" },
-                        authorAvatar = post.authorAvatar.takeIf { !it.isNullOrBlank() } ?: "",
+                        authorName = post.authorName,
+                        authorAvatar = post.authorAvatar,
                         previewMedia = post.mediaUrl,
                         mediaUri = post.mediaUrl,
                         timestamp = post.timestamp,
                         isViewed = false,
+                        authorId = post.userId,
                         createdAtEpochMs = System.currentTimeMillis()
                     )
                 }
                 _storyTrays.value = communityStories
-                android.util.Log.d("FEED_DEBUG", "Cold start feed success: ${remotePosts.size} posts loaded.")
+                android.util.Log.d("FEED_DEBUG", "Cold start feed success: ${fixedPosts.size} posts loaded.")
             } else if (_momentPosts.value.isEmpty()) {
-                _momentPosts.value = remotePosts
+                _momentPosts.value = fixedPosts
                 android.util.Log.d("FEED_DEBUG", "Initial fetch returned 0 posts.")
             } else {
                 android.util.Log.w("FEED_DEBUG", "Transient empty fetch ignored, retaining existing ${_momentPosts.value.size} posts in memory.")
             }
-            android.util.Log.d("[DestinyPosts]", "Fetched ${remotePosts.size} remote posts from Supabase.")
+            android.util.Log.d("[DestinyPosts]", "Fetched ${fixedPosts.size} remote posts from Supabase.")
         } catch (e: Exception) {
             android.util.Log.e("SUPABASE_SYNC", "Fetch failed: ${e.message}")
             android.util.Log.e("FEED_DEBUG", "Cold start fetch failed: ${e.message}", e)
@@ -985,8 +1046,8 @@ class AppRepository {
                 val myPosts = _momentPosts.value.filter { it.userId == myId || it.authorHandle == _currentUser.value.handle || it.authorName == _currentUser.value.name }
 
                 _currentUser.value = _currentUser.value.copy(
-                    followerCount = followers,
-                    followingCount = following
+                    followerCount = if (followers > 0) followers else _currentUser.value.followerCount,
+                    followingCount = if (following > 0) following else _currentUser.value.followingCount
                 )
                 android.util.Log.d("[DestinyProfile]", "Refreshed user profile: $followers followers, $following following, ${myPosts.size} posts")
             }
@@ -1116,6 +1177,21 @@ class AppRepository {
         val newFollowingCount = if (isFollowing) (user.followingCount + 1) else (user.followingCount - 1).coerceAtLeast(0)
         _currentUser.value = user.copy(followingCount = newFollowingCount)
 
+        val cleanTarget = targetUserId.removePrefix("@").lowercase()
+        _momentPosts.value = _momentPosts.value.map { post ->
+            val pUserId = post.userId.lowercase()
+            val pHandle = post.authorHandle.removePrefix("@").lowercase()
+            val pName = post.authorName.lowercase()
+            if (pUserId == cleanTarget || pHandle == cleanTarget || pName == cleanTarget) {
+                post.copy(isFollowingAuthor = isFollowing)
+            } else post
+        }
+
+        toggleFollowUserInternal(targetUserId, isFollowing)
+    }
+
+    private fun toggleFollowUserInternal(targetUserId: String, isFollowing: Boolean) {
+        val user = _currentUser.value
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             try {
                 val baseUrl = SupabaseAuthClient.supabaseUrl.trimEnd('/')

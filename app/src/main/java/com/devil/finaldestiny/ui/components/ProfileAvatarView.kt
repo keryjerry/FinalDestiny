@@ -41,11 +41,6 @@ fun ProfileAvatarView(
     val loadedBitmap = rememberLoadedAvatarImage(context, profilePictureUri)
 
     val initial = name.trim().take(1).uppercase().ifEmpty { "U" }
-    val avatarEmoji = when (gender) {
-        Gender.FEMALE -> if (name.length % 2 == 0) "👩‍🦰" else "👩‍🦱"
-        Gender.MALE -> if (name.length % 2 == 0) "👨‍🦱" else "👨‍🦰"
-        else -> "✨"
-    }
 
     val bgGradient = if (gender == Gender.FEMALE) {
         Brush.linearGradient(listOf(WineRedMedium, CrimsonVelvet))
@@ -70,7 +65,10 @@ fun ProfileAvatarView(
             coil.compose.AsyncImage(
                 model = coil.request.ImageRequest.Builder(LocalContext.current)
                     .data(profilePictureUri)
+                    .diskCachePolicy(coil.request.CachePolicy.ENABLED)
+                    .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
                     .crossfade(true)
+                    .error(com.devil.finaldestiny.R.drawable.couple_photo)
                     .build(),
                 contentDescription = name,
                 contentScale = ContentScale.Crop,
@@ -90,8 +88,8 @@ fun ProfileAvatarView(
                 modifier = Modifier.fillMaxSize()
             ) {
                 Text(
-                    text = "$initial $avatarEmoji",
-                    fontSize = (size.value * 0.35f).sp,
+                    text = initial,
+                    fontSize = (size.value * 0.45f).sp,
                     fontWeight = FontWeight.Bold,
                     color = LightGold
                 )

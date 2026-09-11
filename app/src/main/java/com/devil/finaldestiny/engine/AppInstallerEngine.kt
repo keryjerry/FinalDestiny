@@ -58,12 +58,13 @@ object AppInstallerEngine {
                         else -> obj.optInt("latest_version", 2)
                     }
                     val downloadUrl = when {
-                        obj.has("apk_download_url") -> obj.optString("apk_download_url", "$supabaseUrl/storage/v1/object/public/reels/app-debug.apk")
-                        else -> obj.optString("download_url", "$supabaseUrl/storage/v1/object/public/reels/app-debug.apk")
+                        obj.has("apk_download_url") -> obj.optString("apk_download_url", "$supabaseUrl/storage/v1/object/public/app_updates/app-debug.apk")
+                        else -> obj.optString("download_url", "$supabaseUrl/storage/v1/object/public/app_updates/app-debug.apk")
                     }
                     val releaseNotes = when {
+                        obj.has("changelog") -> obj.optString("changelog")
                         obj.has("release_notes") -> obj.optString("release_notes")
-                        else -> obj.optString("changelog", "• New 9:16 Live Video Stage with aspect-ratio camera preview\n• ExoPlayer Media3 Feed Video Reels\n• Dynamic Multi-User Profiles & Supabase Avatars\n• Creator Studio Velocity Analytics & Refresh Engine")
+                        else -> "• New features and performance improvements available!"
                     }
 
                     Log.d("APP_UPDATE", "Current: $currentVersionCode, Remote: $latestVer")
