@@ -107,21 +107,46 @@ object AppInstallerEngine {
 
     /**
      * Triggers Android DownloadManager to genuinely download APK directly from GitHub releases or remote URL.
-     * Falls back to browser if DownloadManager fails or is blocked.
+     * Follows HTTP 302/301 redirects to resolve final S3 binary download URL.
      */
     fun startDownload(context: Context, downloadUrl: String): Long {
         try {
-            val request = DownloadManager.Request(Uri.parse(downloadUrl)).apply {
+            var finalUrl = downloadUrl
+            try {
+                var connection = URL(finalUrl).openConnection() as HttpURLConnection
+                connection.instanceFollowRedirects = false
+                connection.connectTimeout = 6000
+                connection.readTimeout = 6000
+                connection.connect()
+                val responseCode = connection.responseCode
+                if (responseCode == HttpURLConnection.HTTP_MOVED_TEMP ||
+                    responseCode == HttpURLConnection.HTTP_MOVED_PERM ||
+                    responseCode == 307 || responseCode == 308) {
+                    val redirectLocation = connection.getHeaderField("Location")
+                    if (!redirectLocation.isNullOrEmpty()) {
+                        finalUrl = redirectLocation
+                    }
+                }
+                connection.disconnect()
+            } catch (e: Exception) {
+                Log.w(TAG, "Redirect resolution warning, using original URL", e)
+            }
+
+            val request = DownloadManager.Request(Uri.parse(finalUrl)).apply {
                 setTitle("Final Destiny Update")
                 setDescription("Downloading latest version v2.0...")
                 setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, "Final.Destiny.apk")
+                try {
+                    setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "FinalDestiny_Update.apk")
+                } catch (e: Exception) {
+                    setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, "FinalDestiny_Update.apk")
+                }
                 setAllowedOverMetered(true)
                 setAllowedOverRoaming(true)
                 setMimeType("application/vnd.android.package-archive")
             }
             val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-            Log.d(TAG, "Enqueueing DownloadManager request for URL: $downloadUrl")
+            Log.d(TAG, "Enqueueing DownloadManager request for URL: $finalUrl")
             return downloadManager.enqueue(request)
         } catch (e: Exception) {
             Log.e(TAG, "DownloadManager failed, falling back to external browser", e)
@@ -198,22 +223,29 @@ class ApkDownloadReceiver : BroadcastReceiver() {
                         val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
                         if (statusIndex != -1 && cursor.getInt(statusIndex) == DownloadManager.STATUS_SUCCESSFUL) {
                             val uriIndex = cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI)
+                            var apkFile: File? = null
                             if (uriIndex != -1) {
                                 val uriString = cursor.getString(uriIndex)
-                                cursor.close()
                                 if (!uriString.isNullOrBlank()) {
                                     val uri = Uri.parse(uriString)
                                     val path = uri.path
-                                    if (path != null) {
-                                        val apkFile = File(path)
-                                        if (apkFile.exists()) {
-                                            Log.d("ApkDownloadReceiver", "Download complete. Prompting install for: ${apkFile.absolutePath}")
-                                            AppInstallerEngine.promptPackageInstall(context, apkFile)
-                                        }
+                                    if (path != null && File(path).exists()) {
+                                        apkFile = File(path)
                                     }
                                 }
-                            } else {
-                                cursor.close()
+                            }
+                            if (apkFile == null) {
+                                val publicFile = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "FinalDestiny_Update.apk")
+                                if (publicFile.exists()) apkFile = publicFile
+                            }
+                            if (apkFile == null) {
+                                val privateFile = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "FinalDestiny_Update.apk")
+                                if (privateFile.exists()) apkFile = privateFile
+                            }
+                            cursor.close()
+                            if (apkFile != null && apkFile.exists()) {
+                                Log.d("ApkDownloadReceiver", "Download complete & verified successful. Prompting install for: ${apkFile.absolutePath}")
+                                AppInstallerEngine.promptPackageInstall(context, apkFile)
                             }
                         } else {
                             cursor.close()

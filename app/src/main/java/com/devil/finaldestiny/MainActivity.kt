@@ -693,16 +693,18 @@ fun FinalDestinyApp(repository: AppRepository) {
             downloadProgress = updateDownloadProgress,
             isDownloading = isDownloadingUpdate,
             onStartDownload = {
-                coroutineScope.launch {
+                coroutineScope.launch(kotlinx.coroutines.Dispatchers.IO) {
                     isDownloadingUpdate = true
                     updateDownloadProgress = 0
                     val downloadId = AppInstallerEngine.startDownload(context, currentUpdate.apkDownloadUrl)
-                    if (downloadId != -1L) {
-                        Toast.makeText(context, "⬇️ Downloading update in notification bar...", Toast.LENGTH_LONG).show()
-                    } else {
-                        Toast.makeText(context, "Opening download in browser...", Toast.LENGTH_SHORT).show()
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        if (downloadId != -1L) {
+                            Toast.makeText(context, "⬇️ Downloading update in notification bar...", Toast.LENGTH_LONG).show()
+                        } else {
+                            Toast.makeText(context, "Opening download in browser...", Toast.LENGTH_SHORT).show()
+                        }
+                        isDownloadingUpdate = false
                     }
-                    isDownloadingUpdate = false
                 }
             },
             onDismiss = {
