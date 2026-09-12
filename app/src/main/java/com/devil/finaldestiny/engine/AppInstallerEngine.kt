@@ -23,7 +23,8 @@ data class UpdateReleaseInfo(
     val versionName: String,
     val apkDownloadUrl: String,
     val changelog: String,
-    val isMandatory: Boolean = false
+    val isMandatory: Boolean = false,
+    val isUpdateAvailable: Boolean = true
 )
 
 object AppInstallerEngine {
@@ -60,6 +61,7 @@ object AppInstallerEngine {
 
                 if (connection.responseCode in 200..299) {
                     val jsonString = connection.inputStream.bufferedReader().use { it.readText() }
+                    Log.e("UPDATE_FORCE_CHECK", "Raw JSON from Supabase: " + jsonString)
                     val jsonArray = org.json.JSONArray(jsonString)
                     if (jsonArray.length() > 0) {
                         for (i in 0 until jsonArray.length()) {
@@ -87,6 +89,7 @@ object AppInstallerEngine {
             }
         }
 
+        Log.e("UPDATE_FORCE_CHECK", "Parsed fetchedCode: $fetchedCode vs Local: ${BuildConfig.VERSION_CODE}")
         Log.d("APP_UPDATE_DEBUG", "Local: ${BuildConfig.VERSION_CODE}")
         Log.d("APP_UPDATE_DEBUG", "Remote: $fetchedCode")
         Log.d("APP_UPDATE_DEBUG", "Comparison condition met: ${fetchedCode > BuildConfig.VERSION_CODE}")
@@ -98,7 +101,8 @@ object AppInstallerEngine {
                 versionName = "v$fetchedCode.0",
                 apkDownloadUrl = downloadUrl,
                 changelog = releaseNotes,
-                isMandatory = isForce || (effectiveLocalCode < minSupported || BuildConfig.VERSION_CODE < minSupported)
+                isMandatory = isForce || (effectiveLocalCode < minSupported || BuildConfig.VERSION_CODE < minSupported),
+                isUpdateAvailable = true
             )
         }
 
