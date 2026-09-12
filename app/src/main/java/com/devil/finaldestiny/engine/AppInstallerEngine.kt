@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import android.util.Log
+import com.devil.finaldestiny.BuildConfig
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -52,7 +53,7 @@ object AppInstallerEngine {
                 if (jsonArray.length() > 0) {
                     val obj = jsonArray.getJSONObject(0)
                     val minSupported = obj.optInt("min_supported_version", 1)
-                    val latestVer = when {
+                    val fetchedCode = when {
                         obj.has("latest_version_code") -> obj.optInt("latest_version_code", 2)
                         else -> obj.optInt("latest_version", 2)
                     }
@@ -66,15 +67,18 @@ object AppInstallerEngine {
                         else -> "• New features and performance improvements available!"
                     }
 
-                    Log.d(TAG, "Current: $currentVersionCode, Remote: $latestVer")
+                    Log.d("APP_UPDATE_DEBUG", "Local versionCode: " + BuildConfig.VERSION_CODE)
+                    Log.d("APP_UPDATE_DEBUG", "Supabase fetched latest_version_code: " + fetchedCode)
+                    Log.d("APP_UPDATE_DEBUG", "Comparison condition met: " + (fetchedCode > BuildConfig.VERSION_CODE))
 
-                    if (latestVer > currentVersionCode) {
+                    val effectiveLocalCode = if (currentVersionCode > 0) currentVersionCode else BuildConfig.VERSION_CODE
+                    if (fetchedCode > BuildConfig.VERSION_CODE || fetchedCode > effectiveLocalCode) {
                         return@withContext UpdateReleaseInfo(
-                            versionCode = latestVer,
-                            versionName = "v$latestVer.0",
+                            versionCode = fetchedCode,
+                            versionName = "v$fetchedCode.0",
                             apkDownloadUrl = downloadUrl,
                             changelog = releaseNotes,
-                            isMandatory = (currentVersionCode < minSupported)
+                            isMandatory = (effectiveLocalCode < minSupported || BuildConfig.VERSION_CODE < minSupported)
                         )
                     }
                 }

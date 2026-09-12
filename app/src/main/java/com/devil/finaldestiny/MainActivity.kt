@@ -155,16 +155,7 @@ fun FinalDestinyApp(repository: AppRepository) {
 
     LaunchedEffect(Unit) {
         repository.refreshNotifications()
-        val localVerCode = try {
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode.toInt()
-            } else {
-                @Suppress("DEPRECATION")
-                context.packageManager.getPackageInfo(context.packageName, 0).versionCode
-            }
-        } catch (e: Exception) {
-            1
-        }
+        val localVerCode = com.devil.finaldestiny.BuildConfig.VERSION_CODE
         val releaseInfo = AppInstallerEngine.checkSupabaseAppVersion(currentVersionCode = localVerCode)
         if (releaseInfo != null) {
             updateInfoState = releaseInfo
