@@ -164,16 +164,28 @@ fun FinalDestinyApp(repository: AppRepository) {
 
     // Auto-Update Checker State (Supabase Remote Config)
     var updateInfoState by remember { mutableStateOf<UpdateReleaseInfo?>(null) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
     var isDownloadingUpdate by remember { mutableStateOf(false) }
     var updateDownloadProgress by remember { mutableStateOf(0) }
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         repository.refreshNotifications()
-        val localVerCode = com.devil.finaldestiny.BuildConfig.VERSION_CODE
-        val releaseInfo = AppInstallerEngine.checkSupabaseAppVersion(currentVersionCode = localVerCode)
-        if (releaseInfo != null) {
-            updateInfoState = releaseInfo
+        try {
+            android.widget.Toast.makeText(context, "Checking for updates...", android.widget.Toast.LENGTH_SHORT).show()
+            val localVerCode = com.devil.finaldestiny.BuildConfig.VERSION_CODE
+            val info = AppInstallerEngine.checkSupabaseAppVersion(currentVersionCode = localVerCode)
+            if (info != null) {
+                android.widget.Toast.makeText(context, "Supabase: v${info.versionCode} (Local:$localVerCode)", android.widget.Toast.LENGTH_LONG).show()
+                updateInfoState = info
+                if (info.isUpdateAvailable) {
+                    showUpdateDialog = true
+                }
+            } else {
+                android.widget.Toast.makeText(context, "Update check returned NULL", android.widget.Toast.LENGTH_LONG).show()
+            }
+        } catch (e: Exception) {
+            android.widget.Toast.makeText(context, "Update check error: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
         }
     }
 
@@ -701,7 +713,7 @@ fun FinalDestinyApp(repository: AppRepository) {
     }
 
     val currentUpdate = updateInfoState ?: MainActivity.globalUpdateInfo.value
-    if (currentUpdate != null && currentUpdate.isUpdateAvailable) {
+    if ((showUpdateDialog || currentUpdate != null) && currentUpdate != null && currentUpdate.isUpdateAvailable) {
         android.util.Log.d("UPDATE_FLOW", "Rendering dialog on screen now: isUpdateAvailable=true")
         UpdateInstallerModalDialog(
             updateInfo = currentUpdate,
@@ -723,6 +735,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                 }
             },
             onDismiss = {
+                showUpdateDialog = false
                 updateInfoState = null
                 MainActivity.globalUpdateInfo.value = null
             }
