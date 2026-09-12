@@ -25,7 +25,12 @@ data class UpdateReleaseInfo(
     val changelog: String,
     val isMandatory: Boolean = false,
     val isUpdateAvailable: Boolean = true
-)
+) {
+    val latestVersionCode: Int get() = versionCode
+    val apkUrl: String get() = apkDownloadUrl
+    val releaseNotes: String get() = changelog
+    val isForceUpdate: Boolean get() = isMandatory
+}
 
 object AppInstallerEngine {
     private const val TAG = "AppInstallerEngine"
@@ -69,10 +74,12 @@ object AppInstallerEngine {
                             if (obj.has("key") && obj.has("value")) {
                                 val k = obj.optString("key")
                                 val v = obj.optString("value")
-                                if (k == "latest_version_code") fetchedCode = v.toIntOrNull() ?: 0
-                                if (k == "latest_apk_url" || k == "apk_download_url") downloadUrl = v
-                                if (k == "release_notes" || k == "changelog") releaseNotes = v
-                                if (k == "force_update") isForce = v.toBoolean()
+                                when (k) {
+                                    "latest_version_code" -> fetchedCode = v.toIntOrNull() ?: 0
+                                    "latest_apk_url", "apk_download_url" -> downloadUrl = v
+                                    "release_notes", "changelog" -> releaseNotes = v
+                                    "force_update" -> isForce = v.toBoolean()
+                                }
                             } else {
                                 minSupported = obj.optInt("min_supported_version", obj.optInt("min_version", 1))
                                 if (obj.has("latest_version_code")) fetchedCode = obj.optInt("latest_version_code", 2)
@@ -95,14 +102,14 @@ object AppInstallerEngine {
         Log.d("APP_UPDATE_DEBUG", "Comparison condition met: ${fetchedCode > BuildConfig.VERSION_CODE}")
 
         val effectiveLocalCode = if (currentVersionCode > 0) currentVersionCode else BuildConfig.VERSION_CODE
-        if (fetchedCode > BuildConfig.VERSION_CODE || fetchedCode > effectiveLocalCode) {
+        if (fetchedCode > 0) {
             return@withContext UpdateReleaseInfo(
                 versionCode = fetchedCode,
                 versionName = "v$fetchedCode.0",
                 apkDownloadUrl = downloadUrl,
                 changelog = releaseNotes,
                 isMandatory = isForce || (effectiveLocalCode < minSupported || BuildConfig.VERSION_CODE < minSupported),
-                isUpdateAvailable = true
+                isUpdateAvailable = (fetchedCode > BuildConfig.VERSION_CODE || fetchedCode > effectiveLocalCode)
             )
         }
 
