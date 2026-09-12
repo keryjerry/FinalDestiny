@@ -81,6 +81,15 @@
             android:exported="false"
             android:foregroundServiceType="microphone|mediaPlayback" />
 
+        <!-- Native DownloadManager BroadcastReceiver for APK auto-install -->
+        <receiver
+            android:name=".engine.ApkDownloadReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>

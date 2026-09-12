@@ -704,21 +704,13 @@ fun FinalDestinyApp(repository: AppRepository) {
                 coroutineScope.launch {
                     isDownloadingUpdate = true
                     updateDownloadProgress = 0
-                    val downloadedFile = AppInstallerEngine.downloadApkFile(
-                        context = context,
-                        downloadUrl = currentUpdate.apkDownloadUrl
-                    ) { progress ->
-                        updateDownloadProgress = progress
+                    val downloadId = AppInstallerEngine.startDownload(context, currentUpdate.apkDownloadUrl)
+                    if (downloadId != -1L) {
+                        Toast.makeText(context, "⬇️ Downloading update in notification bar...", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(context, "Opening download in browser...", Toast.LENGTH_SHORT).show()
                     }
                     isDownloadingUpdate = false
-                    if (downloadedFile != null) {
-                        val installPromptSuccess = AppInstallerEngine.promptPackageInstall(context, downloadedFile)
-                        if (!installPromptSuccess) {
-                            Toast.makeText(context, "Please allow 'Install Unknown Apps' permission to complete update.", Toast.LENGTH_LONG).show()
-                        }
-                    } else {
-                        Toast.makeText(context, "Download failed. Please check network connection.", Toast.LENGTH_SHORT).show()
-                    }
                 }
             },
             onDismiss = {

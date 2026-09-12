@@ -1,21 +1,21 @@
 package com.devil.finaldestiny.engine
 
+import android.app.DownloadManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
+import android.util.Log
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
-import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
-
-import android.util.Log
 
 data class UpdateReleaseInfo(
     val versionCode: Int,
@@ -26,14 +26,13 @@ data class UpdateReleaseInfo(
 )
 
 object AppInstallerEngine {
-
-    private const val DEFAULT_VERSION_CHECK_ENDPOINT = "https://twwezpogwtmjavoemdvi.supabase.co/rest/v1/app_version_config?select=*"
+    private const val TAG = "AppInstallerEngine"
 
     suspend fun checkSupabaseAppVersion(
         currentVersionCode: Int = 1
     ): UpdateReleaseInfo? = withContext(Dispatchers.IO) {
         val supabaseUrl = "https://twwezpogwtmjavoemdvi.supabase.co"
-        val anonKey = "sb_publishable_RiDqsSCPgbWGxd6570P1FA_y_L10U_w"
+        val anonKey = "sb_publishable_RiDqsSCPGbWGxd6570P1FA_y_L10U_w"
         val endpoint = "$supabaseUrl/rest/v1/app_version_config?select=*&limit=1"
 
         try {
@@ -58,8 +57,8 @@ object AppInstallerEngine {
                         else -> obj.optInt("latest_version", 2)
                     }
                     val downloadUrl = when {
-                        obj.has("apk_download_url") -> obj.optString("apk_download_url", "$supabaseUrl/storage/v1/object/public/app_updates/app-debug.apk")
-                        else -> obj.optString("download_url", "$supabaseUrl/storage/v1/object/public/app_updates/app-debug.apk")
+                        obj.has("apk_download_url") -> obj.optString("apk_download_url", "https://github.com/keryjerry/FinalDestiny/releases/latest/download/Final.Destiny.apk")
+                        else -> obj.optString("download_url", "https://github.com/keryjerry/FinalDestiny/releases/latest/download/Final.Destiny.apk")
                     }
                     val releaseNotes = when {
                         obj.has("changelog") -> obj.optString("changelog")
@@ -67,7 +66,7 @@ object AppInstallerEngine {
                         else -> "• New features and performance improvements available!"
                     }
 
-                    Log.d("APP_UPDATE", "Current: $currentVersionCode, Remote: $latestVer")
+                    Log.d(TAG, "Current: $currentVersionCode, Remote: $latestVer")
 
                     if (latestVer > currentVersionCode) {
                         return@withContext UpdateReleaseInfo(
@@ -81,89 +80,41 @@ object AppInstallerEngine {
                 }
             }
         } catch (e: Exception) {
-            Log.e("APP_UPDATE", "Error checking Supabase app version", e)
+            Log.e(TAG, "Error checking Supabase app version", e)
         }
 
         return@withContext null
     }
 
-    suspend fun checkServerVersion(
-        endpointUrl: String = DEFAULT_VERSION_CHECK_ENDPOINT,
-        currentVersionCode: Int
-    ): UpdateReleaseInfo? = withContext(Dispatchers.IO) {
+    /**
+     * Triggers Android DownloadManager to genuinely download APK directly from GitHub releases or remote URL.
+     * Falls back to browser if DownloadManager fails or is blocked.
+     */
+    fun startDownload(context: Context, downloadUrl: String): Long {
         try {
-            val url = URL(endpointUrl)
-            val connection = (url.openConnection() as HttpURLConnection).apply {
-                requestMethod = "GET"
-                connectTimeout = 8000
-                readTimeout = 8000
-                setRequestProperty("Accept", "application/json")
+            val request = DownloadManager.Request(Uri.parse(downloadUrl)).apply {
+                setTitle("Final Destiny Update")
+                setDescription("Downloading latest version v2.0...")
+                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, "Final.Destiny.apk")
+                setAllowedOverMetered(true)
+                setAllowedOverRoaming(true)
+                setMimeType("application/vnd.android.package-archive")
             }
-
-            if (connection.responseCode == HttpURLConnection.HTTP_OK) {
-                val jsonString = connection.inputStream.bufferedReader().use { it.readText() }
-                val json = JSONObject(jsonString)
-                val serverVersionCode = json.optInt("versionCode", currentVersionCode)
-
-                if (serverVersionCode > currentVersionCode) {
-                    return@withContext UpdateReleaseInfo(
-                        versionCode = serverVersionCode,
-                        versionName = json.optString("versionName", "v1.1.0"),
-                        apkDownloadUrl = json.optString("apkDownloadUrl", "https://finaldestiny.app/downloads/finalconnect-latest.apk"),
-                        changelog = json.optString("changelog", "• Improved Live Audio/Video Room performance\n• Enhanced Tinder Swipe card responsiveness\n• Added Razorpay direct UPI payments & Aadhaar KYC"),
-                        isMandatory = json.optBoolean("isMandatory", false)
-                    )
-                }
-            }
+            val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            Log.d(TAG, "Enqueueing DownloadManager request for URL: $downloadUrl")
+            return downloadManager.enqueue(request)
         } catch (e: Exception) {
-            e.printStackTrace()
-        }
-        return@withContext null
-    }
-
-    suspend fun downloadApkFile(
-        context: Context,
-        downloadUrl: String,
-        onProgress: (Int) -> Unit
-    ): File? = withContext(Dispatchers.IO) {
-        try {
-            val targetDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: context.externalCacheDir ?: context.cacheDir
-            val destinationFile = File(targetDir, "final_connect_update.apk")
-            if (destinationFile.exists()) {
-                destinationFile.delete()
-            }
-
-            val url = URL(downloadUrl)
-            val connection = url.openConnection() as HttpURLConnection
-            connection.connectTimeout = 10000
-            connection.readTimeout = 15000
-            connection.connect()
-
-            val fileLength = connection.contentLength
-            val input = connection.inputStream
-            val output = FileOutputStream(destinationFile)
-
-            val data = ByteArray(4096)
-            var total: Long = 0
-            var count: Int
-            while (input.read(data).also { count = it } != -1) {
-                total += count.toLong()
-                if (fileLength > 0) {
-                    val progress = ((total * 100) / fileLength).toInt()
-                    withContext(Dispatchers.Main) {
-                        onProgress(progress)
-                    }
+            Log.e(TAG, "DownloadManager failed, falling back to external browser", e)
+            try {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(downloadUrl)).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
-                output.write(data, 0, count)
+                context.startActivity(intent)
+            } catch (ex: Exception) {
+                Log.e(TAG, "Browser fallback also failed", ex)
             }
-
-            output.flush()
-            output.close()
-            input.close()
-            return@withContext destinationFile
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return@withContext null
+            return -1L
         }
     }
 
@@ -209,8 +160,50 @@ object AppInstallerEngine {
             context.startActivity(installIntent)
             return true
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "Failed to prompt package install", e)
             return false
+        }
+    }
+}
+
+class ApkDownloadReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (DownloadManager.ACTION_DOWNLOAD_COMPLETE == intent.action) {
+            val downloadId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
+            if (downloadId != -1L) {
+                try {
+                    val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+                    val query = DownloadManager.Query().setFilterById(downloadId)
+                    val cursor = downloadManager.query(query)
+                    if (cursor != null && cursor.moveToFirst()) {
+                        val statusIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
+                        if (statusIndex != -1 && cursor.getInt(statusIndex) == DownloadManager.STATUS_SUCCESSFUL) {
+                            val uriIndex = cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI)
+                            if (uriIndex != -1) {
+                                val uriString = cursor.getString(uriIndex)
+                                cursor.close()
+                                if (!uriString.isNullOrBlank()) {
+                                    val uri = Uri.parse(uriString)
+                                    val path = uri.path
+                                    if (path != null) {
+                                        val apkFile = File(path)
+                                        if (apkFile.exists()) {
+                                            Log.d("ApkDownloadReceiver", "Download complete. Prompting install for: ${apkFile.absolutePath}")
+                                            AppInstallerEngine.promptPackageInstall(context, apkFile)
+                                        }
+                                    }
+                                }
+                            } else {
+                                cursor.close()
+                            }
+                        } else {
+                            cursor.close()
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("ApkDownloadReceiver", "Error processing download completion", e)
+                }
+            }
         }
     }
 }

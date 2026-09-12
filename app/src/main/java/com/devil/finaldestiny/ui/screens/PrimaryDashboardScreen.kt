@@ -316,7 +316,7 @@ fun PrimaryDashboardScreen(
                 ) {
                     Button(
                         onClick = {
-                            val shareUrl = "https://twwezpogwtmjavoemdvi.supabase.co/storage/v1/object/public/app_updates/app-debug.apk"
+                            val shareUrl = "https://github.com/keryjerry/FinalDestiny/releases/latest/download/Final.Destiny.apk"
                             val sendIntent = Intent().apply {
                                 action = Intent.ACTION_SEND
                                 putExtra(Intent.EXTRA_TEXT, "✨ Join me on Final Destiny - Where Hearts Connect & Voices Resonate! Download the app here: $shareUrl")
@@ -336,7 +336,7 @@ fun PrimaryDashboardScreen(
 
                     OutlinedButton(
                         onClick = {
-                            val shareUrl = "https://twwezpogwtmjavoemdvi.supabase.co/storage/v1/object/public/app_updates/app-debug.apk"
+                            val shareUrl = "https://github.com/keryjerry/FinalDestiny/releases/latest/download/Final.Destiny.apk"
                             clipboardManager.setText(AnnotatedString(shareUrl))
                             Toast.makeText(context, "Link copied to clipboard! 📋", Toast.LENGTH_SHORT).show()
                         },
