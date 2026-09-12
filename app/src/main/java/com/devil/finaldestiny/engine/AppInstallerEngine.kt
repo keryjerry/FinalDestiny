@@ -67,9 +67,9 @@ object AppInstallerEngine {
                         else -> "• New features and performance improvements available!"
                     }
 
-                    Log.d("APP_UPDATE_DEBUG", "Local versionCode: " + BuildConfig.VERSION_CODE)
-                    Log.d("APP_UPDATE_DEBUG", "Supabase fetched latest_version_code: " + fetchedCode)
-                    Log.d("APP_UPDATE_DEBUG", "Comparison condition met: " + (fetchedCode > BuildConfig.VERSION_CODE))
+                    Log.d("APP_UPDATE_DEBUG", "Local versionCode: ${BuildConfig.VERSION_CODE}")
+                    Log.d("APP_UPDATE_DEBUG", "Supabase fetched latest_version_code: $fetchedCode")
+                    Log.d("APP_UPDATE_DEBUG", "Comparison condition met: ${fetchedCode > BuildConfig.VERSION_CODE}")
 
                     val effectiveLocalCode = if (currentVersionCode > 0) currentVersionCode else BuildConfig.VERSION_CODE
                     if (fetchedCode > BuildConfig.VERSION_CODE || fetchedCode > effectiveLocalCode) {
