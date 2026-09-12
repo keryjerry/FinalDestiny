@@ -36,6 +36,7 @@ object AppInstallerEngine {
     private const val TAG = "AppInstallerEngine"
 
     suspend fun checkSupabaseAppVersion(
+        context: Context? = null,
         currentVersionCode: Int = 1
     ): UpdateReleaseInfo? = withContext(Dispatchers.IO) {
         val supabaseUrl = "https://twwezpogwtmjavoemdvi.supabase.co"
@@ -64,9 +65,21 @@ object AppInstallerEngine {
                     setRequestProperty("Accept", "application/json")
                 }
 
-                if (connection.responseCode in 200..299) {
+                val code = connection.responseCode
+                Log.e("UPDATE_FORCE_CHECK", "Endpoint: $endpoint | Response Code: $code")
+
+                if (code in 200..299) {
                     val jsonString = connection.inputStream.bufferedReader().use { it.readText() }
                     Log.e("UPDATE_FORCE_CHECK", "Raw JSON from Supabase: " + jsonString)
+
+                    if (jsonString.trim() == "[]") {
+                        if (context != null) {
+                            withContext(Dispatchers.Main) {
+                                android.widget.Toast.makeText(context, "Supabase returned EMPTY ARRAY [] (Check Table RLS)", android.widget.Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
+
                     val jsonArray = org.json.JSONArray(jsonString)
                     if (jsonArray.length() > 0) {
                         for (i in 0 until jsonArray.length()) {
@@ -89,6 +102,14 @@ object AppInstallerEngine {
                             }
                         }
                         if (fetchedCode > 0) break
+                    }
+                } else {
+                    val errStream = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "No error body"
+                    Log.e("UPDATE_FORCE_CHECK", "Supabase HTTP Error: $code | $errStream")
+                    if (context != null) {
+                        withContext(Dispatchers.Main) {
+                            android.widget.Toast.makeText(context, "Supabase HTTP Error: $code | $errStream", android.widget.Toast.LENGTH_LONG).show()
+                        }
                     }
                 }
             } catch (e: Exception) {

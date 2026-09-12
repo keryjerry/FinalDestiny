@@ -174,7 +174,7 @@ fun FinalDestinyApp(repository: AppRepository) {
         try {
             android.widget.Toast.makeText(context, "Checking for updates...", android.widget.Toast.LENGTH_SHORT).show()
             val localVerCode = com.devil.finaldestiny.BuildConfig.VERSION_CODE
-            val info = AppInstallerEngine.checkSupabaseAppVersion(currentVersionCode = localVerCode)
+            val info = AppInstallerEngine.checkSupabaseAppVersion(context = context, currentVersionCode = localVerCode)
             if (info != null) {
                 android.widget.Toast.makeText(context, "Supabase: v${info.versionCode} (Local:$localVerCode)", android.widget.Toast.LENGTH_LONG).show()
                 updateInfoState = info
