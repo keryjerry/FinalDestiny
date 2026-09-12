@@ -34,57 +34,72 @@ object AppInstallerEngine {
     ): UpdateReleaseInfo? = withContext(Dispatchers.IO) {
         val supabaseUrl = "https://twwezpogwtmjavoemdvi.supabase.co"
         val anonKey = "sb_publishable_RiDqsSCPGbWGxd6570P1FA_y_L10U_w"
-        val endpoint = "$supabaseUrl/rest/v1/app_version_config?select=*&limit=1"
 
-        try {
-            val url = URL(endpoint)
-            val connection = (url.openConnection() as HttpURLConnection).apply {
-                requestMethod = "GET"
-                connectTimeout = 6000
-                readTimeout = 6000
-                setRequestProperty("apikey", anonKey)
-                setRequestProperty("Authorization", "Bearer $anonKey")
-                setRequestProperty("Accept", "application/json")
-            }
+        var fetchedCode = 0
+        var minSupported = 1
+        var downloadUrl = "https://github.com/keryjerry/FinalDestiny/releases/latest/download/Final.Destiny.apk"
+        var releaseNotes = "• New features and performance improvements available!"
+        var isForce = false
 
-            if (connection.responseCode in 200..299) {
-                val jsonString = connection.inputStream.bufferedReader().use { it.readText() }
-                val jsonArray = org.json.JSONArray(jsonString)
-                if (jsonArray.length() > 0) {
-                    val obj = jsonArray.getJSONObject(0)
-                    val minSupported = obj.optInt("min_supported_version", 1)
-                    val fetchedCode = when {
-                        obj.has("latest_version_code") -> obj.optInt("latest_version_code", 2)
-                        else -> obj.optInt("latest_version", 2)
-                    }
-                    val downloadUrl = when {
-                        obj.has("apk_download_url") -> obj.optString("apk_download_url", "https://github.com/keryjerry/FinalDestiny/releases/latest/download/Final.Destiny.apk")
-                        else -> obj.optString("download_url", "https://github.com/keryjerry/FinalDestiny/releases/latest/download/Final.Destiny.apk")
-                    }
-                    val releaseNotes = when {
-                        obj.has("changelog") -> obj.optString("changelog")
-                        obj.has("release_notes") -> obj.optString("release_notes")
-                        else -> "• New features and performance improvements available!"
-                    }
+        val endpoints = listOf(
+            "$supabaseUrl/rest/v1/app_config?select=key,value",
+            "$supabaseUrl/rest/v1/app_version_config?select=*&limit=1"
+        )
 
-                    Log.d("APP_UPDATE_DEBUG", "Local: ${BuildConfig.VERSION_CODE}")
-                    Log.d("APP_UPDATE_DEBUG", "Remote: $fetchedCode")
-                    Log.d("APP_UPDATE_DEBUG", "Comparison condition met: ${fetchedCode > BuildConfig.VERSION_CODE}")
+        for (endpoint in endpoints) {
+            try {
+                val url = URL(endpoint)
+                val connection = (url.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 6000
+                    readTimeout = 6000
+                    setRequestProperty("apikey", anonKey)
+                    setRequestProperty("Authorization", "Bearer $anonKey")
+                    setRequestProperty("Accept", "application/json")
+                }
 
-                    val effectiveLocalCode = if (currentVersionCode > 0) currentVersionCode else BuildConfig.VERSION_CODE
-                    if (fetchedCode > BuildConfig.VERSION_CODE || fetchedCode > effectiveLocalCode) {
-                        return@withContext UpdateReleaseInfo(
-                            versionCode = fetchedCode,
-                            versionName = "v$fetchedCode.0",
-                            apkDownloadUrl = downloadUrl,
-                            changelog = releaseNotes,
-                            isMandatory = (effectiveLocalCode < minSupported || BuildConfig.VERSION_CODE < minSupported)
-                        )
+                if (connection.responseCode in 200..299) {
+                    val jsonString = connection.inputStream.bufferedReader().use { it.readText() }
+                    val jsonArray = org.json.JSONArray(jsonString)
+                    if (jsonArray.length() > 0) {
+                        for (i in 0 until jsonArray.length()) {
+                            val obj = jsonArray.getJSONObject(i)
+                            if (obj.has("key") && obj.has("value")) {
+                                val k = obj.optString("key")
+                                val v = obj.optString("value")
+                                if (k == "latest_version_code") fetchedCode = v.toIntOrNull() ?: 0
+                                if (k == "latest_apk_url" || k == "apk_download_url") downloadUrl = v
+                                if (k == "release_notes" || k == "changelog") releaseNotes = v
+                                if (k == "force_update") isForce = v.toBoolean()
+                            } else {
+                                minSupported = obj.optInt("min_supported_version", obj.optInt("min_version", 1))
+                                if (obj.has("latest_version_code")) fetchedCode = obj.optInt("latest_version_code", 2)
+                                else if (obj.has("latest_version")) fetchedCode = obj.optInt("latest_version", 2)
+                                if (obj.has("apk_download_url")) downloadUrl = obj.optString("apk_download_url", downloadUrl)
+                                if (obj.has("changelog")) releaseNotes = obj.optString("changelog", releaseNotes)
+                            }
+                        }
+                        if (fetchedCode > 0) break
                     }
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error checking endpoint $endpoint", e)
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error checking Supabase app version", e)
+        }
+
+        Log.d("APP_UPDATE_DEBUG", "Local: ${BuildConfig.VERSION_CODE}")
+        Log.d("APP_UPDATE_DEBUG", "Remote: $fetchedCode")
+        Log.d("APP_UPDATE_DEBUG", "Comparison condition met: ${fetchedCode > BuildConfig.VERSION_CODE}")
+
+        val effectiveLocalCode = if (currentVersionCode > 0) currentVersionCode else BuildConfig.VERSION_CODE
+        if (fetchedCode > BuildConfig.VERSION_CODE || fetchedCode > effectiveLocalCode) {
+            return@withContext UpdateReleaseInfo(
+                versionCode = fetchedCode,
+                versionName = "v$fetchedCode.0",
+                apkDownloadUrl = downloadUrl,
+                changelog = releaseNotes,
+                isMandatory = isForce || (effectiveLocalCode < minSupported || BuildConfig.VERSION_CODE < minSupported)
+            )
         }
 
         return@withContext null

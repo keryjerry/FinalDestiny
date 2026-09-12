@@ -687,6 +687,7 @@ fun FinalDestinyApp(repository: AppRepository) {
 
     val currentUpdate = updateInfoState
     if (currentUpdate != null) {
+        android.util.Log.d("UPDATE_FLOW", "Rendering dialog on screen now")
         UpdateInstallerModalDialog(
             updateInfo = currentUpdate,
             downloadProgress = updateDownloadProgress,
