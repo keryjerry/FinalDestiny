@@ -6,6 +6,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -79,6 +81,18 @@ class MainActivity : ComponentActivity(), PaymentResultWithDataListener {
         }
         repository.initializeUserSession(this)
         enableEdgeToEdge()
+
+        lifecycleScope.launch {
+            try {
+                val info = AppInstallerEngine.checkSupabaseAppVersion()
+                if (info != null && info.isUpdateAvailable) {
+                    globalUpdateInfo.value = info
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+
         setContent {
             FinalDestinyTheme {
                 FinalDestinyApp(repository = repository)
@@ -98,6 +112,7 @@ class MainActivity : ComponentActivity(), PaymentResultWithDataListener {
 
     companion object {
         var paymentResultListener: ((Boolean, String) -> Unit)? = null
+        var globalUpdateInfo = androidx.compose.runtime.mutableStateOf<UpdateReleaseInfo?>(null)
     }
 }
 
@@ -685,7 +700,7 @@ fun FinalDestinyApp(repository: AppRepository) {
         )
     }
 
-    val currentUpdate = updateInfoState
+    val currentUpdate = updateInfoState ?: MainActivity.globalUpdateInfo.value
     if (currentUpdate != null && currentUpdate.isUpdateAvailable) {
         android.util.Log.d("UPDATE_FLOW", "Rendering dialog on screen now: isUpdateAvailable=true")
         UpdateInstallerModalDialog(
@@ -709,6 +724,7 @@ fun FinalDestinyApp(repository: AppRepository) {
             },
             onDismiss = {
                 updateInfoState = null
+                MainActivity.globalUpdateInfo.value = null
             }
         )
     }
