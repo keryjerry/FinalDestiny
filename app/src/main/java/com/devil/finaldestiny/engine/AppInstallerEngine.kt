@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import android.util.Log
+import android.widget.Toast
 import com.devil.finaldestiny.BuildConfig
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
@@ -39,102 +40,114 @@ object AppInstallerEngine {
         context: Context? = null,
         currentVersionCode: Int = 1
     ): UpdateReleaseInfo? = withContext(Dispatchers.IO) {
-        val supabaseUrl = "https://twwezpogwtmjavoemdvi.supabase.co"
-        val anonKey = "sb_publishable_RiDqsSCPGbWGxd6570P1FA_y_L10U_w"
+        try {
+            val supabaseUrl = "https://twwezpogwtmjavoemdvi.supabase.co"
+            val anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3d2V6cG9nd3RtamF2b2VtZHZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3MDQ3ODYsImV4cCI6MjEwNDI4MDc4Nn0.WFJm2x1h9qOEVcpOjeXGTcsqtjNMgocM5P2_1LaTWEQ"
 
-        var fetchedCode = 0
-        var minSupported = 1
-        var downloadUrl = "https://github.com/keryjerry/FinalDestiny/releases/latest/download/Final.Destiny.apk"
-        var releaseNotes = "• New features and performance improvements available!"
-        var isForce = false
+            var fetchedCode = 0
+            var minSupported = 1
+            var downloadUrl = "https://github.com/keryjerry/FinalDestiny/releases/latest/download/Final.Destiny.apk"
+            var releaseNotes = "• New features and performance improvements available!"
+            var isForce = false
 
-        val endpoints = listOf(
-            "$supabaseUrl/rest/v1/app_config?select=key,value",
-            "$supabaseUrl/rest/v1/app_version_config?select=*&limit=1"
-        )
+            val endpoints = listOf(
+                "$supabaseUrl/rest/v1/app_config?select=*",
+                "$supabaseUrl/rest/v1/app_config?select=key,value",
+                "$supabaseUrl/rest/v1/app_version_config?select=*&limit=1"
+            )
 
-        for (endpoint in endpoints) {
-            try {
-                val url = URL(endpoint)
-                val connection = (url.openConnection() as HttpURLConnection).apply {
-                    requestMethod = "GET"
-                    connectTimeout = 6000
-                    readTimeout = 6000
-                    setRequestProperty("apikey", anonKey)
-                    setRequestProperty("Authorization", "Bearer $anonKey")
-                    setRequestProperty("Accept", "application/json")
-                }
+            for (endpoint in endpoints) {
+                try {
+                    val url = URL(endpoint)
+                    val connection = (url.openConnection() as HttpURLConnection).apply {
+                        setRequestMethod("GET")
+                        connectTimeout = 6000
+                        readTimeout = 6000
+                        setRequestProperty("apikey", anonKey)
+                        setRequestProperty("Authorization", "Bearer $anonKey")
+                        setRequestProperty("Content-Type", "application/json")
+                        setRequestProperty("Accept", "application/json")
+                    }
 
-                val code = connection.responseCode
-                Log.e("UPDATE_FORCE_CHECK", "Endpoint: $endpoint | Response Code: $code")
+                    val code = connection.responseCode
+                    Log.e("UPDATE_FORCE_CHECK", "Endpoint: $endpoint | Response Code: $code")
 
-                if (code in 200..299) {
-                    val jsonString = connection.inputStream.bufferedReader().use { it.readText() }
-                    Log.e("UPDATE_FORCE_CHECK", "Raw JSON from Supabase: " + jsonString)
+                    if (code in 200..299) {
+                        val jsonString = connection.inputStream.bufferedReader().use { it.readText() }
+                        Log.e("UPDATE_FORCE_CHECK", "Raw JSON from Supabase: " + jsonString)
 
-                    if (jsonString.trim() == "[]") {
+                        if (jsonString.trim() == "[]") {
+                            if (context != null) {
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, "Supabase returned EMPTY ARRAY [] (Check Table RLS)", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        }
+
+                        val jsonArray = org.json.JSONArray(jsonString)
+                        if (jsonArray.length() > 0) {
+                            for (i in 0 until jsonArray.length()) {
+                                val obj = jsonArray.getJSONObject(i)
+                                if (obj.has("key") && obj.has("value")) {
+                                    val k = obj.optString("key")
+                                    val v = obj.optString("value")
+                                    when (k) {
+                                        "latest_version_code" -> fetchedCode = v.toIntOrNull() ?: 0
+                                        "latest_apk_url", "apk_download_url" -> downloadUrl = v
+                                        "release_notes", "changelog" -> releaseNotes = v
+                                        "force_update" -> isForce = v.toBoolean()
+                                    }
+                                } else {
+                                    minSupported = obj.optInt("min_supported_version", obj.optInt("min_version", 1))
+                                    if (obj.has("latest_version_code")) fetchedCode = obj.optInt("latest_version_code", 2)
+                                    else if (obj.has("latest_version")) fetchedCode = obj.optInt("latest_version", 2)
+                                    if (obj.has("apk_download_url")) downloadUrl = obj.optString("apk_download_url", downloadUrl)
+                                    if (obj.has("changelog")) releaseNotes = obj.optString("changelog", releaseNotes)
+                                }
+                            }
+                            if (fetchedCode > 0) break
+                        }
+                    } else {
+                        val errStream = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "No error body"
+                        Log.e("UPDATE_FORCE_CHECK", "Supabase HTTP Error: $code | $errStream")
                         if (context != null) {
                             withContext(Dispatchers.Main) {
-                                android.widget.Toast.makeText(context, "Supabase returned EMPTY ARRAY [] (Check Table RLS)", android.widget.Toast.LENGTH_LONG).show()
+                                Toast.makeText(context, "Supabase HTTP Error: $code | $errStream", Toast.LENGTH_LONG).show()
                             }
                         }
                     }
-
-                    val jsonArray = org.json.JSONArray(jsonString)
-                    if (jsonArray.length() > 0) {
-                        for (i in 0 until jsonArray.length()) {
-                            val obj = jsonArray.getJSONObject(i)
-                            if (obj.has("key") && obj.has("value")) {
-                                val k = obj.optString("key")
-                                val v = obj.optString("value")
-                                when (k) {
-                                    "latest_version_code" -> fetchedCode = v.toIntOrNull() ?: 0
-                                    "latest_apk_url", "apk_download_url" -> downloadUrl = v
-                                    "release_notes", "changelog" -> releaseNotes = v
-                                    "force_update" -> isForce = v.toBoolean()
-                                }
-                            } else {
-                                minSupported = obj.optInt("min_supported_version", obj.optInt("min_version", 1))
-                                if (obj.has("latest_version_code")) fetchedCode = obj.optInt("latest_version_code", 2)
-                                else if (obj.has("latest_version")) fetchedCode = obj.optInt("latest_version", 2)
-                                if (obj.has("apk_download_url")) downloadUrl = obj.optString("apk_download_url", downloadUrl)
-                                if (obj.has("changelog")) releaseNotes = obj.optString("changelog", releaseNotes)
-                            }
-                        }
-                        if (fetchedCode > 0) break
-                    }
-                } else {
-                    val errStream = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "No error body"
-                    Log.e("UPDATE_FORCE_CHECK", "Supabase HTTP Error: $code | $errStream")
-                    if (context != null) {
-                        withContext(Dispatchers.Main) {
-                            android.widget.Toast.makeText(context, "Supabase HTTP Error: $code | $errStream", android.widget.Toast.LENGTH_LONG).show()
-                        }
-                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error checking endpoint $endpoint", e)
+                    throw e
                 }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error checking endpoint $endpoint", e)
             }
+
+            Log.e("UPDATE_FORCE_CHECK", "Parsed fetchedCode: $fetchedCode vs Local: ${BuildConfig.VERSION_CODE}")
+            Log.d("APP_UPDATE_DEBUG", "Local: ${BuildConfig.VERSION_CODE}")
+            Log.d("APP_UPDATE_DEBUG", "Remote: $fetchedCode")
+            Log.d("APP_UPDATE_DEBUG", "Comparison condition met: ${fetchedCode > BuildConfig.VERSION_CODE}")
+
+            val effectiveLocalCode = if (currentVersionCode > 0) currentVersionCode else BuildConfig.VERSION_CODE
+            if (fetchedCode > 0) {
+                return@withContext UpdateReleaseInfo(
+                    versionCode = fetchedCode,
+                    versionName = "v$fetchedCode.0",
+                    apkDownloadUrl = downloadUrl,
+                    changelog = releaseNotes,
+                    isMandatory = isForce || (effectiveLocalCode < minSupported || BuildConfig.VERSION_CODE < minSupported),
+                    isUpdateAvailable = (fetchedCode > BuildConfig.VERSION_CODE || fetchedCode > effectiveLocalCode)
+                )
+            }
+
+            return@withContext null
+        } catch (e: Exception) {
+            if (context != null) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, "Crash: ${e::class.java.simpleName}:${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+            null
         }
-
-        Log.e("UPDATE_FORCE_CHECK", "Parsed fetchedCode: $fetchedCode vs Local: ${BuildConfig.VERSION_CODE}")
-        Log.d("APP_UPDATE_DEBUG", "Local: ${BuildConfig.VERSION_CODE}")
-        Log.d("APP_UPDATE_DEBUG", "Remote: $fetchedCode")
-        Log.d("APP_UPDATE_DEBUG", "Comparison condition met: ${fetchedCode > BuildConfig.VERSION_CODE}")
-
-        val effectiveLocalCode = if (currentVersionCode > 0) currentVersionCode else BuildConfig.VERSION_CODE
-        if (fetchedCode > 0) {
-            return@withContext UpdateReleaseInfo(
-                versionCode = fetchedCode,
-                versionName = "v$fetchedCode.0",
-                apkDownloadUrl = downloadUrl,
-                changelog = releaseNotes,
-                isMandatory = isForce || (effectiveLocalCode < minSupported || BuildConfig.VERSION_CODE < minSupported),
-                isUpdateAvailable = (fetchedCode > BuildConfig.VERSION_CODE || fetchedCode > effectiveLocalCode)
-            )
-        }
-
-        return@withContext null
     }
 
     /**

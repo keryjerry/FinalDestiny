@@ -171,6 +171,7 @@ fun FinalDestinyApp(repository: AppRepository) {
 
     LaunchedEffect(Unit) {
         repository.refreshNotifications()
+        var hasException = false
         try {
             android.widget.Toast.makeText(context, "Checking for updates...", android.widget.Toast.LENGTH_SHORT).show()
             val localVerCode = com.devil.finaldestiny.BuildConfig.VERSION_CODE
@@ -182,9 +183,11 @@ fun FinalDestinyApp(repository: AppRepository) {
                     showUpdateDialog = true
                 }
             } else {
+                hasException = true
                 android.widget.Toast.makeText(context, "Update check returned NULL", android.widget.Toast.LENGTH_LONG).show()
             }
         } catch (e: Exception) {
+            hasException = true
             android.widget.Toast.makeText(context, "Update check error: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
         }
     }
