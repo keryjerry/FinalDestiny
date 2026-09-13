@@ -127,12 +127,16 @@ fun ReelViewerScreen(
                         )
                     }
             ) {
-                // EDGE-TO-EDGE EXOPLAYER INSTANCE
-                ReelExoPlayerView(
-                    videoUri = reel.mediaUrl.ifBlank { reel.mediaUri ?: "" },
-                    distanceFromCurrentPage = distanceFromCurrentPage,
+                // EDGE-TO-EDGE EXOPLAYER INSTANCE WITH PINCH TO ZOOM
+                com.devil.finaldestiny.ui.components.PinchZoomContainer(
                     modifier = Modifier.fillMaxSize()
-                )
+                ) {
+                    ReelExoPlayerView(
+                        videoUri = reel.mediaUrl.ifBlank { reel.mediaUri ?: "" },
+                        distanceFromCurrentPage = distanceFromCurrentPage,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
 
                 // BOTTOM & SIDE SHADOW GRADIENT OVERLAY
                 Box(

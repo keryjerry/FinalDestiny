@@ -641,31 +641,35 @@ fun SecondaryDashboardScreen(
                         .padding(bottom = 14.dp)
                 ) {
                     // FULL-BLEED MEDIA CONTAINER WITH TOP 4 & BOTTOM 6 INSTAGRAM OVERLAYS
-                    Box(
-                        contentAlignment = Alignment.Center,
+                    com.devil.finaldestiny.ui.components.PinchZoomContainer(
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(if (isReel) 9f / 16f else 4f / 5f)
-                            .background(NavyTextPrimary)
-                            .pointerInput(post.id) {
-                                detectTapGestures(
-                                    onTap = {
-                                        if (isReel) {
-                                            val reelsOnly = momentPosts.filter {
-                                                val url = it.mediaUrl.ifBlank { it.mediaUri ?: "" }
-                                                it.mediaType == MediaType.REEL_VIDEO || (url.isNotBlank() && (url.endsWith(".mp4", ignoreCase = true) || url.contains("video", ignoreCase = true)))
-                                            }
-                                            val reelIdx = reelsOnly.indexOfFirst { r -> r.id == post.id }.coerceAtLeast(0)
-                                            onNavigateToReelViewer(reelIdx)
-                                        }
-                                    },
-                                    onDoubleTap = {
-                                        onLikePost(post.id)
-                                        Toast.makeText(context, "❤️ Loved!", Toast.LENGTH_SHORT).show()
-                                    }
-                                )
-                            }
                     ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(NavyTextPrimary)
+                                .pointerInput(post.id) {
+                                    detectTapGestures(
+                                        onTap = {
+                                            if (isReel) {
+                                                val reelsOnly = momentPosts.filter {
+                                                    val url = it.mediaUrl.ifBlank { it.mediaUri ?: "" }
+                                                    it.mediaType == MediaType.REEL_VIDEO || (url.isNotBlank() && (url.endsWith(".mp4", ignoreCase = true) || url.contains("video", ignoreCase = true)))
+                                                }
+                                                val reelIdx = reelsOnly.indexOfFirst { r -> r.id == post.id }.coerceAtLeast(0)
+                                                onNavigateToReelViewer(reelIdx)
+                                            }
+                                        },
+                                        onDoubleTap = {
+                                            onLikePost(post.id)
+                                            Toast.makeText(context, "❤️ Loved!", Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                }
+                        ) {
                         if (isActivePlaying && effectiveMediaUrl.isNotBlank()) {
                             androidx.compose.ui.viewinterop.AndroidView(
                                 factory = { ctx ->
@@ -952,6 +956,7 @@ fun SecondaryDashboardScreen(
                             }
                         }
                     }
+                }
 
                     // --------------------------------------------------------
                     // BOTTOM ENGAGEMENT DETAILS (STRICT WRAP CONTENT HEIGHT, NO DEAD WHITESPACE)
