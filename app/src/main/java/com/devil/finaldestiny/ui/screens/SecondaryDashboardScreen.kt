@@ -72,6 +72,9 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.graphics.graphicsLayer
+import coil.request.videoFrameMillis
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -275,6 +278,15 @@ fun SecondaryDashboardScreen(
                 repeatMode = androidx.media3.common.Player.REPEAT_MODE_ONE
                 volume = 0f
             }
+    }
+
+    val videoImageLoader = remember(context) {
+        coil.ImageLoader.Builder(context)
+            .components {
+                add(coil.decode.VideoFrameDecoder.Factory())
+            }
+            .crossfade(true)
+            .build()
     }
 
     var isFeedAudioMuted by remember { mutableStateOf(true) }
@@ -644,6 +656,52 @@ fun SecondaryDashboardScreen(
                 val isActivePlaying = isReel && post.id == activePlayingPostId
                 var isExpandedCaption by remember { mutableStateOf(false) }
 
+                var isVideoReadyToRender by remember(isActivePlaying) { mutableStateOf(false) }
+
+                DisposableEffect(isActivePlaying, effectiveMediaUrl, sharedExoPlayer) {
+                    if (!isActivePlaying) {
+                        isVideoReadyToRender = false
+                        onDispose { }
+                    } else {
+                        val listener = object : androidx.media3.common.Player.Listener {
+                            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                                if (isPlaying && sharedExoPlayer.playbackState == androidx.media3.common.Player.STATE_READY) {
+                                    isVideoReadyToRender = true
+                                }
+                            }
+
+                            override fun onPlaybackStateChanged(playbackState: Int) {
+                                if (playbackState == androidx.media3.common.Player.STATE_READY && sharedExoPlayer.isPlaying) {
+                                    isVideoReadyToRender = true
+                                }
+                            }
+
+                            override fun onRenderedFirstFrame() {
+                                isVideoReadyToRender = true
+                            }
+                        }
+
+                        if (sharedExoPlayer.playbackState == androidx.media3.common.Player.STATE_READY &&
+                            sharedExoPlayer.isPlaying &&
+                            sharedExoPlayer.currentMediaItem?.localConfiguration?.uri?.toString() == effectiveMediaUrl
+                        ) {
+                            isVideoReadyToRender = true
+                        }
+
+                        sharedExoPlayer.addListener(listener)
+                        onDispose {
+                            sharedExoPlayer.removeListener(listener)
+                            isVideoReadyToRender = false
+                        }
+                    }
+                }
+
+                val playerAlpha by animateFloatAsState(
+                    targetValue = if (isActivePlaying && isVideoReadyToRender) 1f else 0f,
+                    animationSpec = tween(durationMillis = 200),
+                    label = "PlayerAlpha"
+                )
+
                 LaunchedEffect(isActivePlaying, effectiveMediaUrl) {
                     if (isActivePlaying && effectiveMediaUrl.isNotBlank()) {
                         val mediaUri = Uri.parse(effectiveMediaUrl)
@@ -702,8 +760,10 @@ fun SecondaryDashboardScreen(
                             coil.compose.AsyncImage(
                                 model = coil.request.ImageRequest.Builder(context)
                                     .data(effectiveMediaUrl)
+                                    .videoFrameMillis(500)
                                     .crossfade(true)
                                     .build(),
+                                imageLoader = videoImageLoader,
                                 contentDescription = "Uploaded Media",
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.fillMaxSize()
@@ -744,6 +804,7 @@ fun SecondaryDashboardScreen(
                                         player = sharedExoPlayer
                                         useController = false
                                         resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                                        setBackgroundColor(android.graphics.Color.TRANSPARENT)
                                     }
                                 },
                                 update = { playerView ->
@@ -751,7 +812,9 @@ fun SecondaryDashboardScreen(
                                         playerView.player = sharedExoPlayer
                                     }
                                 },
-                                modifier = Modifier.fillMaxSize()
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer { alpha = playerAlpha }
                             )
 
                             // Floating Mute/Unmute Audio Speaker Toggle
