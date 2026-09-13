@@ -287,16 +287,38 @@ fun SecondaryDashboardScreen(
 
     val feedListState = rememberLazyListState()
 
-    val activePlayingPostId by remember {
+    val videoPostIds = remember(momentPosts) {
+        momentPosts.filter { post ->
+            val url = post.mediaUrl.ifBlank { post.mediaUri ?: "" }
+            post.mediaType == MediaType.REEL_VIDEO ||
+                    (url.isNotBlank() && (url.endsWith(".mp4", ignoreCase = true) || url.contains("video", ignoreCase = true)))
+        }.map { it.id }.toSet()
+    }
+
+    val activePlayingPostId by remember(videoPostIds) {
         derivedStateOf {
             val layoutInfo = feedListState.layoutInfo
             val visibleItems = layoutInfo.visibleItemsInfo
-            if (visibleItems.isEmpty()) null
+            if (visibleItems.isEmpty() || videoPostIds.isEmpty()) null
             else {
-                val viewportCenter = layoutInfo.viewportStartOffset + (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset) / 2
+                val viewportStart = layoutInfo.viewportStartOffset
+                val viewportEnd = layoutInfo.viewportEndOffset
+                val viewportCenter = viewportStart + (viewportEnd - viewportStart) / 2
+
                 visibleItems
-                    .filter { item -> item.key is String && (item.key as String).isNotBlank() }
-                    .minByOrNull { item -> kotlin.math.abs((item.offset + item.size / 2) - viewportCenter) }
+                    .filter { item ->
+                        item.key is String && videoPostIds.contains(item.key as String)
+                    }
+                    .filter { item ->
+                        val itemTop = item.offset.coerceAtLeast(viewportStart)
+                        val itemBottom = (item.offset + item.size).coerceAtMost(viewportEnd)
+                        val visibleHeight = (itemBottom - itemTop).coerceAtLeast(0)
+                        visibleHeight >= (item.size * 0.35f)
+                    }
+                    .minByOrNull { item ->
+                        val itemCenter = item.offset + item.size / 2
+                        kotlin.math.abs(itemCenter - viewportCenter)
+                    }
                     ?.key as? String
             }
         }
@@ -624,14 +646,19 @@ fun SecondaryDashboardScreen(
 
                 LaunchedEffect(isActivePlaying, effectiveMediaUrl) {
                     if (isActivePlaying && effectiveMediaUrl.isNotBlank()) {
-                        val mediaItem = androidx.media3.common.MediaItem.fromUri(Uri.parse(effectiveMediaUrl))
+                        val mediaUri = Uri.parse(effectiveMediaUrl)
                         if (sharedExoPlayer.currentMediaItem?.localConfiguration?.uri?.toString() != effectiveMediaUrl) {
+                            val mediaItem = androidx.media3.common.MediaItem.fromUri(mediaUri)
                             sharedExoPlayer.setMediaItem(mediaItem)
                             sharedExoPlayer.prepare()
                         }
                         sharedExoPlayer.volume = if (isFeedAudioMuted) 0f else 1f
                         sharedExoPlayer.playWhenReady = true
+                        sharedExoPlayer.play()
                         onIncrementView(post.id)
+                    } else if (!isActivePlaying && sharedExoPlayer.currentMediaItem?.localConfiguration?.uri?.toString() == effectiveMediaUrl) {
+                        sharedExoPlayer.pause()
+                        sharedExoPlayer.playWhenReady = false
                     }
                 }
 
@@ -670,6 +697,46 @@ fun SecondaryDashboardScreen(
                                     )
                                 }
                         ) {
+                        // BASE THUMBNAIL PLACEHOLDER LAYER (ALWAYS RENDERED FIRST TO PREVENT BLACK FLICKER/FREEZING ON SCROLL)
+                        if (effectiveMediaUrl.isNotBlank()) {
+                            coil.compose.AsyncImage(
+                                model = coil.request.ImageRequest.Builder(context)
+                                    .data(effectiveMediaUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Uploaded Media",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else if (localBitmap != null) {
+                            Image(
+                                bitmap = localBitmap,
+                                contentDescription = "Uploaded Media",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                Icon(
+                                    if (isReel) Icons.Default.Videocam else Icons.Default.PhotoLibrary,
+                                    contentDescription = null,
+                                    tint = BrightCyanAccent,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = if (isReel) "🎬 9:16 Vertical Reel Video" else "📸 4:5 Photo Post",
+                                    color = Color.White,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        // VIDEO PLAYER OVERLAY SURFACE (ACTIVE WHEN IN CENTER VIEWPORT)
                         if (isActivePlaying && effectiveMediaUrl.isNotBlank()) {
                             androidx.compose.ui.viewinterop.AndroidView(
                                 factory = { ctx ->
@@ -705,42 +772,6 @@ fun SecondaryDashboardScreen(
                                     contentDescription = if (isFeedAudioMuted) "Unmute Video" else "Mute Video",
                                     tint = Color.White,
                                     modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        } else if (effectiveMediaUrl.isNotBlank()) {
-                            coil.compose.AsyncImage(
-                                model = coil.request.ImageRequest.Builder(context)
-                                    .data(effectiveMediaUrl)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = "Uploaded Media",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        } else if (localBitmap != null) {
-                            Image(
-                                bitmap = localBitmap,
-                                contentDescription = "Uploaded Media",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        } else {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.padding(16.dp)
-                            ) {
-                                Icon(
-                                    if (isReel) Icons.Default.Videocam else Icons.Default.PhotoLibrary,
-                                    contentDescription = null,
-                                    tint = BrightCyanAccent,
-                                    modifier = Modifier.size(48.dp)
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = if (isReel) "🎬 9:16 Vertical Reel Video" else "📸 4:5 Photo Post",
-                                    color = Color.White,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold
                                 )
                             }
                         }
