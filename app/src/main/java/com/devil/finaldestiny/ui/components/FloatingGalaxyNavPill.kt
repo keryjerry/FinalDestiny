@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.Icon
@@ -135,14 +135,14 @@ fun FloatingGalaxyNavPill(
                 )
             }
 
-            // 2. REELS / FEED ICON (Destiny Live Moment Feed)
+            // 2. MOMENT FEED ICON (Destiny Social Feed)
             GalaxyNavItem(
                 isSelected = currentScreen == Screen.SECONDARY_FEED,
                 onClick = { onNavigate(Screen.SECONDARY_FEED) }
             ) { isSelected ->
                 Icon(
-                    imageVector = Icons.Default.Movie,
-                    contentDescription = "Reels",
+                    imageVector = Icons.Default.PhotoLibrary,
+                    contentDescription = "Feed",
                     tint = if (isSelected) Color(0xFF38BDF8) else Color(0xFF94A3B8),
                     modifier = Modifier.size(24.dp)
                 )

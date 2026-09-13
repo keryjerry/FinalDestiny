@@ -43,9 +43,9 @@ fun PrimaryDashboardScreen(
     user: UserProfile,
     notifications: List<AppNotification> = emptyList(),
     onOpenNotifications: () -> Unit = {},
-    onNavigateToSwipe: () -> Unit,
-    onNavigateToAudioRoom: () -> Unit,
-    onNavigateToVideoRoom: () -> Unit,
+    onNavigateToSwipe: () -> Unit = {},
+    onNavigateToAudioRoom: () -> Unit = {},
+    onNavigateToVideoRoom: () -> Unit = {},
     onNavigateToHostPortal: () -> Unit,
     onNavigateToVipStore: () -> Unit,
     onNavigateToSecondaryFeed: () -> Unit,
@@ -357,117 +357,6 @@ fun PrimaryDashboardScreen(
         // CORE APPLICATION HUB CARDS
         Text("CORE APPLICATION HUBS", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MetallicGold, letterSpacing = 1.sp)
         Spacer(modifier = Modifier.height(6.dp))
-
-        // 1. Live Audio Sofa Room Hub
-        Card(
-            colors = CardDefaults.cardColors(containerColor = CardBackground),
-            shape = RoundedCornerShape(14.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, MetallicGold, RoundedCornerShape(14.dp))
-                .clickable { onNavigateToAudioRoom() }
-                .padding(10.dp)
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(WineRedMedium)
-                    ) {
-                        Icon(Icons.Default.Mic, contentDescription = null, tint = MetallicGold, modifier = Modifier.size(20.dp))
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
-                        Text("10-Mic Red Velvet Audio Room", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = LightGold)
-                        Text("Achat Style Sofa Seats & MP3 Jukebox", fontSize = 10.sp, color = LightGold.copy(0.7f))
-                    }
-                }
-                Text("Enter 🎙️", fontSize = 11.sp, color = MetallicGold, fontWeight = FontWeight.Bold)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // 2. Video Broadcast & Co-Watching Stage
-        Card(
-            colors = CardDefaults.cardColors(containerColor = CardBackground),
-            shape = RoundedCornerShape(14.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, CrimsonVelvet, RoundedCornerShape(14.dp))
-                .clickable { onNavigateToVideoRoom() }
-                .padding(10.dp)
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(WineRedMedium)
-                    ) {
-                        Icon(Icons.Default.Videocam, contentDescription = null, tint = LiveIndicatorGreen, modifier = Modifier.size(20.dp))
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
-                        Text("HD Video Broadcast & YouTube Sync Stage", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = LightGold)
-                        Text("Live Cam Stream & YouTube Co-Watching", fontSize = 10.sp, color = LightGold.copy(0.7f))
-                    }
-                }
-                Text("Watch 📹", fontSize = 11.sp, color = LiveIndicatorGreen, fontWeight = FontWeight.Bold)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // 3. Tinder 9:16 Swipe Match Portal
-        Card(
-            colors = CardDefaults.cardColors(containerColor = CardBackground),
-            shape = RoundedCornerShape(14.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, CrimsonVelvet, RoundedCornerShape(14.dp))
-                .clickable { onNavigateToSwipe() }
-                .padding(10.dp)
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(WineRedMedium)
-                    ) {
-                        Icon(Icons.Default.Favorite, contentDescription = null, tint = HeartRed, modifier = Modifier.size(20.dp))
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Column {
-                        Text("Discover Match Swipe Cards", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = LightGold)
-                        Text("Swipe Right for Match & Instant 1v1 Calls", fontSize = 10.sp, color = LightGold.copy(0.7f))
-                    }
-                }
-                Text("Swipe ❤️", fontSize = 11.sp, color = HeartRed, fontWeight = FontWeight.Bold)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
 
         // 5. VIP Asset Store & Creator Monetization
         Row(

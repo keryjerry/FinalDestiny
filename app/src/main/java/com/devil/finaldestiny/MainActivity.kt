@@ -220,15 +220,6 @@ fun FinalDestinyApp(repository: AppRepository) {
                     user = user,
                     notifications = notifications,
                     onOpenNotifications = { currentScreen = Screen.NOTIFICATION },
-                    onNavigateToSwipe = { currentScreen = Screen.FINAL_DESTINY_DATING },
-                    onNavigateToAudioRoom = {
-                        isAudioRoomKeptInBackground = false
-                        currentScreen = Screen.LIVE_AUDIO_ROOM
-                    },
-                    onNavigateToVideoRoom = {
-                        isVideoRoomKeptInBackground = false
-                        currentScreen = Screen.LIVE_VIDEO_ROOM
-                    },
                     onNavigateToHostPortal = { currentScreen = Screen.CREATOR_MONETIZATION },
                     onNavigateToVipStore = { currentScreen = Screen.VIP_STORE },
                     onNavigateToSecondaryFeed = { currentScreen = Screen.SECONDARY_FEED },
@@ -248,7 +239,6 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onNavigateToCreatorHub = { currentScreen = Screen.CREATOR_HUB },
                     onNavigateToCreatorTools = { currentScreen = Screen.CREATOR_TOOLS },
                     onNavigateToSettings = { currentScreen = Screen.SETTINGS_ACTIVITY },
-                    onNavigateToDating = { currentScreen = Screen.FINAL_DESTINY_DATING },
                     onNavigateToAboutUs = { currentScreen = Screen.ABOUT_US },
                     onLogOut = {
                         com.devil.finaldestiny.data.SupabaseAuthClient.signOut(context)
@@ -260,10 +250,6 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onAddAccount = { email, name -> repository.addAccount(email, name, context) },
                     onRemoveAccount = { targetId -> repository.removeAccount(targetId, context) },
                     onOpenMediaPicker = { showMediaPickerSheet = true },
-                    onNavigateToReelViewer = { index ->
-                        selectedReelInitialIndex = index
-                        currentScreen = Screen.REEL_VIEWER
-                    },
                     onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
                 )
 
@@ -318,16 +304,8 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onToggleFollowAuthor = { postId -> repository.toggleFollowPostAuthor(postId) },
                     onToggleSavePost = { postId -> repository.toggleSavePost(postId) },
                     onIncrementView = { postId -> repository.incrementPostView(postId) },
-                    onStartLiveStream = {
-                        isVideoRoomKeptInBackground = false
-                        currentScreen = Screen.LIVE_VIDEO_ROOM
-                    },
                     onRefresh = { repository.refreshMomentsAndReels() },
                     onOpenMediaPicker = { showMediaPickerSheet = true },
-                    onNavigateToReelViewer = { index ->
-                        selectedReelInitialIndex = index
-                        currentScreen = Screen.REEL_VIEWER
-                    },
                     onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
                 )
 
@@ -347,55 +325,6 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onRefresh = { repository.refreshNotifications() },
                     onNavigateToFeed = { currentScreen = Screen.SECONDARY_FEED },
                     onBack = { currentScreen = Screen.SECONDARY_FEED }
-                )
-
-                Screen.DISCOVER_SWIPE -> DiscoverSwipeScreen(
-                    cards = swipeCards,
-                    matchedCard = matchedCard,
-                    onSwipeRight = { cardId -> repository.performSwipe(cardId, isLike = true, isSuperLike = false) },
-                    onSwipeLeft = { cardId -> repository.performSwipe(cardId, isLike = false, isSuperLike = false) },
-                    onSwipeUpSuperLike = { cardId -> repository.performSwipe(cardId, isLike = false, isSuperLike = true) },
-                    onDismissMatchModal = { repository.dismissMatchModal() },
-                    onStartCallInvitation = { currentScreen = Screen.LIVE_AUDIO_ROOM }
-                )
-
-                Screen.LIVE_AUDIO_ROOM -> LiveAudioRoomScreen(
-                    room = audioRoom,
-                    chatMessages = chatMessages,
-                    giftStoreItems = repository.giftStoreItems,
-                    moderationAlerts = moderationAlerts,
-                    onSendChatMessage = { text -> repository.sendChatMessage(text) },
-                    onSendGift = { gift -> repository.sendGiftInRoom(gift) },
-                    onToggleSeatMute = { seatIndex -> repository.toggleSeatMute(seatIndex) },
-                    onKickUser = { seatIndex -> repository.kickUserFromRoom(seatIndex) },
-                    onExitRoom = {
-                        isAudioRoomKeptInBackground = false
-                        currentScreen = Screen.PRIMARY_DASHBOARD
-                    },
-                    onKeepRoom = {
-                        isAudioRoomKeptInBackground = true
-                        currentScreen = Screen.PRIMARY_DASHBOARD
-                    }
-                )
-
-                Screen.LIVE_VIDEO_ROOM -> LiveVideoRoomScreen(
-                    room = videoRoom,
-                    chatMessages = chatMessages,
-                    giftStoreItems = repository.giftStoreItems,
-                    isVisionSentinelActive = isVisionSentinelActive,
-                    isVisionBlackoutTriggered = isVisionBlackoutTriggered,
-                    onTriggerSentinelTest = { repository.triggerVisionSentinelTest() },
-                    onRestoreSentinel = { repository.restoreVisionSentinel() },
-                    onSendGift = { gift -> repository.sendGiftInRoom(gift) },
-                    onSendChatMessage = { text -> repository.sendChatMessage(text) },
-                    onExitRoom = {
-                        isVideoRoomKeptInBackground = false
-                        currentScreen = Screen.PRIMARY_DASHBOARD
-                    },
-                    onKeepRoom = {
-                        isVideoRoomKeptInBackground = true
-                        currentScreen = Screen.PRIMARY_DASHBOARD
-                    }
                 )
 
                 Screen.VIP_STORE -> VipStoreScreen(
@@ -419,17 +348,6 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onSubmitKyc = { aadhaar, pan, legalName -> repository.submitKycForm(aadhaar, pan, legalName) },
                     onRequestPayout = { amt, method, upiOrAccount -> repository.requestBankPayout(amt, method, upiOrAccount) },
                     onRefresh = { repository.refreshCreatorAnalytics() },
-                    onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
-                )
-
-                Screen.FINAL_DESTINY_DATING -> FinalDestinyDatingScreen(
-                    user = user,
-                    cards = swipeCards,
-                    matchedCard = matchedCard,
-                    onSwipeRight = { cardId -> repository.performSwipe(cardId, isLike = true, isSuperLike = false) },
-                    onSwipeLeft = { cardId -> repository.performSwipe(cardId, isLike = false, isSuperLike = false) },
-                    onSwipeUpSuperLike = { cardId -> repository.performSwipe(cardId, isLike = false, isSuperLike = true) },
-                    onDismissMatchModal = { repository.dismissMatchModal() },
                     onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
                 )
 
@@ -464,28 +382,12 @@ fun FinalDestinyApp(repository: AppRepository) {
                     }
                 )
 
-                Screen.REEL_VIEWER -> {
-                    val reels = momentPosts.filter {
-                        it.mediaType == com.devil.finaldestiny.model.MediaType.REEL_VIDEO ||
-                                (!it.mediaUri.isNullOrEmpty() && (it.mediaUri.endsWith(".mp4") || it.mediaUri.contains("video"))) ||
-                                (!it.mediaUrl.isNullOrEmpty() && (it.mediaUrl.endsWith(".mp4") || it.mediaUrl.contains("video")))
-                    }
-                    ReelViewerScreen(
-                        reels = if (reels.isNotEmpty()) reels else momentPosts,
-                        initialIndex = selectedReelInitialIndex,
-                        onLikePost = { repository.toggleLikePost(it) },
-                        onAddComment = { id, text -> repository.addCommentToPost(id, text) },
-                        onToggleFollowAuthor = { repository.toggleFollowPostAuthor(it) },
-                        onToggleSavePost = { repository.toggleSavePost(it) },
-                        onIncrementView = { repository.incrementPostView(it) },
-                        onBack = { currentScreen = Screen.SECONDARY_FEED }
-                    )
-                }
+                else -> {}
             }
         }
 
         // EDGE-TO-EDGE FLOATING GALAXY NAVIGATION PILL CONTAINER (iOS DYNAMIC ISLAND STYLE)
-        if (currentScreen != Screen.AUTH_SPLASH && currentScreen != Screen.LIVENESS_CHECK && currentScreen != Screen.ABOUT_US && currentScreen != Screen.REEL_VIEWER) {
+        if (currentScreen != Screen.AUTH_SPLASH && currentScreen != Screen.LIVENESS_CHECK && currentScreen != Screen.ABOUT_US) {
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -493,111 +395,6 @@ fun FinalDestinyApp(repository: AppRepository) {
                     .padding(start = 24.dp, end = 24.dp, bottom = 12.dp)
                     .zIndex(99f)
             ) {
-                // FLOATING PIP MINI PLAYER BANNER WHEN A ROOM IS KEPT IN BACKGROUND
-                if (isAudioRoomKeptInBackground && currentScreen != Screen.LIVE_AUDIO_ROOM) {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = SkyBlueHeader),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                            .border(1.dp, BrightCyanAccent, RoundedCornerShape(12.dp))
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable { currentScreen = Screen.LIVE_AUDIO_ROOM }
-                            ) {
-                                Icon(Icons.Default.GraphicEq, contentDescription = null, tint = LiveIndicatorGreen, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Column {
-                                    Text("🔴 Audio Room Active (Keep Mode)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = NavyTextPrimary)
-                                    Text("Host: ${audioRoom.hostUser.name} | Tap to Re-enter ↩", fontSize = 9.sp, color = SkyBluePrimary)
-                                }
-                            }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Button(
-                                    onClick = { currentScreen = Screen.LIVE_AUDIO_ROOM },
-                                    colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary),
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                                    modifier = Modifier.height(26.dp)
-                                ) {
-                                    Text("Open ↩", fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                                }
-                                Spacer(modifier = Modifier.width(4.dp))
-                                IconButton(
-                                    onClick = {
-                                        isAudioRoomKeptInBackground = false
-                                        Toast.makeText(context, "Audio Room Closed", Toast.LENGTH_SHORT).show()
-                                    },
-                                    modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(Icons.Default.Close, contentDescription = "Close", tint = NavyTextPrimary, modifier = Modifier.size(16.dp))
-                                }
-                            }
-                        }
-                    }
-                } else if (isVideoRoomKeptInBackground && currentScreen != Screen.LIVE_VIDEO_ROOM) {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = SkyBlueHeader),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                            .border(1.dp, BrightCyanAccent, RoundedCornerShape(12.dp))
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clickable { currentScreen = Screen.LIVE_VIDEO_ROOM }
-                            ) {
-                                Icon(Icons.Default.Videocam, contentDescription = null, tint = LiveIndicatorGreen, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Column {
-                                    Text("🔴 Video Stream Active (Keep Mode)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = NavyTextPrimary)
-                                    Text("Host: ${videoRoom.hostUser.name} | Tap to Re-enter ↩", fontSize = 9.sp, color = SkyBluePrimary)
-                                }
-                            }
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Button(
-                                    onClick = { currentScreen = Screen.LIVE_VIDEO_ROOM },
-                                    colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary),
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                                    modifier = Modifier.height(26.dp)
-                                ) {
-                                    Text("Open ↩", fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                                }
-                                Spacer(modifier = Modifier.width(4.dp))
-                                IconButton(
-                                    onClick = {
-                                        isVideoRoomKeptInBackground = false
-                                        Toast.makeText(context, "Video Room Closed", Toast.LENGTH_SHORT).show()
-                                    },
-                                    modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(Icons.Default.Close, contentDescription = "Close", tint = NavyTextPrimary, modifier = Modifier.size(16.dp))
-                                }
-                            }
-                        }
-                    }
-                }
-
                 if (currentScreen == Screen.PRIMARY_DASHBOARD || currentScreen == Screen.SECONDARY_FEED) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -698,15 +495,6 @@ fun FinalDestinyApp(repository: AppRepository) {
                 repository.markNotificationAsRead(notification.id)
                 showNotificationModal = false
                 when (notification.actionTargetScreen) {
-                    "LIVE_AUDIO_ROOM" -> {
-                        isAudioRoomKeptInBackground = false
-                        currentScreen = Screen.LIVE_AUDIO_ROOM
-                    }
-                    "LIVE_VIDEO_ROOM" -> {
-                        isVideoRoomKeptInBackground = false
-                        currentScreen = Screen.LIVE_VIDEO_ROOM
-                    }
-                    "DISCOVER_SWIPE" -> currentScreen = Screen.DISCOVER_SWIPE
                     "SECONDARY_FEED" -> currentScreen = Screen.SECONDARY_FEED
                     "CREATOR_MONETIZATION" -> currentScreen = Screen.CREATOR_MONETIZATION
                     else -> {}
