@@ -235,6 +235,10 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onSaveProfile = { updated -> repository.updateUserProfile(updated, context) },
                     onNavigateToStore = { currentScreen = Screen.VIP_STORE },
                     onNavigateToSecondaryFeed = { currentScreen = Screen.SECONDARY_FEED },
+                    onNavigateToReelViewer = { index ->
+                        selectedReelInitialIndex = index
+                        currentScreen = Screen.REEL_VIEWER
+                    },
                     onNavigateToMonetization = { currentScreen = Screen.CREATOR_MONETIZATION },
                     onNavigateToCreatorHub = { currentScreen = Screen.CREATOR_HUB },
                     onNavigateToCreatorTools = { currentScreen = Screen.CREATOR_TOOLS },
@@ -304,6 +308,10 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onToggleFollowAuthor = { postId -> repository.toggleFollowPostAuthor(postId) },
                     onToggleSavePost = { postId -> repository.toggleSavePost(postId) },
                     onIncrementView = { postId -> repository.incrementPostView(postId) },
+                    onNavigateToReelViewer = { index ->
+                        selectedReelInitialIndex = index
+                        currentScreen = Screen.REEL_VIEWER
+                    },
                     onRefresh = { repository.refreshMomentsAndReels() },
                     onOpenMediaPicker = { showMediaPickerSheet = true },
                     onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
@@ -380,6 +388,20 @@ fun FinalDestinyApp(repository: AppRepository) {
                         }
                         currentScreen = Screen.PRIMARY_DASHBOARD
                     }
+                )
+
+                Screen.REEL_VIEWER -> ReelViewerScreen(
+                    reels = momentPosts.filter { post ->
+                        val url = post.mediaUrl.ifBlank { post.mediaUri ?: "" }
+                        post.mediaType == com.devil.finaldestiny.model.MediaType.REEL_VIDEO || (url.isNotBlank() && (url.endsWith(".mp4", ignoreCase = true) || url.contains("video", ignoreCase = true)))
+                    },
+                    initialIndex = selectedReelInitialIndex,
+                    onLikePost = { postId -> repository.toggleLikePost(postId) },
+                    onAddComment = { postId, text -> repository.addCommentToPost(postId, text) },
+                    onToggleFollowAuthor = { postId -> repository.toggleFollowPostAuthor(postId) },
+                    onToggleSavePost = { postId -> repository.toggleSavePost(postId) },
+                    onIncrementView = { postId -> repository.incrementPostView(postId) },
+                    onBack = { currentScreen = Screen.SECONDARY_FEED }
                 )
 
                 else -> {}
