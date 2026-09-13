@@ -386,42 +386,43 @@ fun FinalDestinyApp(repository: AppRepository) {
             }
         }
 
-        // EDGE-TO-EDGE FLOATING GALAXY NAVIGATION PILL CONTAINER (iOS DYNAMIC ISLAND STYLE)
+        // EDGE-TO-EDGE FLOATING GALAXY NAVIGATION PILL & FLOATING '+' ACTION BUTTON OVERLAYS
         if (currentScreen != Screen.AUTH_SPLASH && currentScreen != Screen.LIVENESS_CHECK && currentScreen != Screen.ABOUT_US) {
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(start = 24.dp, end = 24.dp, bottom = 12.dp)
-                    .zIndex(99f)
-            ) {
-                if (currentScreen == Screen.PRIMARY_DASHBOARD || currentScreen == Screen.SECONDARY_FEED) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        FloatingGalaxyNavPill(
-                            currentScreen = currentScreen,
-                            user = user,
-                            unreadNotificationCount = notifications.count { !it.isRead },
-                            onNavigate = { destination -> currentScreen = destination },
-                            modifier = Modifier.weight(1f)
-                        )
-                        FloatingActionButton(
-                            onClick = { showMediaPickerSheet = true },
-                            shape = CircleShape,
-                            containerColor = Color(0xFF1E88E5),
-                            contentColor = Color.White,
-                            modifier = Modifier.size(56.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "Create Post",
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-                    }
+            if (currentScreen == Screen.PRIMARY_DASHBOARD || currentScreen == Screen.SECONDARY_FEED) {
+                // 1. Bottom Navigation Capsule Dock (Centered horizontally at bottom)
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
+                        .padding(bottom = 12.dp)
+                        .zIndex(99f)
+                ) {
+                    FloatingGalaxyNavPill(
+                        currentScreen = currentScreen,
+                        user = user,
+                        unreadNotificationCount = notifications.count { !it.isRead },
+                        onNavigate = { destination -> currentScreen = destination }
+                    )
+                }
+
+                // 2. '+' Action Button (FAB) (Floating directly ABOVE the bottom nav capsule in bottom-right corner)
+                FloatingActionButton(
+                    onClick = { showMediaPickerSheet = true },
+                    shape = CircleShape,
+                    containerColor = Color(0xFF1E88E5),
+                    contentColor = Color.White,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .navigationBarsPadding()
+                        .padding(end = 16.dp, bottom = 84.dp)
+                        .size(56.dp)
+                        .zIndex(100f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Create Post",
+                        modifier = Modifier.size(28.dp)
+                    )
                 }
             }
         }
