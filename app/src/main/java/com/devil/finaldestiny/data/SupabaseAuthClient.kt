@@ -384,7 +384,6 @@ object SupabaseAuthClient {
                 .remove("user_email")
                 .remove("session_token")
                 .remove("session_created_at")
-                .remove("user_avatar_url")
                 .apply()
         }
     }
@@ -668,7 +667,7 @@ object SupabaseAuthClient {
         val ext = if (isVideo) "mp4" else "jpg"
         val mimeType = if (isVideo) "video/mp4" else "image/jpeg"
         val uid = getUserId() ?: getOrCreateUserId(context)
-        val fileName = "post_${uid}_${System.currentTimeMillis()}.$ext"
+        val fileName = if (bucketName == "avatars") "${uid}/avatar_${System.currentTimeMillis()}.$ext" else "post_${uid}_${System.currentTimeMillis()}.$ext"
 
         val baseUrl = supabaseUrl.trimEnd('/')
         val endpoint = "$baseUrl/storage/v1/object/$bucketName/$fileName"
