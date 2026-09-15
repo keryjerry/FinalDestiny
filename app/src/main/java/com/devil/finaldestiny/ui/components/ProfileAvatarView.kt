@@ -70,6 +70,14 @@ fun ProfileAvatarView(
                     .diskCachePolicy(coil.request.CachePolicy.ENABLED)
                     .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
                     .crossfade(true)
+                    .listener(
+                        onSuccess = { _, _ ->
+                            android.util.Log.d("AVATAR_COIL", "Successfully loaded avatar: $sanitizedRemoteUrl")
+                        },
+                        onError = { _, result ->
+                            android.util.Log.e("AVATAR_COIL", "Failed loading avatar: ${result.throwable.message} for url: $sanitizedRemoteUrl")
+                        }
+                    )
                     .build(),
                 contentDescription = name,
                 contentScale = ContentScale.Crop,

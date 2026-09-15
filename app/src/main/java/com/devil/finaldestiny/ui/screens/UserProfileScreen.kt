@@ -502,8 +502,9 @@ fun UserProfileScreen(
                                 } else Modifier
                             )
                     ) {
-                        val avatarUrl = user.profilePictureUri.takeIf { !it.isNullOrBlank() }
+                        val rawAvatarUrl = user.profilePictureUri.takeIf { !it.isNullOrBlank() }
                             ?: if (isOwnProfile) com.devil.finaldestiny.data.SupabaseAuthClient.getUserAvatarUrl() else null
+                        val avatarUrl = com.devil.finaldestiny.data.SupabaseAuthClient.sanitizeAvatarUrl(rawAvatarUrl) ?: rawAvatarUrl
                         if (pendingCroppedBitmap != null) {
                             Image(
                                 bitmap = pendingCroppedBitmap!!.asImageBitmap(),
@@ -520,6 +521,14 @@ fun UserProfileScreen(
                                     .diskCachePolicy(CachePolicy.ENABLED)
                                     .memoryCachePolicy(CachePolicy.ENABLED)
                                     .crossfade(true)
+                                    .listener(
+                                        onSuccess = { _, _ ->
+                                            android.util.Log.d("AVATAR_COIL", "Successfully loaded header avatar: $avatarUrl")
+                                        },
+                                        onError = { _, result ->
+                                            android.util.Log.e("AVATAR_COIL", "Failed loading header avatar: ${result.throwable.message} for url: $avatarUrl")
+                                        }
+                                    )
                                     .build(),
                                 contentDescription = "Avatar",
                                 contentScale = ContentScale.Crop,
@@ -637,9 +646,10 @@ fun UserProfileScreen(
                 Spacer(modifier = Modifier.height(2.dp))
 
                 // Bio Text
-                if (user.bio.isNotBlank()) {
+                val cleanBio = user.bio.takeIf { !it.isNullOrBlank() && it.trim().lowercase() != "null" } ?: ""
+                if (cleanBio.isNotBlank()) {
                     Text(
-                        text = user.bio,
+                        text = cleanBio,
                         fontSize = 13.sp,
                         color = Color.Black,
                         lineHeight = 17.sp

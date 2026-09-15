@@ -300,8 +300,16 @@ object SupabaseAuthClient {
             clean.startsWith("content://", ignoreCase = true) ||
             clean.startsWith("file://", ignoreCase = true) ||
             clean.startsWith("data:", ignoreCase = true) -> null
-            clean.startsWith("avatars/") -> "$baseUrl/storage/v1/object/public/$clean"
-            else -> "$baseUrl/storage/v1/object/public/avatars/$clean"
+            clean.startsWith("/storage/v1/object/public/", ignoreCase = true) -> "$baseUrl$clean"
+            clean.startsWith("storage/v1/object/public/", ignoreCase = true) -> "$baseUrl/$clean"
+            else -> {
+                val path = clean.trimStart('/')
+                if (path.startsWith("avatars/", ignoreCase = true)) {
+                    "$baseUrl/storage/v1/object/public/$path"
+                } else {
+                    "$baseUrl/storage/v1/object/public/avatars/$path"
+                }
+            }
         }
     }
 
@@ -795,6 +803,7 @@ object SupabaseAuthClient {
 
         if (resCode in 200..299) {
             val publicUrl = "$baseUrl/storage/v1/object/public/$bucketName/$fileName"
+            Log.d("AVATAR_DEBUG", "Public Avatar URL: $publicUrl")
             Log.d(TAG, "Storage Upload SUCCESS -> Public URL: $publicUrl")
             return@withContext publicUrl
         } else {
