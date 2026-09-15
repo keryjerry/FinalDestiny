@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -162,6 +163,53 @@ fun FinalDestinyApp(repository: AppRepository) {
     var isPickedMediaReel by remember { mutableStateOf(false) }
     var selectedReelInitialIndex by remember { mutableIntStateOf(0) }
 
+    val secondaryFeedListState = rememberLazyListState()
+    var isManuallyExpanded by remember { mutableStateOf(false) }
+    var previousFeedIndex by remember { mutableIntStateOf(0) }
+    var previousFeedOffset by remember { mutableIntStateOf(0) }
+
+    val isCapsuleCollapsed by remember(currentScreen, secondaryFeedListState) {
+        derivedStateOf {
+            if (currentScreen != Screen.SECONDARY_FEED) {
+                false
+            } else {
+                val currentIndex = secondaryFeedListState.firstVisibleItemIndex
+                val currentOffset = secondaryFeedListState.firstVisibleItemScrollOffset
+
+                val collapsed = when {
+                    currentIndex == 0 && currentOffset < 10 -> {
+                        isManuallyExpanded = false
+                        false
+                    }
+                    isManuallyExpanded -> false
+                    currentIndex > previousFeedIndex -> {
+                        isManuallyExpanded = false
+                        true
+                    }
+                    currentIndex < previousFeedIndex -> {
+                        isManuallyExpanded = false
+                        false
+                    }
+                    else -> {
+                        if (currentOffset > previousFeedOffset) {
+                            isManuallyExpanded = false
+                            true
+                        } else if (currentOffset < previousFeedOffset) {
+                            isManuallyExpanded = false
+                            false
+                        } else {
+                            false
+                        }
+                    }
+                }
+
+                previousFeedIndex = currentIndex
+                previousFeedOffset = currentOffset
+                collapsed
+            }
+        }
+    }
+
     // Auto-Update Checker State (Supabase Remote Config)
     var updateInfoState by remember { mutableStateOf<UpdateReleaseInfo?>(null) }
     var showUpdateDialog by remember { mutableStateOf(false) }
@@ -294,6 +342,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                     storyTrays = storyTrays,
                     momentPosts = momentPosts,
                     notifications = notifications,
+                    feedListState = secondaryFeedListState,
                     onOpenNotifications = { currentScreen = Screen.NOTIFICATION },
                     onLikePost = { postId -> repository.toggleLikePost(postId) },
                     onPublishPost = { caption, mediaUri, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText, ctaLink, ctaLabel, isPaidPartnership, promotionStatus, promotionBudget ->
@@ -423,6 +472,13 @@ fun FinalDestinyApp(repository: AppRepository) {
                         currentScreen = currentScreen,
                         user = user,
                         unreadNotificationCount = notifications.count { !it.isRead },
+                        isCapsuleCollapsed = isCapsuleCollapsed,
+                        onExpandCapsule = {
+                            isManuallyExpanded = true
+                            coroutineScope.launch {
+                                secondaryFeedListState.animateScrollToItem(0)
+                            }
+                        },
                         onNavigate = { destination -> currentScreen = destination }
                     )
                 }

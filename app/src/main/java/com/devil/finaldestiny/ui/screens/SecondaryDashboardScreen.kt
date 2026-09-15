@@ -121,6 +121,7 @@ fun SecondaryDashboardScreen(
     storyTrays: List<StoryItem>,
     momentPosts: List<MomentPost>,
     notifications: List<AppNotification> = emptyList(),
+    feedListState: androidx.compose.foundation.lazy.LazyListState = androidx.compose.foundation.lazy.rememberLazyListState(),
     onOpenNotifications: () -> Unit = {},
     onLikePost: (String) -> Unit,
     onPublishPost: suspend (
@@ -296,8 +297,6 @@ fun SecondaryDashboardScreen(
             sharedExoPlayer.release()
         }
     }
-
-    val feedListState = rememberLazyListState()
 
     val videoPostIds = remember(momentPosts) {
         momentPosts.filter { post ->

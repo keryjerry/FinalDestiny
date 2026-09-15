@@ -39,11 +39,20 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.shadow
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.core.animateDpAsState
+
 @Composable
 fun FloatingGalaxyNavPill(
     currentScreen: Screen,
     user: UserProfile = UserProfile(),
     unreadNotificationCount: Int = 0,
+    isCapsuleCollapsed: Boolean = false,
+    onExpandCapsule: () -> Unit = {},
     onNavigate: (Screen) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -86,11 +95,17 @@ fun FloatingGalaxyNavPill(
         )
     )
 
+    val capsuleWidth by animateDpAsState(
+        targetValue = if (isCapsuleCollapsed) 54.dp else 280.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "CapsuleWidthAnimation"
+    )
+
     Box(
         modifier = modifier
-            .fillMaxWidth()
-            .shadow(elevation = 12.dp, shape = CircleShape, spotColor = Color(0x447C3AED))
-            .height(64.dp)
+            .width(capsuleWidth)
+            .shadow(elevation = 12.dp, shape = RoundedCornerShape(percent = 50), spotColor = Color(0x447C3AED))
+            .height(54.dp)
             .clip(RoundedCornerShape(percent = 50))
             .background(Color(0xCC111827))
             .drawWithCache {
@@ -114,18 +129,31 @@ fun FloatingGalaxyNavPill(
                 }
             }
             .border(border = BorderStroke(1.dp, ambientBorderBrush), shape = RoundedCornerShape(percent = 50))
+            .clickable(
+                enabled = isCapsuleCollapsed,
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {
+                onExpandCapsule()
+            }
     ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
+                .padding(horizontal = if (isCapsuleCollapsed) 0.dp else 8.dp),
+            horizontalArrangement = if (isCapsuleCollapsed) Arrangement.Center else Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 1. HOME ICON (Primary Hub / Dashboard)
             GalaxyNavItem(
                 isSelected = currentScreen == Screen.PRIMARY_DASHBOARD,
-                onClick = { onNavigate(Screen.PRIMARY_DASHBOARD) }
+                onClick = {
+                    if (isCapsuleCollapsed) {
+                        onExpandCapsule()
+                    } else {
+                        onNavigate(Screen.PRIMARY_DASHBOARD)
+                    }
+                }
             ) { isSelected ->
                 Icon(
                     imageVector = Icons.Default.Home,
@@ -136,60 +164,84 @@ fun FloatingGalaxyNavPill(
             }
 
             // 2. MOMENT FEED ICON (Destiny Social Feed)
-            GalaxyNavItem(
-                isSelected = currentScreen == Screen.SECONDARY_FEED,
-                onClick = { onNavigate(Screen.SECONDARY_FEED) }
-            ) { isSelected ->
-                Icon(
-                    imageVector = Icons.Default.PhotoLibrary,
-                    contentDescription = "Feed",
-                    tint = if (isSelected) Color(0xFF38BDF8) else Color(0xFF94A3B8),
-                    modifier = Modifier.size(24.dp)
-                )
+            AnimatedVisibility(
+                visible = !isCapsuleCollapsed,
+                enter = fadeIn(animationSpec = tween(150)) + expandHorizontally(),
+                exit = fadeOut(animationSpec = tween(150)) + shrinkHorizontally()
+            ) {
+                GalaxyNavItem(
+                    isSelected = currentScreen == Screen.SECONDARY_FEED,
+                    onClick = { onNavigate(Screen.SECONDARY_FEED) }
+                ) { isSelected ->
+                    Icon(
+                        imageVector = Icons.Default.PhotoLibrary,
+                        contentDescription = "Feed",
+                        tint = if (isSelected) Color(0xFF38BDF8) else Color(0xFF94A3B8),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
 
             // 3. SHARE / DM VORTEX CENTER BUTTON (Spiral Galaxy Vortex)
-            val isDmSelected = currentScreen == Screen.INBOX
-            GalaxyVortexCenterButton(
-                isSelected = isDmSelected,
-                vortexRotation = vortexRotation,
-                onClick = { onNavigate(Screen.INBOX) }
-            )
-
-            // 4. SEARCH ICON
-            GalaxyNavItem(
-                isSelected = currentScreen == Screen.SEARCH_EXPLORE,
-                onClick = { onNavigate(Screen.SEARCH_EXPLORE) }
-            ) { isSelected ->
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Search",
-                    tint = if (isSelected) Color(0xFF38BDF8) else Color(0xFF94A3B8),
-                    modifier = Modifier.size(24.dp)
+            AnimatedVisibility(
+                visible = !isCapsuleCollapsed,
+                enter = fadeIn(animationSpec = tween(150)) + expandHorizontally(),
+                exit = fadeOut(animationSpec = tween(150)) + shrinkHorizontally()
+            ) {
+                val isDmSelected = currentScreen == Screen.INBOX
+                GalaxyVortexCenterButton(
+                    isSelected = isDmSelected,
+                    vortexRotation = vortexRotation,
+                    onClick = { onNavigate(Screen.INBOX) }
                 )
             }
 
+            // 4. SEARCH ICON
+            AnimatedVisibility(
+                visible = !isCapsuleCollapsed,
+                enter = fadeIn(animationSpec = tween(150)) + expandHorizontally(),
+                exit = fadeOut(animationSpec = tween(150)) + shrinkHorizontally()
+            ) {
+                GalaxyNavItem(
+                    isSelected = currentScreen == Screen.SEARCH_EXPLORE,
+                    onClick = { onNavigate(Screen.SEARCH_EXPLORE) }
+                ) { isSelected ->
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = if (isSelected) Color(0xFF38BDF8) else Color(0xFF94A3B8),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+
             // 5. PROFILE ICON WITH ONLINE/NOTIFICATION BADGE
-            GalaxyNavItem(
-                isSelected = currentScreen == Screen.USER_PROFILE,
-                onClick = { onNavigate(Screen.USER_PROFILE) }
-            ) { isSelected ->
-                Box(contentAlignment = Alignment.TopEnd) {
-                    ProfileAvatarView(
-                        name = user.name.ifBlank { "Me" },
-                        profilePictureUri = user.profilePictureUri,
-                        size = 28.dp,
-                        showBorder = isSelected,
-                        borderColor = if (isSelected) Color(0xFF38BDF8) else Color.Transparent
-                    )
-                    // Online/notification dot
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFF22C55E))
-                            .border(1.dp, Color(0xFF050510), CircleShape)
-                    )
+            AnimatedVisibility(
+                visible = !isCapsuleCollapsed,
+                enter = fadeIn(animationSpec = tween(150)) + expandHorizontally(),
+                exit = fadeOut(animationSpec = tween(150)) + shrinkHorizontally()
+            ) {
+                GalaxyNavItem(
+                    isSelected = currentScreen == Screen.USER_PROFILE,
+                    onClick = { onNavigate(Screen.USER_PROFILE) }
+                ) { isSelected ->
+                    Box(contentAlignment = Alignment.TopEnd) {
+                        ProfileAvatarView(
+                            name = user.name.ifBlank { "Me" },
+                            profilePictureUri = user.profilePictureUri,
+                            size = 28.dp,
+                            showBorder = isSelected,
+                            borderColor = if (isSelected) Color(0xFF38BDF8) else Color.Transparent
+                        )
+                        // Online/notification dot
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF22C55E))
+                                .border(1.dp, Color(0xFF050510), CircleShape)
+                        )
+                    }
                 }
             }
         }
