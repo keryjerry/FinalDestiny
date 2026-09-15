@@ -390,7 +390,8 @@ fun UserProfileScreen(
                                 } else Modifier
                             )
                     ) {
-                        val avatarUrl = user.profilePictureUri.takeIf { !it.isNullOrBlank() } ?: com.devil.finaldestiny.data.SupabaseAuthClient.getUserAvatarUrl()
+                        val avatarUrl = user.profilePictureUri.takeIf { !it.isNullOrBlank() }
+                            ?: if (isOwnProfile) com.devil.finaldestiny.data.SupabaseAuthClient.getUserAvatarUrl() else null
                         if (!avatarUrl.isNullOrBlank()) {
                             AsyncImage(
                                 model = ImageRequest.Builder(context)

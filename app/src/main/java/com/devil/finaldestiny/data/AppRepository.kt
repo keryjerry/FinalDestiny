@@ -902,24 +902,34 @@ class AppRepository {
                 val baseUrl = SupabaseAuthClient.supabaseUrl.trimEnd('/')
                 val anonKey = SupabaseAuthClient.supabaseAnonKey
                 val token = SupabaseAuthClient.getSessionToken() ?: anonKey
-                val myId = updatedProfile.id
+                val myId = if (context != null && (updatedProfile.id.isBlank() || updatedProfile.id == "usr_me" || updatedProfile.id == "u101")) {
+                    SupabaseAuthClient.getSanitizedUuid(context)
+                } else updatedProfile.id
 
-                val endpoint = "$baseUrl/rest/v1/profiles?id=eq.$myId"
+                val endpoint = "$baseUrl/rest/v1/profiles"
                 val url = java.net.URL(endpoint)
                 val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
-                    requestMethod = "PATCH"
-                    connectTimeout = 6000
-                    readTimeout = 6000
+                    requestMethod = "POST"
+                    connectTimeout = 8000
+                    readTimeout = 8000
                     setRequestProperty("apikey", anonKey)
                     setRequestProperty("Authorization", "Bearer $token")
                     setRequestProperty("Content-Type", "application/json")
-                    setRequestProperty("Prefer", "return=minimal")
+                    setRequestProperty("Prefer", "return=representation,resolution=merge-duplicates")
                     doOutput = true
                 }
                 val payload = org.json.JSONObject().apply {
+                    put("id", myId)
                     put("name", updatedProfile.name)
+                    put("full_name", updatedProfile.name)
+                    if (updatedProfile.handle.isNotBlank()) {
+                        put("username", updatedProfile.handle.removePrefix("@"))
+                        put("handle", if (updatedProfile.handle.startsWith("@")) updatedProfile.handle else "@${updatedProfile.handle}")
+                    }
                     put("bio", updatedProfile.bio)
-                    put("avatar_url", finalAvatarUrl ?: "")
+                    if (!finalAvatarUrl.isNullOrBlank()) {
+                        put("avatar_url", finalAvatarUrl)
+                    }
                     put("account_type", updatedProfile.accountType)
                     put("creator_category", updatedProfile.creatorCategory)
                     put("display_category_on_profile", updatedProfile.displayCategoryOnProfile)
@@ -934,7 +944,9 @@ class AppRepository {
                     os.write(payload.toString().toByteArray(Charsets.UTF_8))
                 }
                 val resCode = connection.responseCode
-                android.util.Log.d("[DestinyProfile]", "Supabase Profile Update PATCH -> Code $resCode | Avatar: $finalAvatarUrl")
+                val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
+                val resBody = stream?.bufferedReader()?.use { it.readText() } ?: ""
+                android.util.Log.d("[DestinyProfile]", "Supabase Profile Update UPSERT -> Code $resCode | Response: $resBody | Avatar: $finalAvatarUrl")
             } catch (e: Exception) {
                 android.util.Log.e("[DestinyProfile]", "Failed to update profile on Supabase", e)
             }
