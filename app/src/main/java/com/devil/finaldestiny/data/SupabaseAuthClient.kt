@@ -291,10 +291,13 @@ object SupabaseAuthClient {
     }
 
     fun sanitizeAvatarUrl(rawAvatar: String?): String? {
-        if (rawAvatar.isNullOrBlank() || rawAvatar.trim().equals("null", ignoreCase = true)) return null
+        if (rawAvatar.isNullOrBlank() || rawAvatar.trim().equals("null", ignoreCase = true)) {
+            Log.e("AVATAR_URL_CHECK", "Fetching/Rendering Avatar URL: 'null'")
+            return null
+        }
         val clean = rawAvatar.trim()
         val baseUrl = supabaseUrl.trimEnd('/')
-        return when {
+        val sanitized = when {
             clean.startsWith("http://", ignoreCase = true) ||
             clean.startsWith("https://", ignoreCase = true) -> clean
             clean.startsWith("content://", ignoreCase = true) ||
@@ -311,6 +314,48 @@ object SupabaseAuthClient {
                 }
             }
         }
+        Log.e("AVATAR_URL_CHECK", "Fetching/Rendering Avatar URL: '$sanitized'")
+        return sanitized
+    }
+
+    fun executeGetWithRetry(endpoint: String, extraHeaders: Map<String, String> = emptyMap()): Pair<Int, String> {
+        fun executeGet(tokenToUse: String): Pair<Int, String> {
+            val url = URL(endpoint)
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 8000
+                readTimeout = 8000
+                setRequestProperty("apikey", supabaseAnonKey)
+                setRequestProperty("Authorization", "Bearer $tokenToUse")
+                setRequestProperty("Accept", "application/json")
+                for ((k, v) in extraHeaders) {
+                    setRequestProperty(k, v)
+                }
+            }
+            val code = conn.responseCode
+            val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+            val text = stream?.bufferedReader()?.use { it.readText() } ?: ""
+            return Pair(code, text)
+        }
+
+        val activeToken = currentSessionToken ?: supabaseAnonKey
+        var (code, text) = try {
+            executeGet(activeToken)
+        } catch (e: Exception) {
+            Pair(400, e.message ?: "")
+        }
+
+        if (code !in 200..299 && activeToken != supabaseAnonKey) {
+            Log.w(TAG, "GET $endpoint returned HTTP $code with JWT. Retrying with public anon key...")
+            try {
+                val (retryCode, retryText) = executeGet(supabaseAnonKey)
+                code = retryCode
+                text = retryText
+            } catch (e: Exception) {
+                Log.e(TAG, "GET retry failed for $endpoint", e)
+            }
+        }
+        return Pair(code, text)
     }
 
     fun upsertUserProfile(uid: String, email: String, username: String? = null) {
@@ -501,22 +546,10 @@ object SupabaseAuthClient {
         // REST Fallback for public.profiles if RPC function is not yet created or returns 0 items
         try {
             val baseUrl = supabaseUrl.trimEnd('/')
-            val queryParam = if (!excludeUserId.isNullOrBlank()) "?id=neq.$excludeUserId&select=*&limit=15" else "?select=*&limit=15"
+            val queryParam = if (!excludeUserId.isNullOrBlank()) "?id=neq.$excludeUserId&select=*&limit=30" else "?select=*&limit=30"
             val endpoint = "$baseUrl/rest/v1/profiles$queryParam"
             Log.d(TAG, "GET /rest/v1/profiles -> Fetching discover profiles fallback")
-            val url = URL(endpoint)
-            val connection = (url.openConnection() as HttpURLConnection).apply {
-                requestMethod = "GET"
-                connectTimeout = 8000
-                readTimeout = 8000
-                setRequestProperty("apikey", supabaseAnonKey)
-                setRequestProperty("Authorization", "Bearer ${currentSessionToken ?: supabaseAnonKey}")
-                setRequestProperty("Accept", "application/json")
-            }
-
-            val resCode = connection.responseCode
-            val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
-            val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
+            val (resCode, resText) = executeGetWithRetry(endpoint)
 
             if (resCode in 200..299 && resText.isNotBlank()) {
                 val jsonArray = org.json.JSONArray(resText)
@@ -527,7 +560,8 @@ object SupabaseAuthClient {
 
                     val rawFullName = obj.optString("full_name", obj.optString("name", ""))
                     val rawUsername = obj.optString("username", obj.optString("handle", ""))
-                    val bio = obj.optString("bio", "Loving live talks & genuine connections ✨")
+                    val rawBio = obj.optString("bio", "")
+                    val bio = rawBio.takeIf { it.isNotBlank() && it.trim().lowercase() != "null" } ?: ""
 
                     val rawAvatar = obj.optString("avatar_url", "")
                         .ifBlank { obj.optString("avatarUrl", "") }
@@ -577,19 +611,7 @@ object SupabaseAuthClient {
             val baseUrl = supabaseUrl.trimEnd('/')
             val endpoint = "$baseUrl/rest/v1/profiles?id=eq.$userId&select=*"
             Log.d(TAG, "GET /rest/v1/profiles?id=eq.$userId -> Fetching single profile")
-            val url = URL(endpoint)
-            val connection = (url.openConnection() as HttpURLConnection).apply {
-                requestMethod = "GET"
-                connectTimeout = 8000
-                readTimeout = 8000
-                setRequestProperty("apikey", supabaseAnonKey)
-                setRequestProperty("Authorization", "Bearer ${currentSessionToken ?: supabaseAnonKey}")
-                setRequestProperty("Accept", "application/json")
-            }
-
-            val resCode = connection.responseCode
-            val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
-            val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
+            val (resCode, resText) = executeGetWithRetry(endpoint)
 
             if (resCode in 200..299 && resText.isNotBlank()) {
                 val jsonArray = org.json.JSONArray(resText)
@@ -598,7 +620,8 @@ object SupabaseAuthClient {
                     val id = obj.optString("id", userId)
                     val rawFullName = obj.optString("full_name", obj.optString("name", ""))
                     val rawUsername = obj.optString("username", obj.optString("handle", ""))
-                    val bio = obj.optString("bio", "Loving live talks & genuine connections ✨")
+                    val rawBio = obj.optString("bio", "")
+                    val bio = rawBio.takeIf { it.isNotBlank() && it.trim().lowercase() != "null" } ?: ""
                     val rawAvatar = obj.optString("avatar_url", "")
                         .ifBlank { obj.optString("avatarUrl", "") }
                         .ifBlank { obj.optString("profile_picture_url", "") }
@@ -970,32 +993,25 @@ object SupabaseAuthClient {
             // Fetch Profiles Map in-memory for zero-join safe matching
             val profilesMap = mutableMapOf<String, com.devil.finaldestiny.model.ProfileBriefDto>()
             try {
-                val profUrl = URL("$baseUrl/rest/v1/profiles?select=*")
-                val profConn = (profUrl.openConnection() as HttpURLConnection).apply {
-                    requestMethod = "GET"
-                    connectTimeout = 6000
-                    readTimeout = 6000
-                    setRequestProperty("apikey", supabaseAnonKey)
-                    setRequestProperty("Authorization", "Bearer ${currentSessionToken ?: supabaseAnonKey}")
-                    setRequestProperty("Accept", "application/json")
-                }
-                if (profConn.responseCode in 200..299) {
-                    val profText = profConn.inputStream.bufferedReader().use { it.readText() }
-                    if (profText.isNotBlank()) {
-                        val profArray = org.json.JSONArray(profText)
-                        for (p in 0 until profArray.length()) {
-                            val pObj = profArray.getJSONObject(p)
-                            val pId = pObj.optString("id", "")
-                            if (pId.isNotBlank()) {
-                                val un = pObj.optString("username", pObj.optString("handle", "")).takeIf { it.isNotBlank() && it != "null" }
-                                val fn = pObj.optString("full_name", pObj.optString("name", "")).takeIf { it.isNotBlank() && it != "null" }
-                                val av = pObj.optString("avatar_url", "").takeIf { it.isNotBlank() && it != "null" }
-                                profilesMap[pId] = com.devil.finaldestiny.model.ProfileBriefDto(
-                                    username = un,
-                                    fullName = fn,
-                                    avatarUrl = av
-                                )
-                            }
+                val (profCode, profText) = executeGetWithRetry("$baseUrl/rest/v1/profiles?select=*")
+                if (profCode in 200..299 && profText.isNotBlank()) {
+                    val profArray = org.json.JSONArray(profText)
+                    for (p in 0 until profArray.length()) {
+                        val pObj = profArray.getJSONObject(p)
+                        val pId = pObj.optString("id", "")
+                        if (pId.isNotBlank()) {
+                            val un = pObj.optString("username", pObj.optString("handle", "")).takeIf { it.isNotBlank() && it != "null" }
+                            val fn = pObj.optString("full_name", pObj.optString("name", "")).takeIf { it.isNotBlank() && it != "null" }
+                            val rawAv = pObj.optString("avatar_url", "")
+                                .ifBlank { pObj.optString("avatarUrl", "") }
+                                .ifBlank { pObj.optString("profile_picture_url", "") }
+                                .takeIf { it.isNotBlank() && it != "null" }
+                            val av = sanitizeAvatarUrl(rawAv)
+                            profilesMap[pId] = com.devil.finaldestiny.model.ProfileBriefDto(
+                                username = un,
+                                fullName = fn,
+                                avatarUrl = av
+                            )
                         }
                     }
                 }
@@ -1037,10 +1053,9 @@ object SupabaseAuthClient {
                         ?: obj.optString("author_name", "").takeIf { it.isNotBlank() && it != "null" }
                         ?: liveAuthorUsername
 
-                    val liveAuthorAvatar = profileBrief?.avatarUrl
-                        ?: obj.optString("author_avatar", "").takeIf { it.isNotBlank() && it != "null" }
+                    val rawFallbackAvatar = obj.optString("author_avatar", "").takeIf { it.isNotBlank() && it != "null" }
                         ?: obj.optString("avatar_url", "").takeIf { it.isNotBlank() && it != "null" }
-                        ?: ""
+                    val liveAuthorAvatar = profileBrief?.avatarUrl ?: sanitizeAvatarUrl(rawFallbackAvatar) ?: ""
 
                     val authorHandle = if (liveAuthorUsername.startsWith("@")) liveAuthorUsername else "@$liveAuthorUsername"
                     val authorName = liveDisplayAuthorName
@@ -1195,28 +1210,19 @@ object SupabaseAuthClient {
                 if (senderIds.isNotEmpty()) {
                     try {
                         val profileEndpoint = "$baseUrl/rest/v1/profiles?id=in.(${senderIds.joinToString(",")})&select=id,username,full_name,avatar_url"
-                        val pConn = (URL(profileEndpoint).openConnection() as HttpURLConnection).apply {
-                            requestMethod = "GET"
-                            connectTimeout = 5000
-                            readTimeout = 5000
-                            setRequestProperty("apikey", supabaseAnonKey)
-                            setRequestProperty("Authorization", "Bearer ${currentSessionToken ?: supabaseAnonKey}")
-                            setRequestProperty("Accept", "application/json")
-                        }
-                        if (pConn.responseCode in 200..299) {
-                            val pText = pConn.inputStream?.bufferedReader()?.use { it.readText() } ?: ""
-                            if (pText.isNotBlank()) {
-                                val pArray = org.json.JSONArray(pText)
-                                for (j in 0 until pArray.length()) {
-                                    val pObj = pArray.getJSONObject(j)
-                                    val pid = pObj.optString("id", "")
-                                    val pName = pObj.optString("full_name").takeIf { !it.isNullOrBlank() && it != "null" }
-                                        ?: pObj.optString("username").takeIf { !it.isNullOrBlank() && it != "null" }
-                                        ?: "User_${pid.take(5)}"
-                                    val pAvatar = pObj.optString("avatar_url").takeIf { !it.isNullOrBlank() && it != "null" }
-                                    if (pid.isNotBlank()) {
-                                        profileMap[pid] = Pair(pName, pAvatar)
-                                    }
+                        val (pCode, pText) = executeGetWithRetry(profileEndpoint)
+                        if (pCode in 200..299 && pText.isNotBlank()) {
+                            val pArray = org.json.JSONArray(pText)
+                            for (j in 0 until pArray.length()) {
+                                val pObj = pArray.getJSONObject(j)
+                                val pid = pObj.optString("id", "")
+                                val pName = pObj.optString("full_name").takeIf { !it.isNullOrBlank() && it != "null" }
+                                    ?: pObj.optString("username").takeIf { !it.isNullOrBlank() && it != "null" }
+                                    ?: "User_${pid.take(5)}"
+                                val rawPAvatar = pObj.optString("avatar_url").takeIf { !it.isNullOrBlank() && it != "null" }
+                                val pAvatar = sanitizeAvatarUrl(rawPAvatar)
+                                if (pid.isNotBlank()) {
+                                    profileMap[pid] = Pair(pName, pAvatar)
                                 }
                             }
                         }
