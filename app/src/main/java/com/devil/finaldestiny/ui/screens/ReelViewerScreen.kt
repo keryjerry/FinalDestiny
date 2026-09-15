@@ -64,6 +64,7 @@ fun ReelViewerScreen(
     onToggleFollowAuthor: (String) -> Unit = {},
     onToggleSavePost: (String) -> Unit = {},
     onIncrementView: (String) -> Unit = {},
+    onOpenUserProfile: (String) -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -281,7 +282,10 @@ fun ReelViewerScreen(
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.clickable {
+                            onOpenUserProfile(reel.userId)
+                        }
                     ) {
                         ProfileAvatarView(
                             name = creatorTitle,

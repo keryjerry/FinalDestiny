@@ -123,6 +123,7 @@ fun SecondaryDashboardScreen(
     notifications: List<AppNotification> = emptyList(),
     feedListState: androidx.compose.foundation.lazy.LazyListState = androidx.compose.foundation.lazy.rememberLazyListState(),
     onOpenNotifications: () -> Unit = {},
+    onOpenUserProfile: (String) -> Unit = {},
     onLikePost: (String) -> Unit,
     onPublishPost: suspend (
         caption: String,
@@ -872,7 +873,12 @@ fun SecondaryDashboardScreen(
                                 }
 
                                 // ARROW 1: Profile Avatar & Co-Author Header
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable {
+                                        onOpenUserProfile(post.userId)
+                                    }
+                                ) {
                                     ProfileAvatarView(
                                         name = creatorTitle,
                                         profilePictureUri = post.authorAvatar,
@@ -1689,7 +1695,13 @@ fun SecondaryDashboardScreen(
                                     .fillMaxWidth()
                                     .padding(vertical = 4.dp)
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.clickable {
+                                        showCommentsSheetForPost = null
+                                        onOpenUserProfile(post.userId)
+                                    }
+                                ) {
                                     Text(comment.senderName, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = NavyTextPrimary)
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(comment.timestamp, fontSize = 9.sp, color = SlateTextSecondary)
@@ -1747,7 +1759,14 @@ fun SecondaryDashboardScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable {
+                            val authorId = story.authorId.ifBlank { story.id }
+                            activeStoryView = null
+                            onOpenUserProfile(authorId)
+                        }
+                    ) {
                         Text("✨ ${story.authorName}'s Story", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(story.timestamp, fontSize = 10.sp, color = Color.White.copy(0.6f))

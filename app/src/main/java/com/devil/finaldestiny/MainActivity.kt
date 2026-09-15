@@ -33,6 +33,7 @@ import com.devil.finaldestiny.engine.AppInstallerEngine
 import com.devil.finaldestiny.engine.UpdateReleaseInfo
 import com.devil.finaldestiny.model.GiftItem
 import com.devil.finaldestiny.model.PaymentMethodType
+import com.devil.finaldestiny.model.UserProfile
 import com.devil.finaldestiny.ui.components.FloatingGalaxyNavPill
 import com.devil.finaldestiny.ui.components.MediaPickerBottomSheet
 import com.devil.finaldestiny.ui.components.MonetizationAnnouncementModal
@@ -162,6 +163,45 @@ fun FinalDestinyApp(repository: AppRepository) {
     var pickedMediaUri by remember { mutableStateOf<String?>(null) }
     var isPickedMediaReel by remember { mutableStateOf(false) }
     var selectedReelInitialIndex by remember { mutableIntStateOf(0) }
+    var selectedProfileUserId by remember { mutableStateOf<String?>(null) }
+
+    val handleOpenUserProfile: (String) -> Unit = { targetUserId ->
+        if (targetUserId.isBlank() || targetUserId == user.id) {
+            selectedProfileUserId = null
+        } else {
+            selectedProfileUserId = targetUserId
+        }
+        currentScreen = Screen.USER_PROFILE
+    }
+
+    val displayUserProfile = remember(selectedProfileUserId, user, momentPosts) {
+        if (selectedProfileUserId.isNullOrBlank() || selectedProfileUserId == user.id) {
+            user
+        } else {
+            val authorPost = momentPosts.firstOrNull { it.userId == selectedProfileUserId }
+            if (authorPost != null) {
+                UserProfile(
+                    id = authorPost.userId.ifBlank { selectedProfileUserId!! },
+                    name = authorPost.authorName.ifBlank { "Creator" },
+                    handle = authorPost.authorHandle.ifBlank { "@creator" },
+                    profilePictureUri = authorPost.authorAvatar,
+                    bio = "Content Creator on Destiny ✨",
+                    followerCount = 1240,
+                    followingCount = 380,
+                    verifiedStatus = true
+                )
+            } else {
+                UserProfile(
+                    id = selectedProfileUserId!!,
+                    name = "Creator Profile",
+                    handle = "@creator",
+                    bio = "Destiny Creator ✨",
+                    followerCount = 850,
+                    followingCount = 210
+                )
+            }
+        }
+    }
 
     val secondaryFeedListState = rememberLazyListState()
     var isManuallyExpanded by remember { mutableStateOf(false) }
@@ -277,8 +317,8 @@ fun FinalDestinyApp(repository: AppRepository) {
                 )
 
                 Screen.USER_PROFILE -> UserProfileScreen(
-                    user = user,
-                    userPosts = momentPosts.filter { it.userId == user.id || it.authorHandle == user.handle || it.authorName == user.name },
+                    user = displayUserProfile,
+                    userPosts = momentPosts.filter { it.userId == displayUserProfile.id || it.authorHandle == displayUserProfile.handle || it.authorName == displayUserProfile.name },
                     savedAccounts = savedAccounts,
                     onSaveProfile = { updated -> repository.updateUserProfile(updated, context) },
                     onNavigateToStore = { currentScreen = Screen.VIP_STORE },
@@ -302,7 +342,10 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onAddAccount = { email, name -> repository.addAccount(email, name, context) },
                     onRemoveAccount = { targetId -> repository.removeAccount(targetId, context) },
                     onOpenMediaPicker = { showMediaPickerSheet = true },
-                    onBack = { currentScreen = Screen.PRIMARY_DASHBOARD }
+                    onBack = {
+                        selectedProfileUserId = null
+                        currentScreen = Screen.PRIMARY_DASHBOARD
+                    }
                 )
 
                 Screen.CREATOR_HUB -> CreatorHubScreen(
@@ -344,6 +387,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                     notifications = notifications,
                     feedListState = secondaryFeedListState,
                     onOpenNotifications = { currentScreen = Screen.NOTIFICATION },
+                    onOpenUserProfile = handleOpenUserProfile,
                     onLikePost = { postId -> repository.toggleLikePost(postId) },
                     onPublishPost = { caption, mediaUri, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText, ctaLink, ctaLabel, isPaidPartnership, promotionStatus, promotionBudget ->
                         repository.postMoment(context, caption, mediaUri, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText, ctaLink, ctaLabel, isPaidPartnership, promotionStatus, promotionBudget)
@@ -369,6 +413,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                 Screen.SEARCH_EXPLORE -> SearchExploreScreen(
                     explorePosts = momentPosts,
                     onSelectPost = { currentScreen = Screen.SECONDARY_FEED },
+                    onOpenUserProfile = handleOpenUserProfile,
                     onBack = { currentScreen = Screen.SECONDARY_FEED }
                 )
 
@@ -450,6 +495,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onToggleFollowAuthor = { postId -> repository.toggleFollowPostAuthor(postId) },
                     onToggleSavePost = { postId -> repository.toggleSavePost(postId) },
                     onIncrementView = { postId -> repository.incrementPostView(postId) },
+                    onOpenUserProfile = handleOpenUserProfile,
                     onBack = { currentScreen = Screen.SECONDARY_FEED }
                 )
 

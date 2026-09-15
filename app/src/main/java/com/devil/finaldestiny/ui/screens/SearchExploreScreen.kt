@@ -53,6 +53,7 @@ import org.json.JSONArray
 fun SearchExploreScreen(
     explorePosts: List<MomentPost> = emptyList(),
     onSelectPost: (MomentPost) -> Unit = {},
+    onOpenUserProfile: (String) -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -300,7 +301,12 @@ fun SearchExploreScreen(
                                     .fillMaxWidth()
                                     .padding(12.dp)
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { onOpenUserProfile(user.id) }
+                                ) {
                                     ProfileAvatarView(
                                         name = user.name,
                                         profilePictureUri = user.avatarUrl,
