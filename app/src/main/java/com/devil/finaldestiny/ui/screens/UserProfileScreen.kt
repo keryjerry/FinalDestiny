@@ -138,8 +138,14 @@ fun UserProfileScreen(
 
     var activeTabState by remember { mutableIntStateOf(0) } // 0: Grid, 1: Reels, 2: Tagged/Saved
 
-    var editName by remember(user) { mutableStateOf(user.name.ifBlank { "Dilshad_The mountain lover" }) }
-    var editBio by remember(user) { mutableStateOf(user.bio.ifBlank { "I am traveling buddy .i love to travel 🧳😊" }) }
+    val currentLoggedInUid = remember { com.devil.finaldestiny.data.SupabaseAuthClient.getCurrentUserId() }
+    val isOwnProfile = remember(user.id, currentLoggedInUid) {
+        user.id == "usr_me" || user.id.isBlank() || (currentLoggedInUid != null && user.id == currentLoggedInUid)
+    }
+    var isFollowingUser by remember(user.id) { mutableStateOf(false) }
+
+    var editName by remember(user) { mutableStateOf(user.name) }
+    var editBio by remember(user) { mutableStateOf(user.bio) }
     var editCategory by remember(user) { mutableStateOf(user.creatorCategory) }
     var editDisplayCategory by remember(user) { mutableStateOf(user.displayCategoryOnProfile) }
     var editAccountType by remember(user) { mutableStateOf(user.accountType) }
@@ -264,51 +270,55 @@ fun UserProfileScreen(
                         )
                     }
 
-                    IconButton(
-                        onClick = {
-                            if (onOpenMediaPicker != null) {
-                                onOpenMediaPicker()
-                            } else {
-                                try {
-                                    visualMediaLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                                } catch (e: Exception) {
-                                    galleryLauncher.launch("image/*")
+                    if (isOwnProfile) {
+                        IconButton(
+                            onClick = {
+                                if (onOpenMediaPicker != null) {
+                                    onOpenMediaPicker()
+                                } else {
+                                    try {
+                                        visualMediaLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                    } catch (e: Exception) {
+                                        galleryLauncher.launch("image/*")
+                                    }
                                 }
-                            }
-                        },
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "Create", tint = Color.Black, modifier = Modifier.size(28.dp))
+                            },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Create", tint = Color.Black, modifier = Modifier.size(28.dp))
+                        }
                     }
                 }
 
-                // Center/Left: Username with Chevron and Red Dot (Opens Multi-Account Switcher)
+                // Center/Left: Username with Chevron and Red Dot (Opens Multi-Account Switcher for Own Profile)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable {
-                        showAccountSwitcherBottomSheet = true
-                    }
+                    modifier = if (isOwnProfile) {
+                        Modifier.clickable { showAccountSwitcherBottomSheet = true }
+                    } else Modifier
                 ) {
                     Text(
-                        text = user.handle.removePrefix("@").ifBlank { "dilshadwarsi42" },
+                        text = user.handle.removePrefix("@").ifBlank { user.name.ifBlank { "" } },
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.Black
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(
-                        Icons.Default.KeyboardArrowDown,
-                        contentDescription = "Dropdown",
-                        tint = Color.Black,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Box(
-                        modifier = Modifier
-                            .size(6.dp)
-                            .clip(CircleShape)
-                            .background(Color.Red)
-                    )
+                    if (isOwnProfile) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            Icons.Default.KeyboardArrowDown,
+                            contentDescription = "Dropdown",
+                            tint = Color.Black,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(Color.Red)
+                        )
+                    }
                 }
 
                 // Right: Threads (@) Icon & Hamburger Menu (≡)
@@ -345,17 +355,19 @@ fun UserProfileScreen(
             ) {
                 // Left: Large Avatar (86dp) with Note bubble & + overlay badge
                 Box(modifier = Modifier.size(90.dp)) {
-                    // Floating Note Status Bubble Above Avatar
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .offset(x = (-2).dp, y = (-8).dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Color.White)
-                            .border(1.dp, Color(0xFFE5E5EA), RoundedCornerShape(14.dp))
-                            .padding(horizontal = 8.dp, vertical = 3.dp)
-                    ) {
-                        Text("Ready for...", fontSize = 10.sp, color = Color(0xFF6E6E73))
+                    // Floating Note Status Bubble Above Avatar (Owner Only)
+                    if (isOwnProfile) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .offset(x = (-2).dp, y = (-8).dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(Color.White)
+                                .border(1.dp, Color(0xFFE5E5EA), RoundedCornerShape(14.dp))
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                        ) {
+                            Text("Ready for...", fontSize = 10.sp, color = Color(0xFF6E6E73))
+                        }
                     }
 
                     // Circular User Avatar
@@ -366,13 +378,17 @@ fun UserProfileScreen(
                             .size(80.dp)
                             .clip(CircleShape)
                             .border(1.dp, Color(0xFFE5E5EA), CircleShape)
-                            .clickable {
-                                try {
-                                    visualMediaLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                                } catch (e: Exception) {
-                                    galleryLauncher.launch("image/*")
-                                }
-                            }
+                            .then(
+                                if (isOwnProfile) {
+                                    Modifier.clickable {
+                                        try {
+                                            visualMediaLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                        } catch (e: Exception) {
+                                            galleryLauncher.launch("image/*")
+                                        }
+                                    }
+                                } else Modifier
+                            )
                     ) {
                         val avatarUrl = user.profilePictureUri.takeIf { !it.isNullOrBlank() } ?: com.devil.finaldestiny.data.SupabaseAuthClient.getUserAvatarUrl()
                         if (!avatarUrl.isNullOrBlank()) {
@@ -415,25 +431,27 @@ fun UserProfileScreen(
                         }
                     }
 
-                    // Bottom-Right Black '+' Badge Overlay
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .offset(x = (-4).dp, y = 0.dp)
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(Color.Black)
-                            .border(2.dp, Color.White, CircleShape)
-                            .clickable {
-                                try {
-                                    visualMediaLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                                } catch (e: Exception) {
-                                    galleryLauncher.launch("image/*")
+                    // Bottom-Right Black '+' Badge Overlay (Owner Only)
+                    if (isOwnProfile) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .offset(x = (-4).dp, y = 0.dp)
+                                .size(24.dp)
+                                .clip(CircleShape)
+                                .background(Color.Black)
+                                .border(2.dp, Color.White, CircleShape)
+                                .clickable {
+                                    try {
+                                        visualMediaLauncher.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                    } catch (e: Exception) {
+                                        galleryLauncher.launch("image/*")
+                                    }
                                 }
-                            }
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "Add Avatar", tint = Color.White, modifier = Modifier.size(16.dp))
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = "Add Avatar", tint = Color.White, modifier = Modifier.size(16.dp))
+                        }
                     }
                 }
 
@@ -469,18 +487,20 @@ fun UserProfileScreen(
                 // Display Name + Verified Badge
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = user.name.ifBlank { "Dilshad_The mountain lover" },
+                        text = user.name.ifBlank { user.handle.removePrefix("@") },
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.Black
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Icon(
-                        Icons.Default.CheckCircle,
-                        contentDescription = "Verified",
-                        tint = Color(0xFF8E8E93),
-                        modifier = Modifier.size(14.dp)
-                    )
+                    if (user.verifiedStatus) {
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            contentDescription = "Verified",
+                            tint = Color(0xFF8E8E93),
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
                 }
 
                 // Category Tag
@@ -495,12 +515,14 @@ fun UserProfileScreen(
                 Spacer(modifier = Modifier.height(2.dp))
 
                 // Bio Text
-                Text(
-                    text = user.bio.ifBlank { "I am traveling buddy .i love to travel 🧳😊" },
-                    fontSize = 13.sp,
-                    color = Color.Black,
-                    lineHeight = 17.sp
-                )
+                if (user.bio.isNotBlank()) {
+                    Text(
+                        text = user.bio,
+                        fontSize = 13.sp,
+                        color = Color.Black,
+                        lineHeight = 17.sp
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -510,69 +532,36 @@ fun UserProfileScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     // Link Pill 1: Threads handle
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFFF2F2F7))
-                            .clickable { Toast.makeText(context, "Opening Threads profile...", Toast.LENGTH_SHORT).show() }
-                            .padding(horizontal = 10.dp, vertical = 5.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("@", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(user.handle.removePrefix("@").ifBlank { "dilshadwarsi42" }, fontSize = 12.sp, color = Color.Black, fontWeight = FontWeight.Medium)
+                    if (user.handle.isNotBlank()) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFFF2F2F7))
+                                .clickable { Toast.makeText(context, "Opening Threads profile...", Toast.LENGTH_SHORT).show() }
+                                .padding(horizontal = 10.dp, vertical = 5.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("@", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(user.handle.removePrefix("@"), fontSize = 12.sp, color = Color.Black, fontWeight = FontWeight.Medium)
+                            }
                         }
                     }
 
-                    // Link Pill 2: Channel
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFFF2F2F7))
-                            .clickable { Toast.makeText(context, "Opening Samay Par Dhiyan Do...", Toast.LENGTH_SHORT).show() }
-                            .padding(horizontal = 10.dp, vertical = 5.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("▷", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Samay Par Dhiyan Do", fontSize = 12.sp, color = Color.Black, fontWeight = FontWeight.Medium)
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    // Link Pill 3: Facebook / Page
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFFF2F2F7))
-                            .clickable { Toast.makeText(context, "Opening Travelling Keeda...", Toast.LENGTH_SHORT).show() }
-                            .padding(horizontal = 10.dp, vertical = 5.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Facebook", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1877F2))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Travelling Keeda", fontSize = 12.sp, color = Color.Black, fontWeight = FontWeight.Medium)
-                        }
-                    }
-
-                    // Link Pill 4: + Add link
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xFFF2F2F7))
-                            .clickable { Toast.makeText(context, "Add new social link...", Toast.LENGTH_SHORT).show() }
-                            .padding(horizontal = 10.dp, vertical = 5.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Add, contentDescription = "Add Link", tint = Color(0xFF8E8E93), modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(2.dp))
-                            Text("Add", fontSize = 12.sp, color = Color(0xFF8E8E93), fontWeight = FontWeight.Medium)
+                    // Link Pill 4: + Add link (Owner Only)
+                    if (isOwnProfile) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFFF2F2F7))
+                                .clickable { Toast.makeText(context, "Add new social link...", Toast.LENGTH_SHORT).show() }
+                                .padding(horizontal = 10.dp, vertical = 5.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Add, contentDescription = "Add Link", tint = Color(0xFF8E8E93), modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(2.dp))
+                                Text("Add", fontSize = 12.sp, color = Color(0xFF8E8E93), fontWeight = FontWeight.Medium)
+                            }
                         }
                     }
                 }
@@ -586,110 +575,167 @@ fun UserProfileScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
             ) {
-                // Professional Dashboard vs Personal Account Banner
-                if (user.accountType == "Creator" || user.accountType == "Professional") {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF2F2F7)),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onNavigateToCreatorHub() }
-                            .padding(bottom = 8.dp)
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
+                // Professional Dashboard vs Personal Account Banner (Owner Only)
+                if (isOwnProfile) {
+                    if (user.accountType == "Creator" || user.accountType == "Professional") {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF2F2F7)),
+                            shape = RoundedCornerShape(8.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 10.dp)
+                                .clickable { onNavigateToCreatorHub() }
+                                .padding(bottom = 8.dp)
                         ) {
-                            Column {
-                                Text("Professional dashboard", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                                Text("207 views in the last 30 days.", fontSize = 12.sp, color = Color(0xFF8E8E93))
-                            }
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Button(
-                                    onClick = { onNavigateToCreatorTools() },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3897F0)),
-                                    shape = RoundedCornerShape(6.dp),
-                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                                    modifier = Modifier.height(28.dp)
-                                ) {
-                                    Text("Tools", fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                            Row(
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                            ) {
+                                Column {
+                                    Text("Professional dashboard", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                                    Text("Creator tools & insights", fontSize = 12.sp, color = Color(0xFF8E8E93))
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Button(
+                                        onClick = { onNavigateToCreatorTools() },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3897F0)),
+                                        shape = RoundedCornerShape(6.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                        modifier = Modifier.height(28.dp)
+                                    ) {
+                                        Text("Tools", fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                    }
                                 }
                             }
                         }
-                    }
-                } else {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF0FDF4)),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                val updated = user.copy(accountType = "Creator")
-                                onSaveProfile(updated)
-                                Toast.makeText(context, "✨ Switched to Professional Creator Account!", Toast.LENGTH_SHORT).show()
-                            }
-                            .padding(bottom = 8.dp)
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
+                    } else {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF0FDF4)),
+                            shape = RoundedCornerShape(8.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 10.dp)
+                                .clickable {
+                                    val updated = user.copy(accountType = "Creator")
+                                    onSaveProfile(updated)
+                                    Toast.makeText(context, "✨ Switched to Professional Creator Account!", Toast.LENGTH_SHORT).show()
+                                }
+                                .padding(bottom = 8.dp)
                         ) {
-                            Column {
-                                Text("Switch to Professional Account", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
-                                Text("Get insights, category badge, and creator tools.", fontSize = 11.sp, color = Color(0xFF15803D))
+                            Row(
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                            ) {
+                                Column {
+                                    Text("Switch to Professional Account", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
+                                    Text("Get insights, category badge, and creator tools.", fontSize = 11.sp, color = Color(0xFF15803D))
+                                }
+                                Text("Switch >", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
                             }
-                            Text("Switch >", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF166534))
                         }
                     }
                 }
 
                 // Two Equal-Width Sleek Buttons Side-by-Side
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Button(
-                        onClick = { isEditing = !isEditing },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEFEFEF)),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(0.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(34.dp)
+                if (isOwnProfile) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(if (isEditing) "Close edit" else "Edit profile", color = Color.Black, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        Button(
+                            onClick = { isEditing = !isEditing },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEFEFEF)),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(0.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(34.dp)
+                        ) {
+                            Text(if (isEditing) "Close edit" else "Edit profile", color = Color.Black, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        }
+
+                        Button(
+                            onClick = {
+                                val shareUrl = "https://finaldestiny.app/user/${user.handle.removePrefix("@")}"
+                                val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                                val clipData = android.content.ClipData.newPlainText("Profile Link", shareUrl)
+                                clipboardManager?.setPrimaryClip(clipData)
+
+                                val sendIntent = android.content.Intent().apply {
+                                    action = android.content.Intent.ACTION_SEND
+                                    putExtra(android.content.Intent.EXTRA_TEXT, "Check out ${user.name}'s profile on Final Destiny: $shareUrl")
+                                    type = "text/plain"
+                                }
+                                val shareIntent = android.content.Intent.createChooser(sendIntent, "Share Profile via")
+                                context.startActivity(shareIntent)
+                                Toast.makeText(context, "🔗 Profile link copied & Share Sheet launched!", Toast.LENGTH_SHORT).show()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEFEFEF)),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(0.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(34.dp)
+                        ) {
+                            Text("Share profile", color = Color.Black, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        }
                     }
-
-                    Button(
-                        onClick = {
-                            val shareUrl = "https://finaldestiny.app/user/${user.handle.removePrefix("@")}"
-                            val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
-                            val clipData = android.content.ClipData.newPlainText("Profile Link", shareUrl)
-                            clipboardManager?.setPrimaryClip(clipData)
-
-                            val sendIntent = android.content.Intent().apply {
-                                action = android.content.Intent.ACTION_SEND
-                                putExtra(android.content.Intent.EXTRA_TEXT, "Check out ${user.name}'s profile on Final Destiny: $shareUrl")
-                                type = "text/plain"
-                            }
-                            val shareIntent = android.content.Intent.createChooser(sendIntent, "Share Profile via")
-                            context.startActivity(shareIntent)
-                            Toast.makeText(context, "🔗 Profile link copied & Share Sheet launched!", Toast.LENGTH_SHORT).show()
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEFEFEF)),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(0.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(34.dp)
+                } else {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Share profile", color = Color.Black, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        Button(
+                            onClick = {
+                                isFollowingUser = !isFollowingUser
+                                onToggleFollowCandidate(user.id, isFollowingUser)
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isFollowingUser) Color(0xFFEFEFEF) else Color(0xFF3897F0)
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(0.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(34.dp)
+                        ) {
+                            Text(
+                                text = if (isFollowingUser) "Following" else "Follow",
+                                color = if (isFollowingUser) Color.Black else Color.White,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                val shareUrl = "https://finaldestiny.app/user/${user.handle.removePrefix("@")}"
+                                val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as? android.content.ClipboardManager
+                                val clipData = android.content.ClipData.newPlainText("Profile Link", shareUrl)
+                                clipboardManager?.setPrimaryClip(clipData)
+
+                                val sendIntent = android.content.Intent().apply {
+                                    action = android.content.Intent.ACTION_SEND
+                                    putExtra(android.content.Intent.EXTRA_TEXT, "Check out ${user.name}'s profile on Final Destiny: $shareUrl")
+                                    type = "text/plain"
+                                }
+                                val shareIntent = android.content.Intent.createChooser(sendIntent, "Share Profile via")
+                                context.startActivity(shareIntent)
+                                Toast.makeText(context, "🔗 Profile link copied & Share Sheet launched!", Toast.LENGTH_SHORT).show()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEFEFEF)),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(0.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(34.dp)
+                        ) {
+                            Text("Share profile", color = Color.Black, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        }
                     }
                 }
             }

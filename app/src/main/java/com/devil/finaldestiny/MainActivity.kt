@@ -186,8 +186,8 @@ fun FinalDestinyApp(repository: AppRepository) {
                     handle = authorPost.authorHandle.ifBlank { "@creator" },
                     profilePictureUri = authorPost.authorAvatar,
                     bio = "Content Creator on Destiny ✨",
-                    followerCount = 1240,
-                    followingCount = 380,
+                    followerCount = 0,
+                    followingCount = 0,
                     verifiedStatus = true
                 )
             } else {
@@ -196,8 +196,8 @@ fun FinalDestinyApp(repository: AppRepository) {
                     name = "Creator Profile",
                     handle = "@creator",
                     bio = "Destiny Creator ✨",
-                    followerCount = 850,
-                    followingCount = 210
+                    followerCount = 0,
+                    followingCount = 0
                 )
             }
         }
