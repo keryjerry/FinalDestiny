@@ -98,12 +98,13 @@ fun SearchExploreScreen(
                     val jsonArray = JSONArray(jsonResponse)
                     for (i in 0 until jsonArray.length()) {
                         val obj = jsonArray.getJSONObject(i)
+                        val rawAv = if (obj.has("avatar_url") && !obj.isNull("avatar_url")) obj.optString("avatar_url") else null
                         parsedList.add(
                             SearchResultUser(
                                 id = obj.optString("id", "u_$i"),
                                 name = obj.optString("name", "Creator"),
                                 handle = obj.optString("handle", "@creator"),
-                                avatarUrl = obj.optString("avatar_url", null),
+                                avatarUrl = SupabaseAuthClient.sanitizeAvatarUrl(rawAv),
                                 matchChip = obj.optString("match_chip", "Creator • India"),
                                 isVerified = obj.optBoolean("is_verified", true)
                             )
