@@ -130,6 +130,7 @@ fun SearchExploreScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .statusBarsPadding()
             .background(SkyBlueBgLight)
     ) {
         // TOP HEADER BAR WITH UNIVERSAL BACK ARROW ('<') & GOOGLE-STYLE AI SEARCH PILL
@@ -142,7 +143,7 @@ fun SearchExploreScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp)
+                    .padding(top = 12.dp, start = 16.dp, end = 16.dp, bottom = 10.dp)
             ) {
                 // Top-Left Back Navigation Arrow ('<')
                 IconButton(
