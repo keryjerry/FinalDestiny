@@ -32,7 +32,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devil.finaldestiny.data.SupabaseAuthClient
@@ -164,52 +168,58 @@ fun SearchExploreScreen(
                 Spacer(modifier = Modifier.width(8.dp))
 
                 // Full-width Google-Style Expanding Search Pill
-                Box(
-                    contentAlignment = Alignment.CenterStart,
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = SkyBlueBgLight,
+                    border = BorderStroke(
+                        width = 1.5.dp,
+                        brush = Brush.horizontalGradient(listOf(BrightCyanAccent, SkyBluePrimary))
+                    ),
                     modifier = Modifier
                         .weight(1f)
-                        .height(44.dp)
-                        .clip(RoundedCornerShape(22.dp))
-                        .background(SkyBlueBgLight)
-                        .border(
-                            width = 1.5.dp,
-                            brush = Brush.horizontalGradient(listOf(BrightCyanAccent, SkyBluePrimary)),
-                            shape = RoundedCornerShape(22.dp)
-                        )
-                        .padding(horizontal = 12.dp)
+                        .height(48.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 14.dp)
                     ) {
                         Text("✨", fontSize = 16.sp)
                         Spacer(modifier = Modifier.width(6.dp))
 
-                        OutlinedTextField(
+                        BasicTextField(
                             value = searchQuery,
                             onValueChange = {
                                 searchQuery = it
                                 isSearching = it.isNotEmpty()
                             },
-                            placeholder = {
-                                Text(
-                                    text = "✨ AI Search creators, skills, vibes...",
-                                    color = SlateTextSecondary,
-                                    fontSize = 12.sp
-                                )
-                            },
                             singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Color.Transparent,
-                                unfocusedBorderColor = Color.Transparent,
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                                focusedTextColor = NavyTextPrimary,
-                                unfocusedTextColor = NavyTextPrimary
+                            textStyle = TextStyle(
+                                color = NavyTextPrimary,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
                             ),
                             modifier = Modifier
                                 .weight(1f)
-                                .focusRequester(focusRequester)
+                                .focusRequester(focusRequester),
+                            decorationBox = { innerTextField ->
+                                Box(
+                                    contentAlignment = Alignment.CenterStart,
+                                    modifier = Modifier.fillMaxHeight()
+                                ) {
+                                    if (searchQuery.isEmpty()) {
+                                        Text(
+                                            text = "AI Search creators, skills, vibes...",
+                                            color = SlateTextSecondary,
+                                            fontSize = 14.sp,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            }
                         )
 
                         if (searchQuery.isNotEmpty()) {
