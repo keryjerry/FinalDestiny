@@ -152,7 +152,8 @@ fun UserProfileScreen(
     var isFollowingUser by remember(user.id) { mutableStateOf(false) }
 
     var editName by remember(user) { mutableStateOf(user.name) }
-    var editBio by remember(user) { mutableStateOf(user.bio) }
+    val initialCleanBio = user.bio.takeIf { !it.isNullOrBlank() && it.trim().lowercase() != "null" } ?: ""
+    var editBio by remember(user) { mutableStateOf(initialCleanBio) }
     var editCategory by remember(user) { mutableStateOf(user.creatorCategory) }
     var editDisplayCategory by remember(user) { mutableStateOf(user.displayCategoryOnProfile) }
     var editAccountType by remember(user) { mutableStateOf(user.accountType) }

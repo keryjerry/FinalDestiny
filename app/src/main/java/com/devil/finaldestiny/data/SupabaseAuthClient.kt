@@ -375,7 +375,6 @@ object SupabaseAuthClient {
                 doOutput = true
             }
 
-            val handle = "@" + cleanUsername.replace(" ", "_")
             val sanitizedAvatar = sanitizeAvatarUrl(currentUserAvatarUrl)
             val payload = JSONObject().apply {
                 put("id", uid)
@@ -383,7 +382,6 @@ object SupabaseAuthClient {
                 put("username", cleanUsername)
                 put("full_name", cleanUsername)
                 put("name", cleanUsername)
-                put("handle", handle)
                 if (sanitizedAvatar != null) {
                     put("avatar_url", sanitizedAvatar)
                 }
@@ -549,16 +547,17 @@ object SupabaseAuthClient {
 
         Log.d("AVATAR_DB_UPDATE", "Initiating DB update on public.profiles for Target User ID: $targetId | Avatar URL: $cleanAvatarUrl")
 
+        val cleanBio = profile.bio.takeIf { !it.isNullOrBlank() && it.trim().lowercase() != "null" } ?: ""
+
         val payload = JSONObject().apply {
             put("id", targetId)
             put("name", profile.name)
             put("full_name", profile.name)
             if (profile.handle.isNotBlank()) {
-                val cleanHandle = profile.handle.removePrefix("@")
+                val cleanHandle = profile.handle.removePrefix("@").trim()
                 put("username", cleanHandle)
-                put("handle", "@$cleanHandle")
             }
-            put("bio", profile.bio)
+            put("bio", cleanBio)
             if (cleanAvatarUrl != null) {
                 put("avatar_url", cleanAvatarUrl)
             }
