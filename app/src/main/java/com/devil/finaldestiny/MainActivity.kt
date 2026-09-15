@@ -342,6 +342,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onAddAccount = { email, name -> repository.addAccount(email, name, context) },
                     onRemoveAccount = { targetId -> repository.removeAccount(targetId, context) },
                     onOpenMediaPicker = { showMediaPickerSheet = true },
+                    onOpenUserProfile = handleOpenUserProfile,
                     onBack = {
                         selectedProfileUserId = null
                         currentScreen = Screen.PRIMARY_DASHBOARD

@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AlternateEmail
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
@@ -106,6 +107,7 @@ fun UserProfileScreen(
     onAddAccount: (String, String) -> Unit = { _, _ -> },
     onRemoveAccount: (String) -> Unit = {},
     onOpenMediaPicker: (() -> Unit)? = null,
+    onOpenUserProfile: (String) -> Unit = {},
     onNavigateToReelViewer: (Int) -> Unit = {},
     onBack: () -> Unit
 ) {
@@ -125,6 +127,11 @@ fun UserProfileScreen(
     var newAccName by remember { mutableStateOf("") }
     var showDiscoverPeople by remember { mutableStateOf(true) }
     var dialogTitle by remember { mutableStateOf("Followers List") }
+
+    var rawPickedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var pendingCroppedBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var pendingAvatarUri by remember { mutableStateOf<Uri?>(null) }
+    var isUploadingAvatar by remember { mutableStateOf(false) }
 
     var showCreateTravelPlaylistDialog by remember { mutableStateOf(false) }
     var newPlaylistNameInput by remember { mutableStateOf("") }
@@ -150,6 +157,48 @@ fun UserProfileScreen(
     var editDisplayCategory by remember(user) { mutableStateOf(user.displayCategoryOnProfile) }
     var editAccountType by remember(user) { mutableStateOf(user.accountType) }
 
+    val executeSaveProfile: () -> Unit = {
+        coroutineScope.launch {
+            isUploadingAvatar = true
+            try {
+                var finalAvatarUrl = pendingAvatarUri?.toString() ?: user.profilePictureUri
+                if (pendingAvatarUri != null) {
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        try {
+                            val uploadedUrl = com.devil.finaldestiny.data.SupabaseAuthClient.uploadMediaToSupabaseStorage(
+                                context = context,
+                                mediaUriStr = pendingAvatarUri.toString(),
+                                bucketName = "avatars"
+                            )
+                            finalAvatarUrl = uploadedUrl
+                            com.devil.finaldestiny.data.SupabaseAuthClient.saveUserAvatarUrl(context, uploadedUrl)
+                        } catch (e: Exception) {
+                            android.util.Log.e("[DestinyProfile]", "Avatar upload exception", e)
+                        }
+                    }
+                }
+
+                val updated = user.copy(
+                    name = editName,
+                    bio = editBio,
+                    creatorCategory = editCategory,
+                    displayCategoryOnProfile = editDisplayCategory,
+                    accountType = editAccountType,
+                    profilePictureUri = finalAvatarUrl
+                )
+                onSaveProfile(updated)
+                pendingCroppedBitmap = null
+                pendingAvatarUri = null
+                isEditing = false
+                Toast.makeText(context, "✅ Profile picture & details updated!", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "❌ Profile save failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+            } finally {
+                isUploadingAvatar = false
+            }
+        }
+    }
+
     var complaintCategory by remember { mutableStateOf("Billing & Payment") }
     var complaintDescription by remember { mutableStateOf("") }
 
@@ -159,9 +208,7 @@ fun UserProfileScreen(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? ->
         uri?.let {
-            val updated = user.copy(profilePictureUri = it.toString(), verifiedStatus = true)
-            onSaveProfile(updated)
-            Toast.makeText(context, "📸 Media uploaded to Profile!", Toast.LENGTH_SHORT).show()
+            rawPickedImageUri = it
         }
     }
 
@@ -169,9 +216,7 @@ fun UserProfileScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            val updated = user.copy(profilePictureUri = it.toString(), verifiedStatus = true)
-            onSaveProfile(updated)
-            Toast.makeText(context, "📸 Profile Photo Updated!", Toast.LENGTH_SHORT).show()
+            rawPickedImageUri = it
         }
     }
 
@@ -181,9 +226,7 @@ fun UserProfileScreen(
         bitmap?.let {
             val tempUri = saveBitmapToCacheUri(context, it)
             tempUri?.let { uri ->
-                val updated = user.copy(profilePictureUri = uri.toString(), verifiedStatus = true)
-                onSaveProfile(updated)
-                Toast.makeText(context, "📷 Live Selfie Verified!", Toast.LENGTH_SHORT).show()
+                rawPickedImageUri = uri
             }
         }
     }
@@ -321,11 +364,25 @@ fun UserProfileScreen(
                     }
                 }
 
-                // Right: Threads (@) Icon & Hamburger Menu (≡)
+                // Right: Done / Save Checkmark (if Editing/Cropped) & Threads (@) Icon & Hamburger Menu (≡)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    if (isOwnProfile && (isEditing || pendingAvatarUri != null)) {
+                        IconButton(
+                            onClick = { executeSaveProfile() },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = "Done Save Profile",
+                                tint = Color(0xFF3897F0),
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
+
                     Text(
                         text = "@",
                         fontSize = 22.sp,
@@ -392,7 +449,16 @@ fun UserProfileScreen(
                     ) {
                         val avatarUrl = user.profilePictureUri.takeIf { !it.isNullOrBlank() }
                             ?: if (isOwnProfile) com.devil.finaldestiny.data.SupabaseAuthClient.getUserAvatarUrl() else null
-                        if (!avatarUrl.isNullOrBlank()) {
+                        if (pendingCroppedBitmap != null) {
+                            Image(
+                                bitmap = pendingCroppedBitmap!!.asImageBitmap(),
+                                contentDescription = "Cropped Avatar Preview",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(CircleShape)
+                            )
+                        } else if (!avatarUrl.isNullOrBlank()) {
                             AsyncImage(
                                 model = ImageRequest.Builder(context)
                                     .data(avatarUrl)
@@ -822,22 +888,15 @@ fun UserProfileScreen(
                         }
 
                         Button(
-                            onClick = {
-                                val updated = user.copy(
-                                    name = editName,
-                                    bio = editBio,
-                                    creatorCategory = editCategory,
-                                    displayCategoryOnProfile = editDisplayCategory,
-                                    accountType = editAccountType
-                                )
-                                onSaveProfile(updated)
-                                isEditing = false
-                                Toast.makeText(context, "✅ Profile Changes Saved!", Toast.LENGTH_SHORT).show()
-                            },
+                            onClick = { executeSaveProfile() },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3897F0)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Save Changes", color = Color.White, fontWeight = FontWeight.Bold)
+                            Text(
+                                text = if (pendingAvatarUri != null) "Save & Upload Profile Picture" else "Save Changes",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
@@ -877,6 +936,7 @@ fun UserProfileScreen(
                                 modifier = Modifier
                                     .width(135.dp)
                                     .border(1.dp, Color(0xFFE5E5EA), RoundedCornerShape(8.dp))
+                                    .clickable { onOpenUserProfile(candidate.id) }
                             ) {
                                 Box(modifier = Modifier.padding(10.dp)) {
                                     Icon(
@@ -893,13 +953,15 @@ fun UserProfileScreen(
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        ProfileAvatarView(
-                                            name = candidate.name,
-                                            profilePictureUri = candidate.avatarUrl.takeIf { it.isNotBlank() },
-                                            size = 60.dp,
-                                            showBorder = true,
-                                            borderColor = Color(0xFF3897F0)
-                                        )
+                                        Box(modifier = Modifier.clickable { onOpenUserProfile(candidate.id) }) {
+                                            ProfileAvatarView(
+                                                name = candidate.name,
+                                                profilePictureUri = candidate.avatarUrl.takeIf { it.isNotBlank() },
+                                                size = 60.dp,
+                                                showBorder = true,
+                                                borderColor = Color(0xFF3897F0)
+                                            )
+                                        }
 
                                         Spacer(modifier = Modifier.height(6.dp))
 
@@ -909,7 +971,8 @@ fun UserProfileScreen(
                                             fontWeight = FontWeight.Bold,
                                             color = Color.Black,
                                             maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.clickable { onOpenUserProfile(candidate.id) }
                                         )
                                         Text(
                                             text = if (candidate.handle.isNotBlank()) candidate.handle else candidate.mutualsLabel,
@@ -1842,6 +1905,48 @@ fun UserProfileScreen(
                 }
             }
         )
+    }
+
+    // AVATAR 1:1 ASPECT RATIO CROP DIALOG MODAL
+    if (rawPickedImageUri != null) {
+        com.devil.finaldestiny.ui.components.AvatarCropDialog(
+            rawImageUri = rawPickedImageUri!!,
+            onDismiss = { rawPickedImageUri = null },
+            onCropSuccess = { bitmap, uri ->
+                pendingCroppedBitmap = bitmap
+                pendingAvatarUri = uri
+                rawPickedImageUri = null
+                isEditing = true
+            }
+        )
+    }
+
+    // BLOCKING LOADING DIALOG DURING SUPABASE STORAGE UPLOAD
+    if (isUploadingAvatar) {
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = {},
+            properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
+        ) {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = Color.White,
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.padding(20.dp)
+                ) {
+                    CircularProgressIndicator(color = Color(0xFF3897F0))
+                    Text(
+                        text = "Saving profile & uploading image to Supabase...",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.Black
+                    )
+                }
+            }
+        }
     }
 }
 
