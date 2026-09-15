@@ -403,7 +403,132 @@ object SupabaseAuthClient {
     }
 
     /**
-     * Executes direct REST PATCH/POST on public.profiles to update avatar_url and user profile info.
+     * Executes isolated REST PATCH/POST on public.profiles to update avatar_url ONLY.
+     * Payload: {"avatar_url": "$cleanUrl"}
+     * Logs exact status code under "AVATAR_DB_UPDATE" and returns Pair(isSuccess, cleanUrlOrErrorMsg).
+     */
+    suspend fun updateUserProfileAvatar(
+        context: Context,
+        userId: String,
+        avatarUrl: String
+    ): Pair<Boolean, String> = withContext(Dispatchers.IO) {
+        val cleanUrl = sanitizeAvatarUrl(avatarUrl) ?: avatarUrl
+        val baseUrl = supabaseUrl.trimEnd('/')
+        val anonKey = supabaseAnonKey
+        val activeToken = currentSessionToken ?: anonKey
+
+        val targetId = userId.takeIf { !it.isNullOrBlank() && it != "usr_me" && it != "u101" }
+            ?: getUserId()
+            ?: getSanitizedUuid(context)
+
+        Log.d("AVATAR_DB_UPDATE", "Executing ISOLATED avatar PATCH on public.profiles for Target ID: $targetId | URL: $cleanUrl")
+
+        val payload = JSONObject().apply {
+            put("avatar_url", cleanUrl)
+        }
+
+        fun executePatch(tokenToUse: String): Pair<Int, String> {
+            val endpoint = "$baseUrl/rest/v1/profiles?id=eq.$targetId"
+            val url = URL(endpoint)
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "PATCH"
+                connectTimeout = 10000
+                readTimeout = 10000
+                setRequestProperty("apikey", anonKey)
+                setRequestProperty("Authorization", "Bearer $tokenToUse")
+                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("Prefer", "return=representation")
+                doOutput = true
+            }
+            conn.outputStream.use { os ->
+                os.write(payload.toString().toByteArray(Charsets.UTF_8))
+            }
+            val code = conn.responseCode
+            val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+            val text = stream?.bufferedReader()?.use { it.readText() } ?: ""
+            return Pair(code, text)
+        }
+
+        var (resCode, resText) = try {
+            executePatch(activeToken)
+        } catch (e: Exception) {
+            Log.e("AVATAR_DB_UPDATE", "Isolated PATCH exception: ${e.message}", e)
+            Pair(400, e.message ?: "PATCH Exception")
+        }
+
+        Log.d("AVATAR_DB_UPDATE", "HTTP Status: $resCode")
+
+        if (resCode !in 200..299 && activeToken != anonKey) {
+            Log.w("AVATAR_DB_UPDATE", "Isolated PATCH returned HTTP $resCode. Retrying with public anon key...")
+            try {
+                val (retryCode, retryText) = executePatch(anonKey)
+                resCode = retryCode
+                resText = retryText
+                Log.d("AVATAR_DB_UPDATE", "HTTP Status: $resCode")
+            } catch (e: Exception) {
+                Log.e("AVATAR_DB_UPDATE", "Isolated PATCH retry exception", e)
+            }
+        }
+
+        // Fallback POST upsert if PATCH updated 0 rows ("[]") or failed
+        if ((resCode in 200..299 && resText.trim() == "[]") || resCode !in 200..299) {
+            Log.w("AVATAR_DB_UPDATE", "Isolated PATCH updated 0 rows or failed (HTTP $resCode). Executing POST upsert fallback...")
+            try {
+                val endpoint = "$baseUrl/rest/v1/profiles"
+                fun executePost(tokenToUse: String): Pair<Int, String> {
+                    val url = URL(endpoint)
+                    val conn = (url.openConnection() as HttpURLConnection).apply {
+                        requestMethod = "POST"
+                        connectTimeout = 10000
+                        readTimeout = 10000
+                        setRequestProperty("apikey", anonKey)
+                        setRequestProperty("Authorization", "Bearer $tokenToUse")
+                        setRequestProperty("Content-Type", "application/json")
+                        setRequestProperty("Prefer", "return=representation,resolution=merge-duplicates")
+                        doOutput = true
+                    }
+                    val postPayload = JSONObject().apply {
+                        put("id", targetId)
+                        put("avatar_url", cleanUrl)
+                    }
+                    conn.outputStream.use { os ->
+                        os.write(postPayload.toString().toByteArray(Charsets.UTF_8))
+                    }
+                    val code = conn.responseCode
+                    val stream = if (code in 200..299) conn.inputStream else conn.errorStream
+                    val text = stream?.bufferedReader()?.use { it.readText() } ?: ""
+                    return Pair(code, text)
+                }
+
+                var (postCode, postText) = executePost(activeToken)
+                if (postCode !in 200..299 && activeToken != anonKey) {
+                    val (postRetryCode, postRetryText) = executePost(anonKey)
+                    postCode = postRetryCode
+                    postText = postRetryText
+                }
+                Log.d("AVATAR_DB_UPDATE", "HTTP Status: $postCode")
+                if (postCode in 200..299) {
+                    resCode = postCode
+                    resText = postText
+                }
+            } catch (e: Exception) {
+                Log.e("AVATAR_DB_UPDATE", "Isolated POST Upsert exception", e)
+            }
+        }
+
+        if (resCode in 200..299) {
+            saveUserAvatarUrl(context, cleanUrl)
+            Log.d("AVATAR_DB_UPDATE", "SUCCESS: public.profiles.avatar_url updated to '$cleanUrl' for ID: $targetId")
+            Pair(true, cleanUrl)
+        } else {
+            val errMsg = parseSupabaseError(resText, resCode)
+            Log.e("AVATAR_DB_UPDATE", "Failed DB update: $resText")
+            Pair(false, "HTTP $resCode: $errMsg")
+        }
+    }
+
+    /**
+     * Executes direct REST PATCH/POST on public.profiles to update user profile info.
      * Logs exact status code under "AVATAR_DB_UPDATE" and returns Pair(isSuccess, cleanUrlOrErrorMsg).
      */
     suspend fun updateFullUserProfileInSupabase(
@@ -437,9 +562,6 @@ object SupabaseAuthClient {
             if (cleanAvatarUrl != null) {
                 put("avatar_url", cleanAvatarUrl)
             }
-            put("account_type", profile.accountType)
-            put("creator_category", profile.creatorCategory)
-            put("display_category_on_profile", profile.displayCategoryOnProfile)
         }
 
         fun executePatch(tokenToUse: String): Pair<Int, String> {

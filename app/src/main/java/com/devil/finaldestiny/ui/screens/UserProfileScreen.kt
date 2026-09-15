@@ -182,6 +182,27 @@ fun UserProfileScreen(
                         Toast.makeText(context, "❌ Avatar Storage Upload Failed: $uploadError", Toast.LENGTH_LONG).show()
                         return@launch
                     }
+
+                    // Execute ISOLATED avatar PATCH: PATCH /rest/v1/profiles?id=eq.$userId payload={"avatar_url": "$cdnUrl"}
+                    var avatarDbSuccess = false
+                    var avatarDbErr = ""
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        val (success, resOrErr) = com.devil.finaldestiny.data.SupabaseAuthClient.updateUserProfileAvatar(
+                            context = context,
+                            userId = user.id,
+                            avatarUrl = finalAvatarUrl ?: ""
+                        )
+                        avatarDbSuccess = success
+                        if (success && resOrErr.isNotBlank()) {
+                            finalAvatarUrl = resOrErr
+                        } else if (!success) {
+                            avatarDbErr = resOrErr
+                        }
+                    }
+                    if (!avatarDbSuccess) {
+                        Toast.makeText(context, "❌ Avatar DB Update Failed: $avatarDbErr", Toast.LENGTH_LONG).show()
+                        return@launch
+                    }
                 }
 
                 val draftProfile = user.copy(
