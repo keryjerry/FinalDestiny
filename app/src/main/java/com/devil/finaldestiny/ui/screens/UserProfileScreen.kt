@@ -179,73 +179,47 @@ fun UserProfileScreen(
                         }
                     }
                     if (uploadError != null) {
-                        Toast.makeText(context, "❌ Avatar upload failed: $uploadError", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, "❌ Avatar Storage Upload Failed: $uploadError", Toast.LENGTH_LONG).show()
                         return@launch
                     }
                 }
 
-                val targetUuid = com.devil.finaldestiny.data.SupabaseAuthClient.getSanitizedUuid(context)
-                val sanitizedAvatar = com.devil.finaldestiny.data.SupabaseAuthClient.sanitizeAvatarUrl(finalAvatarUrl)
-
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    try {
-                        val baseUrl = com.devil.finaldestiny.data.SupabaseAuthClient.supabaseUrl.trimEnd('/')
-                        val anonKey = com.devil.finaldestiny.data.SupabaseAuthClient.supabaseAnonKey
-                        val token = com.devil.finaldestiny.data.SupabaseAuthClient.getSessionToken() ?: anonKey
-
-                        val endpoint = "$baseUrl/rest/v1/profiles"
-                        val url = java.net.URL(endpoint)
-                        val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
-                            requestMethod = "POST"
-                            connectTimeout = 10000
-                            readTimeout = 10000
-                            setRequestProperty("apikey", anonKey)
-                            setRequestProperty("Authorization", "Bearer $token")
-                            setRequestProperty("Content-Type", "application/json")
-                            setRequestProperty("Prefer", "return=representation,resolution=merge-duplicates")
-                            doOutput = true
-                        }
-                        val payload = org.json.JSONObject().apply {
-                            put("id", targetUuid)
-                            put("name", editName)
-                            put("full_name", editName)
-                            if (user.handle.isNotBlank()) {
-                                put("username", user.handle.removePrefix("@"))
-                                put("handle", if (user.handle.startsWith("@")) user.handle else "@${user.handle}")
-                            }
-                            put("bio", editBio)
-                            if (sanitizedAvatar != null) {
-                                put("avatar_url", sanitizedAvatar)
-                            }
-                            put("account_type", editAccountType)
-                            put("creator_category", editCategory)
-                            put("display_category_on_profile", editDisplayCategory)
-                        }
-                        connection.outputStream.use { os ->
-                            os.write(payload.toString().toByteArray(Charsets.UTF_8))
-                        }
-                        val resCode = connection.responseCode
-                        val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
-                        val resBody = stream?.bufferedReader()?.use { it.readText() } ?: ""
-                        android.util.Log.d("[DestinyProfile]", "Supabase DB Profile Permanent Commit -> Code $resCode | Response: $resBody")
-                    } catch (dbErr: Exception) {
-                        android.util.Log.e("[DestinyProfile]", "DB Commit Error", dbErr)
-                    }
-                }
-
-                val updated = user.copy(
+                val draftProfile = user.copy(
                     name = editName,
                     bio = editBio,
                     creatorCategory = editCategory,
                     displayCategoryOnProfile = editDisplayCategory,
                     accountType = editAccountType,
-                    profilePictureUri = sanitizedAvatar ?: finalAvatarUrl
+                    profilePictureUri = finalAvatarUrl
                 )
+
+                var dbSuccess = false
+                var dbErrorMsg = ""
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    val (success, resultOrErr) = com.devil.finaldestiny.data.SupabaseAuthClient.updateFullUserProfileInSupabase(
+                        context = context,
+                        profile = draftProfile,
+                        avatarUrl = finalAvatarUrl
+                    )
+                    dbSuccess = success
+                    if (success) {
+                        if (resultOrErr.isNotBlank()) finalAvatarUrl = resultOrErr
+                    } else {
+                        dbErrorMsg = resultOrErr
+                    }
+                }
+
+                if (!dbSuccess) {
+                    Toast.makeText(context, "❌ Profile DB Update Failed: $dbErrorMsg", Toast.LENGTH_LONG).show()
+                    return@launch
+                }
+
+                val updated = draftProfile.copy(profilePictureUri = finalAvatarUrl)
                 onSaveProfile(updated)
                 pendingCroppedBitmap = null
                 pendingAvatarUri = null
                 isEditing = false
-                Toast.makeText(context, "✅ Profile picture saved to Supabase Cloud & DB!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "✅ Profile picture saved to Supabase Storage & DB!", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 Toast.makeText(context, "❌ Profile save failed: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
             } finally {
