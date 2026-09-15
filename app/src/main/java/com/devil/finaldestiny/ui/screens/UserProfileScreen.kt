@@ -163,6 +163,7 @@ fun UserProfileScreen(
             try {
                 var finalAvatarUrl = pendingAvatarUri?.toString() ?: user.profilePictureUri
                 if (pendingAvatarUri != null) {
+                    var uploadError: String? = null
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                         try {
                             val uploadedUrl = com.devil.finaldestiny.data.SupabaseAuthClient.uploadMediaToSupabaseStorage(
@@ -173,12 +174,19 @@ fun UserProfileScreen(
                             finalAvatarUrl = uploadedUrl
                             com.devil.finaldestiny.data.SupabaseAuthClient.saveUserAvatarUrl(context, uploadedUrl)
                         } catch (e: Exception) {
+                            uploadError = e.localizedMessage ?: "Avatar upload error"
                             android.util.Log.e("[DestinyProfile]", "Avatar upload exception", e)
                         }
+                    }
+                    if (uploadError != null) {
+                        Toast.makeText(context, "❌ Avatar upload failed: $uploadError", Toast.LENGTH_LONG).show()
+                        return@launch
                     }
                 }
 
                 val targetUuid = com.devil.finaldestiny.data.SupabaseAuthClient.getSanitizedUuid(context)
+                val sanitizedAvatar = com.devil.finaldestiny.data.SupabaseAuthClient.sanitizeAvatarUrl(finalAvatarUrl)
+
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                     try {
                         val baseUrl = com.devil.finaldestiny.data.SupabaseAuthClient.supabaseUrl.trimEnd('/')
@@ -206,8 +214,8 @@ fun UserProfileScreen(
                                 put("handle", if (user.handle.startsWith("@")) user.handle else "@${user.handle}")
                             }
                             put("bio", editBio)
-                            if (!finalAvatarUrl.isNullOrBlank()) {
-                                put("avatar_url", finalAvatarUrl)
+                            if (sanitizedAvatar != null) {
+                                put("avatar_url", sanitizedAvatar)
                             }
                             put("account_type", editAccountType)
                             put("creator_category", editCategory)
@@ -231,7 +239,7 @@ fun UserProfileScreen(
                     creatorCategory = editCategory,
                     displayCategoryOnProfile = editDisplayCategory,
                     accountType = editAccountType,
-                    profilePictureUri = finalAvatarUrl
+                    profilePictureUri = sanitizedAvatar ?: finalAvatarUrl
                 )
                 onSaveProfile(updated)
                 pendingCroppedBitmap = null

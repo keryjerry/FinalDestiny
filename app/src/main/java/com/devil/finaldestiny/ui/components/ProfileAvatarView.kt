@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.devil.finaldestiny.data.SupabaseAuthClient
 import com.devil.finaldestiny.model.Gender
 import com.devil.finaldestiny.ui.theme.*
 
@@ -38,7 +39,8 @@ fun ProfileAvatarView(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val loadedBitmap = rememberLoadedAvatarImage(context, profilePictureUri)
+    val sanitizedRemoteUrl = SupabaseAuthClient.sanitizeAvatarUrl(profilePictureUri)
+    val loadedBitmap = rememberLoadedAvatarImage(context, if (sanitizedRemoteUrl == null) profilePictureUri else null)
 
     val initial = name.trim().take(1).uppercase().ifEmpty { "U" }
 
@@ -48,7 +50,7 @@ fun ProfileAvatarView(
         Brush.linearGradient(listOf(WineRedDark, WineRedMedium))
     }
 
-    val isRemoteUrl = !profilePictureUri.isNullOrBlank() && (profilePictureUri.startsWith("http://") || profilePictureUri.startsWith("https://"))
+    val isRemoteUrl = !sanitizedRemoteUrl.isNullOrBlank() && (sanitizedRemoteUrl.startsWith("http://") || sanitizedRemoteUrl.startsWith("https://"))
 
     Box(
         contentAlignment = Alignment.Center,
@@ -62,17 +64,36 @@ fun ProfileAvatarView(
             )
     ) {
         if (isRemoteUrl) {
-            coil.compose.AsyncImage(
-                model = coil.request.ImageRequest.Builder(LocalContext.current)
-                    .data(profilePictureUri)
+            coil.compose.SubcomposeAsyncImage(
+                model = coil.request.ImageRequest.Builder(context)
+                    .data(sanitizedRemoteUrl)
                     .diskCachePolicy(coil.request.CachePolicy.ENABLED)
                     .memoryCachePolicy(coil.request.CachePolicy.ENABLED)
                     .crossfade(true)
-                    .error(com.devil.finaldestiny.R.drawable.couple_photo)
                     .build(),
                 contentDescription = name,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                loading = {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                        Text(
+                            text = initial,
+                            fontSize = (size.value * 0.45f).sp,
+                            fontWeight = FontWeight.Bold,
+                            color = LightGold
+                        )
+                    }
+                },
+                error = {
+                    Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                        Text(
+                            text = initial,
+                            fontSize = (size.value * 0.45f).sp,
+                            fontWeight = FontWeight.Bold,
+                            color = LightGold
+                        )
+                    }
+                }
             )
         } else if (loadedBitmap != null) {
             Image(

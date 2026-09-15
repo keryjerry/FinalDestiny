@@ -196,7 +196,8 @@ class AppRepository {
                         val resolvedHandle = handleField ?: (if (username != null) (if (username.startsWith("@")) username else "@$username") else _currentUser.value.handle)
 
                         val bio = obj.optString("bio", _currentUser.value.bio)
-                        val avatarUrl = obj.optString("avatar_url", "").takeIf { it.isNotBlank() && it != "null" }
+                        val rawAvatar = obj.optString("avatar_url", "").takeIf { it.isNotBlank() && it != "null" }
+                        val avatarUrl = SupabaseAuthClient.sanitizeAvatarUrl(rawAvatar)
                         val accountType = obj.optString("account_type", _currentUser.value.accountType)
                         val creatorCategory = obj.optString("creator_category", _currentUser.value.creatorCategory)
 
@@ -927,8 +928,9 @@ class AppRepository {
                         put("handle", if (updatedProfile.handle.startsWith("@")) updatedProfile.handle else "@${updatedProfile.handle}")
                     }
                     put("bio", updatedProfile.bio)
-                    if (!finalAvatarUrl.isNullOrBlank()) {
-                        put("avatar_url", finalAvatarUrl)
+                    val sanitizedAvatar = SupabaseAuthClient.sanitizeAvatarUrl(finalAvatarUrl)
+                    if (sanitizedAvatar != null) {
+                        put("avatar_url", sanitizedAvatar)
                     }
                     put("account_type", updatedProfile.accountType)
                     put("creator_category", updatedProfile.creatorCategory)
@@ -1419,5 +1421,9 @@ class AppRepository {
                 android.util.Log.e("[DestinyUnblock]", "Failed to unblock user on Supabase", e)
             }
         }
+    }
+
+    suspend fun fetchSingleUserProfileFromSupabase(userId: String): UserProfile? {
+        return SupabaseAuthClient.fetchSingleUserProfileFromSupabase(userId)
     }
 }

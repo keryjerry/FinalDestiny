@@ -290,6 +290,21 @@ object SupabaseAuthClient {
         return@withContext res
     }
 
+    fun sanitizeAvatarUrl(rawAvatar: String?): String? {
+        if (rawAvatar.isNullOrBlank() || rawAvatar.trim().equals("null", ignoreCase = true)) return null
+        val clean = rawAvatar.trim()
+        val baseUrl = supabaseUrl.trimEnd('/')
+        return when {
+            clean.startsWith("http://", ignoreCase = true) ||
+            clean.startsWith("https://", ignoreCase = true) -> clean
+            clean.startsWith("content://", ignoreCase = true) ||
+            clean.startsWith("file://", ignoreCase = true) ||
+            clean.startsWith("data:", ignoreCase = true) -> null
+            clean.startsWith("avatars/") -> "$baseUrl/storage/v1/object/public/$clean"
+            else -> "$baseUrl/storage/v1/object/public/avatars/$clean"
+        }
+    }
+
     fun upsertUserProfile(uid: String, email: String, username: String? = null) {
         try {
             val endpoint = "${supabaseUrl.trimEnd('/')}/rest/v1/profiles"
@@ -308,6 +323,7 @@ object SupabaseAuthClient {
             }
 
             val handle = "@" + cleanUsername.replace(" ", "_")
+            val sanitizedAvatar = sanitizeAvatarUrl(currentUserAvatarUrl)
             val payload = JSONObject().apply {
                 put("id", uid)
                 put("email", email)
@@ -315,8 +331,8 @@ object SupabaseAuthClient {
                 put("full_name", cleanUsername)
                 put("name", cleanUsername)
                 put("handle", handle)
-                if (!currentUserAvatarUrl.isNullOrBlank()) {
-                    put("avatar_url", currentUserAvatarUrl)
+                if (sanitizedAvatar != null) {
+                    put("avatar_url", sanitizedAvatar)
                 }
             }
 
@@ -355,21 +371,24 @@ object SupabaseAuthClient {
     fun getSessionToken(): String? = currentSessionToken
     fun getUserEmail(): String? = currentUserEmail
     fun getUserId(): String? = currentUserId
-    fun getUserAvatarUrl(): String? = currentUserAvatarUrl
+    fun getUserAvatarUrl(): String? = sanitizeAvatarUrl(currentUserAvatarUrl) ?: currentUserAvatarUrl
 
     fun saveUserAvatarUrl(context: Context, avatarUrl: String) {
-        currentUserAvatarUrl = avatarUrl
+        val sanitized = sanitizeAvatarUrl(avatarUrl) ?: avatarUrl
+        currentUserAvatarUrl = sanitized
         val prefs = context.getSharedPreferences("destiny_auth_prefs", Context.MODE_PRIVATE)
-        prefs.edit().putString("user_avatar_url", avatarUrl).apply()
-        Log.d(TAG, "Persisted avatar URL to SharedPreferences -> $avatarUrl")
+        prefs.edit().putString("user_avatar_url", sanitized).apply()
+        Log.d(TAG, "Persisted avatar URL to SharedPreferences -> $sanitized")
     }
 
     fun getCachedAvatarUrl(context: Context): String? {
         if (!currentUserAvatarUrl.isNullOrBlank()) return currentUserAvatarUrl
         val prefs = context.getSharedPreferences("destiny_auth_prefs", Context.MODE_PRIVATE)
         val cached = prefs.getString("user_avatar_url", null)
-        if (!cached.isNullOrBlank()) currentUserAvatarUrl = cached
-        return cached
+        if (!cached.isNullOrBlank()) {
+            currentUserAvatarUrl = sanitizeAvatarUrl(cached) ?: cached
+        }
+        return currentUserAvatarUrl
     }
 
     fun signOut(context: Context? = null) {
@@ -448,17 +467,7 @@ object SupabaseAuthClient {
                         "@user_${id.take(5)}"
                     }
 
-                    val avatarUrl = if (!rawAvatar.isNullOrBlank() && rawAvatar != "null") {
-                        when {
-                            rawAvatar.startsWith("http://", ignoreCase = true) ||
-                            rawAvatar.startsWith("https://", ignoreCase = true) ||
-                            rawAvatar.startsWith("content://", ignoreCase = true) ||
-                            rawAvatar.startsWith("file://", ignoreCase = true) ||
-                            rawAvatar.startsWith("data:", ignoreCase = true) -> rawAvatar
-                            rawAvatar.startsWith("avatars/") -> "$baseUrl/storage/v1/object/public/$rawAvatar"
-                            else -> "$baseUrl/storage/v1/object/public/avatars/$rawAvatar"
-                        }
-                    } else null
+                    val avatarUrl = sanitizeAvatarUrl(rawAvatar)
 
                     profiles.add(
                         UserProfile(
@@ -521,17 +530,7 @@ object SupabaseAuthClient {
                         .ifBlank { obj.optString("photo_url", "") }
                         .trim()
 
-                    val avatarUrl = if (rawAvatar.isNotBlank() && rawAvatar != "null") {
-                        when {
-                            rawAvatar.startsWith("http://", ignoreCase = true) ||
-                            rawAvatar.startsWith("https://", ignoreCase = true) ||
-                            rawAvatar.startsWith("content://", ignoreCase = true) ||
-                            rawAvatar.startsWith("file://", ignoreCase = true) ||
-                            rawAvatar.startsWith("data:", ignoreCase = true) -> rawAvatar
-                            rawAvatar.startsWith("avatars/") -> "$baseUrl/storage/v1/object/public/$rawAvatar"
-                            else -> "$baseUrl/storage/v1/object/public/avatars/$rawAvatar"
-                        }
-                    } else null
+                    val avatarUrl = sanitizeAvatarUrl(rawAvatar)
 
                     val name = rawFullName.takeIf { it.isNotBlank() && it != "null" }
                         ?: rawUsername.takeIf { it.isNotBlank() && it != "null" }
@@ -559,6 +558,74 @@ object SupabaseAuthClient {
             Log.e(TAG, "Failed to fetch discover profiles fallback", e)
         }
         profiles
+    }
+
+    /**
+     * Fetches a single complete UserProfile by userId directly from Supabase REST API
+     */
+    suspend fun fetchSingleUserProfileFromSupabase(userId: String): UserProfile? = withContext(Dispatchers.IO) {
+        if (userId.isBlank()) return@withContext null
+        try {
+            val baseUrl = supabaseUrl.trimEnd('/')
+            val endpoint = "$baseUrl/rest/v1/profiles?id=eq.$userId&select=*"
+            Log.d(TAG, "GET /rest/v1/profiles?id=eq.$userId -> Fetching single profile")
+            val url = URL(endpoint)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 8000
+                readTimeout = 8000
+                setRequestProperty("apikey", supabaseAnonKey)
+                setRequestProperty("Authorization", "Bearer ${currentSessionToken ?: supabaseAnonKey}")
+                setRequestProperty("Accept", "application/json")
+            }
+
+            val resCode = connection.responseCode
+            val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
+            val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
+
+            if (resCode in 200..299 && resText.isNotBlank()) {
+                val jsonArray = org.json.JSONArray(resText)
+                if (jsonArray.length() > 0) {
+                    val obj = jsonArray.getJSONObject(0)
+                    val id = obj.optString("id", userId)
+                    val rawFullName = obj.optString("full_name", obj.optString("name", ""))
+                    val rawUsername = obj.optString("username", obj.optString("handle", ""))
+                    val bio = obj.optString("bio", "Loving live talks & genuine connections ✨")
+                    val rawAvatar = obj.optString("avatar_url", "")
+                        .ifBlank { obj.optString("avatarUrl", "") }
+                        .ifBlank { obj.optString("profile_picture_url", "") }
+
+                    val avatarUrl = sanitizeAvatarUrl(rawAvatar)
+                    val name = rawFullName.takeIf { it.isNotBlank() && it != "null" }
+                        ?: rawUsername.takeIf { it.isNotBlank() && it != "null" }
+                        ?: "User_${id.take(5)}"
+                    val handle = if (rawUsername.isNotBlank() && rawUsername != "null") {
+                        if (rawUsername.startsWith("@")) rawUsername else "@$rawUsername"
+                    } else {
+                        "@user_${id.take(5)}"
+                    }
+
+                    val followers = fetchFollowersCount(id)
+                    val following = fetchFollowingCount(id)
+
+                    return@withContext UserProfile(
+                        id = id,
+                        handle = handle,
+                        name = name,
+                        bio = bio,
+                        profilePictureUri = avatarUrl,
+                        photos = if (avatarUrl != null) listOf(avatarUrl) else emptyList(),
+                        followerCount = followers,
+                        followingCount = following,
+                        accountType = obj.optString("account_type", "Personal"),
+                        creatorCategory = obj.optString("creator_category", "Digital Creator")
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch single profile for $userId", e)
+        }
+        null
     }
 
     /**
@@ -652,8 +719,16 @@ object SupabaseAuthClient {
         Log.d(TAG, "Reading binary stream for URI: $cleanUri | Target Bucket: $bucketName")
         val uri = Uri.parse(cleanUri)
         val bytes = try {
-            context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                ?: throw IllegalArgumentException("Cannot open stream for Uri: $cleanUri")
+            if (cleanUri.startsWith("content://")) {
+                context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            } else {
+                val path = if (cleanUri.startsWith("file://")) Uri.parse(cleanUri).path else cleanUri
+                if (path != null && java.io.File(path).exists()) {
+                    java.io.File(path).readBytes()
+                } else {
+                    context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                }
+            } ?: throw IllegalArgumentException("Cannot open stream or file for Uri: $cleanUri")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to read binary bytes for $cleanUri", e)
             throw Exception("Failed to read media file: ${e.localizedMessage}")

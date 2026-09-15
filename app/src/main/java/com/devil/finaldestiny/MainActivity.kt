@@ -174,9 +174,32 @@ fun FinalDestinyApp(repository: AppRepository) {
         currentScreen = Screen.USER_PROFILE
     }
 
-    val displayUserProfile = remember(selectedProfileUserId, user, momentPosts) {
+    var remoteProfileState by remember { mutableStateOf<UserProfile?>(null) }
+
+    LaunchedEffect(selectedProfileUserId) {
+        val targetId = selectedProfileUserId
+        if (!targetId.isNullOrBlank() && targetId != user.id) {
+            remoteProfileState = null
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    val fetched = repository.fetchSingleUserProfileFromSupabase(targetId)
+                    if (fetched != null) {
+                        remoteProfileState = fetched
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("MainActivity", "Failed to load target profile for $targetId", e)
+                }
+            }
+        } else {
+            remoteProfileState = null
+        }
+    }
+
+    val displayUserProfile = remember(selectedProfileUserId, user, momentPosts, remoteProfileState) {
         if (selectedProfileUserId.isNullOrBlank() || selectedProfileUserId == user.id) {
             user
+        } else if (remoteProfileState != null) {
+            remoteProfileState!!
         } else {
             val authorPost = momentPosts.firstOrNull { it.userId == selectedProfileUserId }
             if (authorPost != null) {
