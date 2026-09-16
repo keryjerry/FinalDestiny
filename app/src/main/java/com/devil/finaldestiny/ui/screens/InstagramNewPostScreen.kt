@@ -225,24 +225,32 @@ fun InstagramNewPostScreen(
     var showLocationPickerSheet by remember { mutableStateOf(false) }
     var locationSearchQuery by remember { mutableStateOf("") }
     var searchLocationResults by remember { mutableStateOf<List<String>>(emptyList()) }
+    var detailedLocationResults by remember { mutableStateOf<List<com.devil.finaldestiny.data.LocationPlaceItem>>(emptyList()) }
+    var nearbyLandmarkItems by remember { mutableStateOf<List<com.devil.finaldestiny.data.LocationPlaceItem>>(emptyList()) }
     var isSearchingLocation by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        val currentLoc = com.devil.finaldestiny.data.GlobalLocationRepository.detectCurrentLocationWithGps(context)
-        if (currentLoc.isNotBlank()) {
-            detectedCity = currentLoc
-            selectedLocation = currentLoc
-            locationChips = com.devil.finaldestiny.data.GlobalLocationRepository.generateLocationChipsForCity(currentLoc)
+        val place = com.devil.finaldestiny.data.GlobalLocationRepository.detectCurrentLocationWithGpsDetailed(context)
+        if (place.title.isNotBlank() && place.title != "Select Location") {
+            detectedCity = place.title
+            locationChips = com.devil.finaldestiny.data.GlobalLocationRepository.generateLocationChipsForCity(place.title)
         } else {
-            detectedCity = "Add location"
+            detectedCity = "Current Location"
         }
     }
 
     LaunchedEffect(locationSearchQuery, showLocationPickerSheet) {
-        if (showLocationPickerSheet && locationSearchQuery.isNotBlank()) {
-            isSearchingLocation = true
-            searchLocationResults = com.devil.finaldestiny.data.GlobalLocationRepository.searchGlobalLocations(locationSearchQuery)
-            isSearchingLocation = false
+        if (showLocationPickerSheet) {
+            if (nearbyLandmarkItems.isEmpty()) {
+                nearbyLandmarkItems = com.devil.finaldestiny.data.GlobalLocationRepository.fetchNearbyLandmarks(detectedCity)
+            }
+            if (locationSearchQuery.isNotBlank()) {
+                isSearchingLocation = true
+                detailedLocationResults = com.devil.finaldestiny.data.GlobalLocationRepository.searchGlobalLocationsDetailed(context, locationSearchQuery)
+                isSearchingLocation = false
+            } else {
+                detailedLocationResults = emptyList()
+            }
         }
     }
 
@@ -1040,66 +1048,143 @@ fun InstagramNewPostScreen(
         )
     }
 
-    // LIVE GLOBAL LOCATION PICKER DIALOG
+    // LIVE GPS & LANDMARKS LOCATION PICKER DIALOG
     if (showLocationPickerSheet) {
         AlertDialog(
             onDismissRequest = { showLocationPickerSheet = false },
             containerColor = Color.White,
+            shape = RoundedCornerShape(20.dp),
             title = {
                 Column {
-                    Text("📍 Search Location", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("📍 Select Location", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                        IconButton(onClick = { showLocationPickerSheet = false }, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.Close, contentDescription = "Close", tint = Color(0xFF8E8E93))
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
                     OutlinedTextField(
                         value = locationSearchQuery,
                         onValueChange = { locationSearchQuery = it },
-                        placeholder = { Text("Search city, area, landmark...", fontSize = 12.sp) },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                        placeholder = { Text("Search city, landmark, or area...", fontSize = 13.sp, color = Color(0xFF8E8E93)) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color(0xFF3897F0)) },
+                        trailingIcon = {
+                            if (locationSearchQuery.isNotEmpty()) {
+                                IconButton(onClick = { locationSearchQuery = "" }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Clear", tint = Color(0xFF8E8E93))
+                                }
+                            }
+                        },
                         singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF3897F0),
+                            unfocusedBorderColor = Color(0xFFE5E5EA),
+                            focusedContainerColor = Color(0xFFF2F2F7),
+                            unfocusedContainerColor = Color(0xFFF2F2F7)
+                        ),
+                        shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
             },
             text = {
-                Box(modifier = Modifier.height(260.dp).fillMaxWidth()) {
+                Box(modifier = Modifier.height(340.dp).fillMaxWidth()) {
                     if (isSearchingLocation) {
                         CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = Color(0xFF3897F0))
                     } else {
                         LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            // Row 1: USE CURRENT LOCATION (GPS Target Icon with Blue Accent)
                             item {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
+                                Surface(
+                                    color = Color(0xFFF0F8FF),
+                                    shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier
                                         .fillMaxWidth()
+                                        .padding(vertical = 4.dp)
                                         .clickable {
-                                            selectedLocation = detectedCity
+                                            selectedLocation = if (detectedCity != "Add location" && detectedCity != "Detecting location...") detectedCity else "Current Location"
                                             showLocationPickerSheet = false
+                                            Toast.makeText(context, "📍 Location set: $selectedLocation", Toast.LENGTH_SHORT).show()
                                         }
-                                        .padding(vertical = 8.dp)
                                 ) {
-                                    Icon(Icons.Default.MyLocation, contentDescription = null, tint = Color(0xFF3897F0))
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Column {
-                                        Text("Use Current Location", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(0xFF3897F0))
-                                        Text(detectedCity, fontSize = 11.sp, color = Color(0xFF8E8E93))
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
+                                    ) {
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .clip(CircleShape)
+                                                .background(Brush.linearGradient(listOf(Color(0xFF3897F0), Color(0xFF00C6FF))))
+                                        ) {
+                                            Icon(Icons.Default.MyLocation, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                                        }
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column {
+                                            Text("Use Current Location", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFF3897F0))
+                                            Text(if (detectedCity.isNotBlank()) detectedCity else "Fetching GPS coordinates...", fontSize = 11.sp, color = Color(0xFF8E8E93))
+                                        }
                                     }
                                 }
-                                HorizontalDivider(color = Color(0xFFE5E5EA), thickness = 0.5.dp)
+                                Spacer(modifier = Modifier.height(8.dp))
                             }
 
-                            items(searchLocationResults) { locName ->
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            selectedLocation = locName
-                                            showLocationPickerSheet = false
+                            // If user is searching: display live location search results
+                            if (locationSearchQuery.isNotBlank()) {
+                                item {
+                                    Text("Search Results", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF8E8E93), modifier = Modifier.padding(vertical = 4.dp))
+                                }
+                                items(detailedLocationResults) { place ->
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                selectedLocation = place.title
+                                                showLocationPickerSheet = false
+                                                Toast.makeText(context, "📍 Location set: ${place.title}", Toast.LENGTH_SHORT).show()
+                                            }
+                                            .padding(vertical = 10.dp, horizontal = 4.dp)
+                                    ) {
+                                        Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFF3897F0))
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(place.title, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.Black, maxLines = 1)
+                                            Text(place.subtitle, fontSize = 11.sp, color = Color(0xFF8E8E93), maxLines = 1)
                                         }
-                                        .padding(vertical = 10.dp)
-                                ) {
-                                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color(0xFF8E8E93))
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Text(locName, fontSize = 13.sp, color = Color.Black, maxLines = 1)
+                                    }
+                                    HorizontalDivider(color = Color(0xFFF2F2F7), thickness = 0.5.dp)
+                                }
+                            } else {
+                                // Row 2: NEARBY LANDMARKS / PLACES LIST
+                                item {
+                                    Text("Nearby Landmarks & Places", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF8E8E93), modifier = Modifier.padding(vertical = 6.dp))
+                                }
+                                items(nearbyLandmarkItems) { landmark ->
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                selectedLocation = landmark.title
+                                                showLocationPickerSheet = false
+                                                Toast.makeText(context, "📍 Location set: ${landmark.title}", Toast.LENGTH_SHORT).show()
+                                            }
+                                            .padding(vertical = 10.dp, horizontal = 4.dp)
+                                    ) {
+                                        Icon(Icons.Default.Place, contentDescription = null, tint = Color(0xFF8E8E93))
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(landmark.title, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color.Black, maxLines = 1)
+                                            Text(landmark.subtitle, fontSize = 11.sp, color = Color(0xFF8E8E93), maxLines = 1)
+                                        }
+                                    }
+                                    HorizontalDivider(color = Color(0xFFF2F2F7), thickness = 0.5.dp)
                                 }
                             }
                         }
@@ -1108,7 +1193,7 @@ fun InstagramNewPostScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showLocationPickerSheet = false }) {
-                    Text("Cancel", color = Color(0xFF8E8E93))
+                    Text("Close", color = Color(0xFF8E8E93), fontWeight = FontWeight.Bold)
                 }
             }
         )
