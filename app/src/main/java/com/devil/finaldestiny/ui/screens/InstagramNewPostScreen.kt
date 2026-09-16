@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devil.finaldestiny.data.GlobalMusicRepository
 import com.devil.finaldestiny.model.AudioTrack
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
@@ -51,8 +52,68 @@ data class PhotoFilterItem(
     val colorMatrix: ColorMatrix?
 )
 
+fun generateAiColorMatrixFromPrompt(prompt: String): ColorMatrix {
+    val lower = prompt.lowercase()
+    var rMult = 1.0f
+    var gMult = 1.0f
+    var bMult = 1.0f
+    var rOffset = 0f
+    var gOffset = 0f
+    var bOffset = 0f
+
+    if (lower.contains("warm") || lower.contains("gold") || lower.contains("sunset") || lower.contains("amber") || lower.contains("sun")) {
+        rMult += 0.22f; gMult += 0.10f; bMult -= 0.15f
+        rOffset += 20f; gOffset += 10f; bOffset -= 12f
+    }
+    if (lower.contains("cold") || lower.contains("cool") || lower.contains("blue") || lower.contains("ice") || lower.contains("winter")) {
+        rMult -= 0.15f; gMult += 0.05f; bMult += 0.28f
+        rOffset -= 12f; bOffset += 22f
+    }
+    if (lower.contains("green") || lower.contains("emerald") || lower.contains("forest") || lower.contains("nature")) {
+        gMult += 0.25f; rMult -= 0.10f; bMult -= 0.08f
+        gOffset += 22f
+    }
+    if (lower.contains("neon") || lower.contains("cyber") || lower.contains("magenta") || lower.contains("pink") || lower.contains("purple")) {
+        rMult += 0.28f; bMult += 0.32f; gMult -= 0.15f
+        rOffset += 25f; bOffset += 28f; gOffset -= 12f
+    }
+    if (lower.contains("vintage") || lower.contains("retro") || lower.contains("film") || lower.contains("classic") || lower.contains("35mm")) {
+        rMult *= 0.95f; gMult *= 0.90f; bMult *= 0.85f
+        rOffset += 14f; gOffset += 12f; bOffset += 18f
+    }
+    if (lower.contains("bright") || lower.contains("glow") || lower.contains("pastel") || lower.contains("soft") || lower.contains("light")) {
+        rMult += 0.10f; gMult += 0.10f; bMult += 0.10f
+        rOffset += 18f; gOffset += 18f; bOffset += 18f
+    }
+    if (lower.contains("dark") || lower.contains("moody") || lower.contains("shadow") || lower.contains("night") || lower.contains("gothic")) {
+        rMult *= 0.82f; gMult *= 0.82f; bMult *= 0.88f
+        rOffset -= 12f; gOffset -= 12f; bOffset -= 6f
+    }
+    if (lower.contains("bw") || lower.contains("black") || lower.contains("monochrome") || lower.contains("noir")) {
+        return ColorMatrix(floatArrayOf(
+            0.30f, 0.59f, 0.11f, 0f, -5f,
+            0.30f, 0.59f, 0.11f, 0f, -5f,
+            0.30f, 0.59f, 0.11f, 0f, -5f,
+            0.00f, 0.00f, 0.00f, 1f, 0f
+        ))
+    }
+
+    if (rMult == 1.0f && gMult == 1.0f && bMult == 1.0f) {
+        rMult = 1.15f; gMult = 1.08f; bMult = 1.05f
+        rOffset = 12f; gOffset = 6f
+    }
+
+    return ColorMatrix(floatArrayOf(
+        rMult, 0.00f, 0.00f, 0f, rOffset,
+        0.00f, gMult, 0.00f, 0f, gOffset,
+        0.00f, 0.00f, bMult, 0f, bOffset,
+        0.00f, 0.00f, 0.00f, 1f, 0f
+    ))
+}
+
 val samplePhotoFilters = listOf(
     PhotoFilterItem("Original", null),
+    PhotoFilterItem("✨ Final Destiny AI", null),
     PhotoFilterItem("Royal Velvet", ColorMatrix(floatArrayOf(
         1.15f, 0.05f, 0.00f, 0f, 10f,
         0.05f, 1.05f, 0.00f, 0f, 5f,
@@ -228,6 +289,16 @@ fun InstagramNewPostScreen(
     var detailedLocationResults by remember { mutableStateOf<List<com.devil.finaldestiny.data.LocationPlaceItem>>(emptyList()) }
     var nearbyLandmarkItems by remember { mutableStateOf<List<com.devil.finaldestiny.data.LocationPlaceItem>>(emptyList()) }
     var isSearchingLocation by remember { mutableStateOf(false) }
+
+    // Final Destiny AI Studio State
+    var showAiVideoGradingSheet by remember { mutableStateOf(false) }
+    var showAiPhotoStudioSheet by remember { mutableStateOf(false) }
+    var aiVideoPromptText by remember { mutableStateOf("") }
+    var aiPhotoPromptText by remember { mutableStateOf("") }
+    var isProcessingAiVideo by remember { mutableStateOf(false) }
+    var isProcessingAiPhoto by remember { mutableStateOf(false) }
+    var customAiColorMatrix by remember { mutableStateOf<ColorMatrix?>(null) }
+    var previousAiColorMatrix by remember { mutableStateOf<ColorMatrix?>(null) }
 
     LaunchedEffect(Unit) {
         val place = com.devil.finaldestiny.data.GlobalLocationRepository.detectCurrentLocationWithGpsDetailed(context)
@@ -416,7 +487,11 @@ fun InstagramNewPostScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = 80.dp)
         ) {
-            val activeFilterMatrix = samplePhotoFilters[selectedFilterIndex].colorMatrix
+            val activeFilterMatrix = if (selectedFilterIndex == 1 && customAiColorMatrix != null) {
+                customAiColorMatrix
+            } else {
+                samplePhotoFilters.getOrNull(selectedFilterIndex)?.colorMatrix
+            }
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
@@ -509,13 +584,23 @@ fun InstagramNewPostScreen(
                     }
                 }
 
-                // Top right tool buttons (Crop & Aspect Ratio, Filter & Text Edit)
+                // Top right tool buttons (AI Studio, Crop & Aspect Ratio, Filter & Text Edit)
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(12.dp)
                 ) {
+                    IconButton(
+                        onClick = { showAiPhotoStudioSheet = true },
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Brush.linearGradient(listOf(Color(0xFF7F00FF), Color(0xFFE100FF))))
+                    ) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = "Final Destiny AI Studio", tint = Color.White, modifier = Modifier.size(18.dp))
+                    }
+
                     IconButton(
                         onClick = {
                             val ratios = listOf("Aspect 9:16 (Full)", "Aspect 4:5 (Standard)", "Aspect 1:1 (Square)")
@@ -556,6 +641,7 @@ fun InstagramNewPostScreen(
 
                     val gradientColors = when (filterItem.name) {
                         "Original" -> listOf(Color(0xFF3897F0), Color(0xFF00C6FF))
+                        "✨ Final Destiny AI" -> listOf(Color(0xFF7F00FF), Color(0xFFE100FF))
                         "Royal Velvet" -> listOf(Color(0xFF7F00FF), Color(0xFFE100FF))
                         "Golden Hour" -> listOf(Color(0xFFFF8C00), Color(0xFFFFD700))
                         "Cinema Noir" -> listOf(Color(0xFF434343), Color(0xFF000000))
@@ -572,7 +658,12 @@ fun InstagramNewPostScreen(
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.clickable { selectedFilterIndex = index }
+                        modifier = Modifier.clickable {
+                            selectedFilterIndex = index
+                            if (index == 1) {
+                                showAiVideoGradingSheet = true
+                            }
+                        }
                     ) {
                         Box(
                             contentAlignment = Alignment.Center,
@@ -1043,6 +1134,226 @@ fun InstagramNewPostScreen(
             confirmButton = {
                 Button(onClick = { showOverlayTextDialog = false }) {
                     Text("Done")
+                }
+            }
+        )
+    }
+
+    // NATIVE IN-APP FINAL DESTINY AI VIDEO GRADING SHEET
+    if (showAiVideoGradingSheet) {
+        AlertDialog(
+            onDismissRequest = { showAiVideoGradingSheet = false },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(20.dp),
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(Brush.linearGradient(listOf(Color(0xFF7F00FF), Color(0xFFE100FF))))
+                        ) {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Final Destiny AI Studio", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                    }
+                    IconButton(onClick = { showAiVideoGradingSheet = false }, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color(0xFF8E8E93))
+                    }
+                }
+            },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        "Describe ANY video color grading, lighting, or mood (e.g. 'Warm golden sunset with rich contrast', 'Cyberpunk neon night', 'Vintage 35mm film').",
+                        fontSize = 12.sp,
+                        color = Color(0xFF8E8E93)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = aiVideoPromptText,
+                        onValueChange = { aiVideoPromptText = it },
+                        placeholder = { Text("Type custom AI prompt...", fontSize = 13.sp, color = Color(0xFF8E8E93)) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF7F00FF),
+                            unfocusedBorderColor = Color(0xFFE5E5EA),
+                            focusedContainerColor = Color(0xFFF9F5FF),
+                            unfocusedContainerColor = Color(0xFFF2F2F7)
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().height(100.dp)
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    if (isProcessingAiVideo) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Color(0xFF7F00FF))
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text("Synthesizing AI Color Matrix...", fontSize = 12.sp, color = Color(0xFF7F00FF), fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (aiVideoPromptText.isNotBlank()) {
+                            isProcessingAiVideo = true
+                            coroutineScope.launch {
+                                kotlinx.coroutines.delay(600)
+                                customAiColorMatrix = generateAiColorMatrixFromPrompt(aiVideoPromptText)
+                                selectedFilterIndex = 1
+                                isProcessingAiVideo = false
+                                showAiVideoGradingSheet = false
+                                Toast.makeText(context, "✨ Applied AI Look: '${aiVideoPromptText.take(20)}...'", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            Toast.makeText(context, "Please type an AI prompt first!", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7F00FF)),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Apply AI Look", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
+    // NATIVE IN-APP FINAL DESTINY AI PHOTO TRANSFORMATION SHEET
+    if (showAiPhotoStudioSheet) {
+        AlertDialog(
+            onDismissRequest = { showAiPhotoStudioSheet = false },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(20.dp),
+            title = {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(Brush.linearGradient(listOf(Color(0xFFFF007F), Color(0xFF7F00FF))))
+                        ) {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Final Destiny Photo AI", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                    }
+                    IconButton(onClick = { showAiPhotoStudioSheet = false }, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color(0xFF8E8E93))
+                    }
+                }
+            },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        "Describe ANY visual transformation, background mood, or artistic effect for your photo.",
+                        fontSize = 12.sp,
+                        color = Color(0xFF8E8E93)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = aiPhotoPromptText,
+                        onValueChange = { aiPhotoPromptText = it },
+                        placeholder = { Text("e.g. 'Golden hour sunset bloom with sharp details'", fontSize = 13.sp, color = Color(0xFF8E8E93)) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFFF007F),
+                            unfocusedBorderColor = Color(0xFFE5E5EA),
+                            focusedContainerColor = Color(0xFFFFF0F5),
+                            unfocusedContainerColor = Color(0xFFF2F2F7)
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().height(100.dp)
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    if (isProcessingAiPhoto) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Color(0xFFFF007F))
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text("Transforming Generative AI Photo Canvas...", fontSize = 12.sp, color = Color(0xFFFF007F), fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Button(
+                        onClick = {
+                            if (aiPhotoPromptText.isNotBlank()) {
+                                isProcessingAiPhoto = true
+                                coroutineScope.launch {
+                                    kotlinx.coroutines.delay(700)
+                                    previousAiColorMatrix = customAiColorMatrix
+                                    customAiColorMatrix = generateAiColorMatrixFromPrompt(aiPhotoPromptText)
+                                    selectedFilterIndex = 1
+                                    isProcessingAiPhoto = false
+                                    Toast.makeText(context, "✨ Photo Transformed! Use Keep or Undo.", Toast.LENGTH_SHORT).show()
+                                }
+                            } else {
+                                Toast.makeText(context, "Please type a transformation prompt!", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF007F)),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Transform Photo ✨", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                    if (previousAiColorMatrix != null || customAiColorMatrix != null) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    customAiColorMatrix = previousAiColorMatrix
+                                    if (customAiColorMatrix == null) selectedFilterIndex = 0
+                                    Toast.makeText(context, "↩️ Transformation Undone", Toast.LENGTH_SHORT).show()
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Undo ↩️", fontSize = 12.sp)
+                            }
+                            Button(
+                                onClick = {
+                                    showAiPhotoStudioSheet = false
+                                    Toast.makeText(context, "✅ Changes Kept!", Toast.LENGTH_SHORT).show()
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF34C759)),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Keep Changes ✅", fontSize = 12.sp, color = Color.White)
+                            }
+                        }
+                    }
                 }
             }
         )
