@@ -118,6 +118,9 @@ fun UserProfileScreen(
     var isEditing by remember { mutableStateOf(false) }
     var showPhotoOptionsDialog by remember { mutableStateOf(false) }
     var showFollowersDialog by remember { mutableStateOf(false) }
+    var isFollowersDialogLoading by remember { mutableStateOf(false) }
+    var followersDialogList by remember { mutableStateOf<List<UserProfile>>(emptyList()) }
+    var isDialogShowingFollowers by remember { mutableStateOf(true) }
     var showComplaintModal by remember { mutableStateOf(false) }
     var showPrivacyPolicyModal by remember { mutableStateOf(false) }
     var showSettingsBottomSheet by remember { mutableStateOf(false) }
@@ -603,14 +606,34 @@ fun UserProfileScreen(
 
                     Box(modifier = Modifier.clickable {
                         dialogTitle = "Followers ($followerCountState)"
+                        isDialogShowingFollowers = true
                         showFollowersDialog = true
+                        isFollowersDialogLoading = true
+                        coroutineScope.launch {
+                            try {
+                                val list = com.devil.finaldestiny.data.SupabaseAuthClient.fetchFollowersListFromSupabase(user.id)
+                                followersDialogList = list
+                            } finally {
+                                isFollowersDialogLoading = false
+                            }
+                        }
                     }) {
                         InstagramStatItem(count = "$followerCountState", label = "followers")
                     }
 
                     Box(modifier = Modifier.clickable {
                         dialogTitle = "Following (${user.followingCount})"
+                        isDialogShowingFollowers = false
                         showFollowersDialog = true
+                        isFollowersDialogLoading = true
+                        coroutineScope.launch {
+                            try {
+                                val list = com.devil.finaldestiny.data.SupabaseAuthClient.fetchFollowingListFromSupabase(user.id)
+                                followersDialogList = list
+                            } finally {
+                                isFollowersDialogLoading = false
+                            }
+                        }
                     }) {
                         InstagramStatItem(count = "${user.followingCount}", label = "following")
                     }
@@ -1976,27 +1999,116 @@ fun UserProfileScreen(
         AlertDialog(
             onDismissRequest = { showFollowersDialog = false },
             containerColor = Color.White,
-            title = { Text(dialogTitle, color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.Bold) },
+            title = {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(dialogTitle, color = Color.Black, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    IconButton(
+                        onClick = { showFollowersDialog = false },
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.Gray, modifier = Modifier.size(18.dp))
+                    }
+                }
+            },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val mockList = listOf(
-                        "Ananya Roy (@Ananya_Roy)" to "Following",
-                        "Aarav Sharma (@Aarav_Sharma)" to "Following",
-                        "Simran Kaur (@Simran_Vibes)" to "Following",
-                        "Vikram Malhotra (@Vikram_M)" to "Following"
-                    )
-                    mockList.forEach { (nameHandle, status) ->
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 340.dp)
+                ) {
+                    if (isFollowersDialogLoading) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(Color(0xFFF2F2F7))
-                                .padding(8.dp)
+                                .padding(vertical = 30.dp)
                         ) {
-                            Text(nameHandle, fontSize = 12.sp, color = Color.Black, fontWeight = FontWeight.SemiBold)
-                            Text(status, fontSize = 10.sp, color = Color(0xFF3897F0), fontWeight = FontWeight.Bold)
+                            CircularProgressIndicator(color = Color(0xFF3897F0), modifier = Modifier.size(32.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text("Loading users...", fontSize = 12.sp, color = Color.Gray)
+                        }
+                    } else if (followersDialogList.isEmpty()) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 30.dp)
+                        ) {
+                            Text(
+                                text = if (isDialogShowingFollowers) "👥 No followers yet" else "👥 Not following anyone yet",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.Gray
+                            )
+                        }
+                    } else {
+                        androidx.compose.foundation.lazy.LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(followersDialogList) { followerUser ->
+                                Row(
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Color(0xFFF2F2F7))
+                                        .clickable {
+                                            showFollowersDialog = false
+                                            if (followerUser.id.isNotBlank()) {
+                                                onOpenUserProfile(followerUser.id)
+                                            }
+                                        }
+                                        .padding(10.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        ProfileAvatarView(
+                                            name = followerUser.name,
+                                            profilePictureUri = followerUser.profilePictureUri,
+                                            size = 38.dp
+                                        )
+
+                                        Spacer(modifier = Modifier.width(10.dp))
+
+                                        Column {
+                                            Text(
+                                                text = followerUser.name,
+                                                fontSize = 13.sp,
+                                                color = Color.Black,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Text(
+                                                text = followerUser.handle,
+                                                fontSize = 11.sp,
+                                                color = Color(0xFF8E8E93)
+                                            )
+                                        }
+                                    }
+
+                                    Surface(
+                                        color = Color(0xFF3897F0).copy(alpha = 0.12f),
+                                        shape = RoundedCornerShape(6.dp)
+                                    ) {
+                                        Text(
+                                            text = "View",
+                                            fontSize = 11.sp,
+                                            color = Color(0xFF3897F0),
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }

@@ -1863,5 +1863,105 @@ object SupabaseAuthClient {
         0
     }
 
+    suspend fun fetchFollowersListFromSupabase(targetUserId: String): List<UserProfile> = withContext(Dispatchers.IO) {
+        val list = mutableListOf<UserProfile>()
+        if (targetUserId.isBlank()) return@withContext list
+        try {
+            val baseUrl = supabaseUrl.trimEnd('/')
+            val endpoint = "$baseUrl/rest/v1/follows?following_id=eq.$targetUserId&select=follower_id"
+            val (code, resText) = executeGetWithRetry(endpoint)
+            Log.d(TAG, "[FETCH_FOLLOWERS] GET $endpoint -> Code $code | Response: $resText")
+
+            if (code in 200..299 && resText.isNotBlank()) {
+                val jsonArray = org.json.JSONArray(resText)
+                val followerIds = mutableListOf<String>()
+                for (i in 0 until jsonArray.length()) {
+                    val obj = jsonArray.getJSONObject(i)
+                    val fid = obj.optString("follower_id", "")
+                    if (fid.isNotBlank()) followerIds.add(fid)
+                }
+
+                if (followerIds.isNotEmpty()) {
+                    val profileEndpoint = "$baseUrl/rest/v1/profiles?id=in.(${followerIds.joinToString(",")})&select=id,username,full_name,avatar_url,bio"
+                    val (pCode, pText) = executeGetWithRetry(profileEndpoint)
+                    if (pCode in 200..299 && pText.isNotBlank()) {
+                        val pArray = org.json.JSONArray(pText)
+                        for (j in 0 until pArray.length()) {
+                            val pObj = pArray.getJSONObject(j)
+                            val id = pObj.optString("id", "")
+                            val username = pObj.optString("username").takeIf { !it.isNullOrBlank() && it != "null" } ?: "user_${id.take(5)}"
+                            val fullName = pObj.optString("full_name").takeIf { !it.isNullOrBlank() && it != "null" } ?: username
+                            val avatarUrl = sanitizeAvatarUrl(pObj.optString("avatar_url").takeIf { !it.isNullOrBlank() && it != "null" })
+                            val bio = pObj.optString("bio").takeIf { !it.isNullOrBlank() && it != "null" } ?: ""
+
+                            list.add(
+                                UserProfile(
+                                    id = id,
+                                    name = fullName,
+                                    handle = if (username.startsWith("@")) username else "@$username",
+                                    profilePictureUri = avatarUrl,
+                                    bio = bio
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "[FETCH_FOLLOWERS] Error fetching followers list", e)
+        }
+        list
+    }
+
+    suspend fun fetchFollowingListFromSupabase(targetUserId: String): List<UserProfile> = withContext(Dispatchers.IO) {
+        val list = mutableListOf<UserProfile>()
+        if (targetUserId.isBlank()) return@withContext list
+        try {
+            val baseUrl = supabaseUrl.trimEnd('/')
+            val endpoint = "$baseUrl/rest/v1/follows?follower_id=eq.$targetUserId&select=following_id"
+            val (code, resText) = executeGetWithRetry(endpoint)
+            Log.d(TAG, "[FETCH_FOLLOWING] GET $endpoint -> Code $code | Response: $resText")
+
+            if (code in 200..299 && resText.isNotBlank()) {
+                val jsonArray = org.json.JSONArray(resText)
+                val followingIds = mutableListOf<String>()
+                for (i in 0 until jsonArray.length()) {
+                    val obj = jsonArray.getJSONObject(i)
+                    val fid = obj.optString("following_id", "")
+                    if (fid.isNotBlank()) followingIds.add(fid)
+                }
+
+                if (followingIds.isNotEmpty()) {
+                    val profileEndpoint = "$baseUrl/rest/v1/profiles?id=in.(${followingIds.joinToString(",")})&select=id,username,full_name,avatar_url,bio"
+                    val (pCode, pText) = executeGetWithRetry(profileEndpoint)
+                    if (pCode in 200..299 && pText.isNotBlank()) {
+                        val pArray = org.json.JSONArray(pText)
+                        for (j in 0 until pArray.length()) {
+                            val pObj = pArray.getJSONObject(j)
+                            val id = pObj.optString("id", "")
+                            val username = pObj.optString("username").takeIf { !it.isNullOrBlank() && it != "null" } ?: "user_${id.take(5)}"
+                            val fullName = pObj.optString("full_name").takeIf { !it.isNullOrBlank() && it != "null" } ?: username
+                            val avatarUrl = sanitizeAvatarUrl(pObj.optString("avatar_url").takeIf { !it.isNullOrBlank() && it != "null" })
+                            val bio = pObj.optString("bio").takeIf { !it.isNullOrBlank() && it != "null" } ?: ""
+
+                            list.add(
+                                UserProfile(
+                                    id = id,
+                                    name = fullName,
+                                    handle = if (username.startsWith("@")) username else "@$username",
+                                    profilePictureUri = avatarUrl,
+                                    bio = bio
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "[FETCH_FOLLOWING] Error fetching following list", e)
+        }
+        list
+    }
+
     private fun String?.isNull_or_blank_custom(): Boolean = this == null || this.trim().isEmpty()
 }
