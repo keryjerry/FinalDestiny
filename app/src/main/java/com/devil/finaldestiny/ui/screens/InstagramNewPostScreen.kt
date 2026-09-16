@@ -47,21 +47,31 @@ data class PhotoFilterItem(
 
 val samplePhotoFilters = listOf(
     PhotoFilterItem("Normal", null),
-    PhotoFilterItem("Clarendon", ColorMatrix().apply { setToSaturation(1.4f) }),
-    PhotoFilterItem("Juno", ColorMatrix(floatArrayOf(
-        1.1f, 0f, 0f, 0f, 10f,
-        0f, 1.0f, 0f, 0f, 10f,
-        0f, 0f, 1.3f, 0f, 5f,
+    PhotoFilterItem("Royal Gold", ColorMatrix(floatArrayOf(
+        1.25f, 0.1f, 0.0f, 0f, 15f,
+        0.05f, 1.15f, 0.0f, 0f, 10f,
+        0.0f, 0.0f, 0.85f, 0f, -5f,
         0f, 0f, 0f, 1f, 0f
     ))),
-    PhotoFilterItem("Ludwig", ColorMatrix(floatArrayOf(
-        1.2f, 0.1f, 0f, 0f, 0f,
-        0.1f, 1.1f, 0.1f, 0f, 0f,
-        0f, 0.1f, 1.0f, 0f, 0f,
+    PhotoFilterItem("Cinema Noir", ColorMatrix().apply { setToSaturation(0f) }),
+    PhotoFilterItem("Cyberpunk", ColorMatrix(floatArrayOf(
+        0.85f, 0.2f, 0.5f, 0f, 20f,
+        0.1f, 1.25f, 0.3f, 0f, -10f,
+        0.3f, 0.1f, 1.4f, 0f, 25f,
         0f, 0f, 0f, 1f, 0f
     ))),
-    PhotoFilterItem("Slumber", ColorMatrix().apply { setToSaturation(0.6f) }),
-    PhotoFilterItem("Moon B&W", ColorMatrix().apply { setToSaturation(0f) })
+    PhotoFilterItem("Warm Sunset", ColorMatrix(floatArrayOf(
+        1.35f, 0.1f, 0.0f, 0f, 25f,
+        0.1f, 1.1f, 0.0f, 0f, 12f,
+        0.0f, 0.0f, 0.75f, 0f, -15f,
+        0f, 0f, 0f, 1f, 0f
+    ))),
+    PhotoFilterItem("Moody Film", ColorMatrix(floatArrayOf(
+        0.9f, 0.15f, 0.1f, 0f, 5f,
+        0.1f, 1.2f, 0.15f, 0f, 12f,
+        0.1f, 0.1f, 0.95f, 0f, 10f,
+        0.0f, 0.0f, 0.0f, 1f, 0f
+    )))
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -120,11 +130,22 @@ fun InstagramNewPostScreen(
     var altTextValue by remember { mutableStateOf("") }
     var showAltTextDialog by remember { mutableStateOf(false) }
 
-    // Global Music Picker Sheet State
+    // Global Music Picker Screen State
+    var showMusicPickerScreen by remember { mutableStateOf(false) }
     var showMusicPickerSheet by remember { mutableStateOf(false) }
     var musicSearchQuery by remember { mutableStateOf("") }
     var globalTracks by remember { mutableStateOf<List<AudioTrack>>(emptyList()) }
     var isSearchingMusic by remember { mutableStateOf(false) }
+
+    // Tag People & Audience State
+    var showTagPeopleSheet by remember { mutableStateOf(false) }
+    var taggedUsers by remember { mutableStateOf<List<com.devil.finaldestiny.model.UserProfile>>(emptyList()) }
+    var tagSearchQuery by remember { mutableStateOf("") }
+    var tagSearchResultUsers by remember { mutableStateOf<List<com.devil.finaldestiny.model.UserProfile>>(emptyList()) }
+    var isSearchingTagUsers by remember { mutableStateOf(false) }
+
+    var showAudiencePickerSheet by remember { mutableStateOf(false) }
+    var selectedAudience by remember { mutableStateOf("Public (Everyone)") }
 
     // Photo Filters, Crop & Overlay State
     var selectedFilterIndex by remember { mutableIntStateOf(0) }
@@ -157,12 +178,40 @@ fun InstagramNewPostScreen(
         }
     }
 
+    LaunchedEffect(tagSearchQuery, showTagPeopleSheet) {
+        if (showTagPeopleSheet) {
+            isSearchingTagUsers = true
+            val fetched = com.devil.finaldestiny.data.SupabaseAuthClient.fetchShareSheetUsers(user.id)
+            tagSearchResultUsers = if (tagSearchQuery.isBlank()) {
+                fetched
+            } else {
+                fetched.filter { 
+                    it.name.contains(tagSearchQuery, ignoreCase = true) || 
+                    it.handle.contains(tagSearchQuery, ignoreCase = true) 
+                }
+            }
+            isSearchingTagUsers = false
+        }
+    }
+
     LaunchedEffect(musicSearchQuery, showMusicPickerSheet) {
         if (showMusicPickerSheet) {
             isSearchingMusic = true
             globalTracks = GlobalMusicRepository.searchGlobalMusic(musicSearchQuery)
             isSearchingMusic = false
         }
+    }
+
+    if (showMusicPickerScreen) {
+        MusicPickerScreen(
+            onSelectTrack = { track ->
+                selectedAudioTrack = track
+                showMusicPickerScreen = false
+                Toast.makeText(context, "🎵 Attached: ${track.title}", Toast.LENGTH_SHORT).show()
+            },
+            onBack = { showMusicPickerScreen = false }
+        )
+        return
     }
 
     if (showMoreOptionsScreen) {
@@ -325,6 +374,29 @@ fun InstagramNewPostScreen(
                     )
                 }
 
+                // Interactive Tagged User Pill Overlay with App Badge
+                if (taggedUsers.isNotEmpty()) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(12.dp)
+                            .background(Color.Black.copy(alpha = 0.65f), shape = RoundedCornerShape(16.dp))
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Text("✨", fontSize = 12.sp)
+                        taggedUsers.forEach { tagged ->
+                            Text(
+                                if (tagged.handle.startsWith("@")) tagged.handle else "@${tagged.handle}",
+                                fontSize = 11.sp,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
                 // Overlay Text if present
                 if (overlayTextValue.isNotBlank()) {
                     Surface(
@@ -478,15 +550,28 @@ fun InstagramNewPostScreen(
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color(0xFF8E8E93))
                     }
                 },
-                modifier = Modifier.clickable { showMusicPickerSheet = true }
+                modifier = Modifier.clickable { showMusicPickerScreen = true }
             )
 
             // Tag People Option
             ListItem(
                 headlineContent = { Text("Tag people", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
                 leadingContent = { Icon(Icons.Default.PersonOutline, contentDescription = null, tint = Color.Black) },
-                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color(0xFF8E8E93)) },
-                modifier = Modifier.clickable { Toast.makeText(context, "🏷️ Tag People Opened", Toast.LENGTH_SHORT).show() }
+                trailingContent = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (taggedUsers.isNotEmpty()) {
+                            Text(
+                                "${taggedUsers.size} tagged",
+                                fontSize = 12.sp,
+                                color = Color(0xFF3897F0),
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                        }
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color(0xFF8E8E93))
+                    }
+                },
+                modifier = Modifier.clickable { showTagPeopleSheet = true }
             )
 
             // Add Location Option & Dynamic Chips
@@ -560,10 +645,12 @@ fun InstagramNewPostScreen(
                 leadingContent = { Icon(Icons.Default.Visibility, contentDescription = null, tint = Color.Black) },
                 trailingContent = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Everyone", fontSize = 12.sp, color = Color(0xFF8E8E93))
+                        Text(selectedAudience, fontSize = 12.sp, color = Color(0xFF3897F0), fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.width(4.dp))
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color(0xFF8E8E93))
                     }
-                }
+                },
+                modifier = Modifier.clickable { showAudiencePickerSheet = true }
             )
 
             // Also share on... Option
@@ -918,6 +1005,148 @@ fun InstagramNewPostScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showLocationPickerSheet = false }) {
+                    Text("Cancel", color = Color(0xFF8E8E93))
+                }
+            }
+        )
+    }
+
+    // TAG PEOPLE DIALOG
+    if (showTagPeopleSheet) {
+        AlertDialog(
+            onDismissRequest = { showTagPeopleSheet = false },
+            containerColor = Color.White,
+            title = {
+                Column {
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("🏷️ Tag People", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                        if (taggedUsers.isNotEmpty()) {
+                            TextButton(onClick = { taggedUsers = emptyList() }) {
+                                Text("Clear All", fontSize = 12.sp, color = Color.Red)
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = tagSearchQuery,
+                        onValueChange = { tagSearchQuery = it },
+                        placeholder = { Text("Search users to tag...", fontSize = 12.sp) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            text = {
+                Box(modifier = Modifier.height(260.dp).fillMaxWidth()) {
+                    if (isSearchingTagUsers) {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = Color(0xFF3897F0))
+                    } else if (tagSearchResultUsers.isEmpty()) {
+                        Text("No users found", modifier = Modifier.align(Alignment.Center), color = Color.Gray, fontSize = 13.sp)
+                    } else {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            items(tagSearchResultUsers) { userItem ->
+                                val isTagged = taggedUsers.any { it.id == userItem.id }
+                                Row(
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            taggedUsers = if (isTagged) {
+                                                taggedUsers.filter { it.id != userItem.id }
+                                            } else {
+                                                taggedUsers + userItem
+                                            }
+                                        }
+                                        .padding(vertical = 8.dp)
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                        com.devil.finaldestiny.ui.components.ProfileAvatarView(
+                                            name = userItem.name,
+                                            profilePictureUri = userItem.profilePictureUri,
+                                            size = 36.dp
+                                        )
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Column {
+                                            Text(userItem.name, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.Black, maxLines = 1)
+                                            Text(if (userItem.handle.startsWith("@")) userItem.handle else "@${userItem.handle}", fontSize = 11.sp, color = Color(0xFF8E8E93))
+                                        }
+                                    }
+                                    Checkbox(
+                                        checked = isTagged,
+                                        onCheckedChange = { checked ->
+                                            taggedUsers = if (checked) taggedUsers + userItem else taggedUsers.filter { it.id != userItem.id }
+                                        },
+                                        colors = CheckboxDefaults.colors(checkedColor = Color(0xFF3897F0))
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showTagPeopleSheet = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3897F0))
+                ) {
+                    Text("Done (${taggedUsers.size})", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
+
+    // AUDIENCE PICKER DIALOG
+    if (showAudiencePickerSheet) {
+        AlertDialog(
+            onDismissRequest = { showAudiencePickerSheet = false },
+            containerColor = Color.White,
+            title = { Text("👥 Select Audience", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val options = listOf(
+                        "Public (Everyone)" to "Anyone on or off Instagram can see this post",
+                        "Followers Only" to "Only your approved followers can see this post",
+                        "Private (Only Me)" to "Visible only to you on your profile grid"
+                    )
+                    options.forEach { (title, subtitle) ->
+                        val isSelected = selectedAudience == title
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isSelected) Color(0xFFEFF6FF) else Color.Transparent)
+                                .clickable {
+                                    selectedAudience = title
+                                    showAudiencePickerSheet = false
+                                }
+                                .padding(12.dp)
+                        ) {
+                            RadioButton(
+                                selected = isSelected,
+                                onClick = {
+                                    selectedAudience = title
+                                    showAudiencePickerSheet = false
+                                },
+                                colors = RadioButtonDefaults.colors(selectedColor = Color(0xFF3897F0))
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(title, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.Black)
+                                Text(subtitle, fontSize = 11.sp, color = Color(0xFF8E8E93))
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAudiencePickerSheet = false }) {
                     Text("Cancel", color = Color(0xFF8E8E93))
                 }
             }
