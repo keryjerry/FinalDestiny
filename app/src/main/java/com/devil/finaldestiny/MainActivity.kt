@@ -450,6 +450,13 @@ fun FinalDestinyApp(repository: AppRepository) {
                     notificationsList = notifications,
                     onRefresh = { repository.refreshNotifications() },
                     onNavigateToFeed = { currentScreen = Screen.SECONDARY_FEED },
+                    onSelectNotification = { notification ->
+                        val targetId = notification.actionTargetScreen
+                        if (!targetId.isNullOrBlank()) {
+                            handleOpenUserProfile(targetId)
+                        }
+                    },
+                    onOpenUserProfile = handleOpenUserProfile,
                     onBack = { currentScreen = Screen.SECONDARY_FEED }
                 )
 

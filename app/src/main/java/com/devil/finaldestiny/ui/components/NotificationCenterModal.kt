@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devil.finaldestiny.model.AppNotification
 import com.devil.finaldestiny.ui.theme.*
+import com.devil.finaldestiny.utils.TimeUtils
 
 @Composable
 fun NotificationBellButton(
@@ -184,6 +185,13 @@ fun NotificationCenterModal(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(notifications) { item ->
+                            val formattedTime = TimeUtils.formatTimestamp(item.timestamp)
+                            val isDuplicateMessage = item.message.isBlank() ||
+                                item.message.equals("started following you", ignoreCase = true) ||
+                                item.message.equals("liked your post", ignoreCase = true) ||
+                                item.message.equals("New activity on your profile", ignoreCase = true) ||
+                                item.title.contains(item.message, ignoreCase = true)
+
                             Card(
                                 colors = CardDefaults.cardColors(
                                     containerColor = if (!item.isRead) WineRedMedium else WineRedDark.copy(alpha = 0.6f)
@@ -229,18 +237,20 @@ fun NotificationCenterModal(
                                                 color = LightGold
                                             )
                                             Text(
-                                                text = item.timestamp,
+                                                text = formattedTime,
                                                 fontSize = 9.sp,
                                                 color = LightGold.copy(0.6f)
                                             )
                                         }
-                                        Spacer(modifier = Modifier.height(2.dp))
-                                        Text(
-                                            text = item.message,
-                                            fontSize = 11.sp,
-                                            color = LightGold.copy(0.85f),
-                                            lineHeight = 14.sp
-                                        )
+                                        if (!isDuplicateMessage) {
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = item.message,
+                                                fontSize = 11.sp,
+                                                color = LightGold.copy(0.85f),
+                                                lineHeight = 14.sp
+                                            )
+                                        }
                                     }
                                 }
                             }

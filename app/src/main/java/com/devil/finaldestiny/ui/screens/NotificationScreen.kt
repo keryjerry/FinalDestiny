@@ -31,6 +31,7 @@ import com.devil.finaldestiny.model.AppNotification
 import com.devil.finaldestiny.model.UserProfile
 import com.devil.finaldestiny.ui.components.ProfileAvatarView
 import com.devil.finaldestiny.ui.theme.*
+import com.devil.finaldestiny.utils.TimeUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,6 +41,7 @@ fun NotificationScreen(
     onRefresh: suspend () -> Unit = {},
     onNavigateToFeed: () -> Unit = {},
     onSelectNotification: (AppNotification) -> Unit = {},
+    onOpenUserProfile: (String) -> Unit = {},
     onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -151,13 +153,26 @@ fun NotificationScreen(
                     modifier = Modifier.fillMaxSize()
                 ) {
                     items(notificationsList) { notification ->
+                        val formattedTime = TimeUtils.formatTimestamp(notification.timestamp)
+                        val isDuplicateMessage = notification.message.isBlank() ||
+                            notification.message.equals("started following you", ignoreCase = true) ||
+                            notification.message.equals("liked your post", ignoreCase = true) ||
+                            notification.message.equals("New activity on your profile", ignoreCase = true) ||
+                            notification.title.contains(notification.message, ignoreCase = true)
+
                         Card(
                             colors = CardDefaults.cardColors(containerColor = SkyBlueCardBg),
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .border(1.dp, SkyBlueBorder, RoundedCornerShape(16.dp))
-                                .clickable { onSelectNotification(notification) }
+                                .clickable {
+                                    onSelectNotification(notification)
+                                    val senderId = notification.actionTargetScreen
+                                    if (!senderId.isNullOrBlank()) {
+                                        onOpenUserProfile(senderId)
+                                    }
+                                }
                         ) {
                             Row(
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -192,15 +207,17 @@ fun NotificationScreen(
                                             color = NavyTextPrimary,
                                             fontWeight = FontWeight.Bold
                                         )
+                                        if (!isDuplicateMessage) {
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = notification.message,
+                                                fontSize = 11.sp,
+                                                color = NavyTextPrimary.copy(0.85f)
+                                            )
+                                        }
                                         Spacer(modifier = Modifier.height(2.dp))
                                         Text(
-                                            text = notification.message,
-                                            fontSize = 11.sp,
-                                            color = NavyTextPrimary.copy(0.85f)
-                                        )
-                                        Spacer(modifier = Modifier.height(2.dp))
-                                        Text(
-                                            text = notification.timestamp,
+                                            text = formattedTime,
                                             fontSize = 10.sp,
                                             color = SlateTextSecondary
                                         )

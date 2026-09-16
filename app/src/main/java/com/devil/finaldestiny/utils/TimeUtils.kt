@@ -29,10 +29,35 @@ object TimeUtils {
             seconds < 60 -> "Just now"
             minutes < 60 -> "${minutes}m ago"
             hours < 24 -> "${hours}h ago"
-            days == 1L -> "Yesterday"
-            days < 30 -> "${days}d ago"
-            days < 365 -> "${days / 30}mo ago"
-            else -> "${days / 365}y ago"
+            days < 7 -> "${days}d ago"
+            else -> {
+                val sdf = java.text.SimpleDateFormat("dd MMM", java.util.Locale.US)
+                sdf.format(java.util.Date(epochMillis))
+            }
+        }
+    }
+
+    private fun parseIsoToEpochMs(raw: String): Long? {
+        if (raw.isBlank()) return null
+        return try {
+            java.time.Instant.parse(raw).toEpochMilli()
+        } catch (e: Exception) {
+            try {
+                java.time.OffsetDateTime.parse(raw).toInstant().toEpochMilli()
+            } catch (e2: Exception) {
+                try {
+                    java.time.ZonedDateTime.parse(raw).toInstant().toEpochMilli()
+                } catch (e3: Exception) {
+                    try {
+                        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
+                        sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
+                        val clean = raw.split(".").firstOrNull() ?: raw
+                        sdf.parse(clean)?.time
+                    } catch (e4: Exception) {
+                        null
+                    }
+                }
+            }
         }
     }
 
@@ -50,6 +75,12 @@ object TimeUtils {
         val parsedEpoch = clean.toLongOrNull()
         if (parsedEpoch != null && parsedEpoch > 1000000000L) {
             return getRelativeTimeString(parsedEpoch)
+        }
+
+        // Try ISO 8601 UTC string
+        val isoEpoch = parseIsoToEpochMs(clean)
+        if (isoEpoch != null && isoEpoch > 0L) {
+            return getRelativeTimeString(isoEpoch)
         }
 
         // If string like "2h ago", parse relative token dynamically
