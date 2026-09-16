@@ -78,7 +78,7 @@ object GlobalLocationRepository {
         } catch (e: Exception) {
             e.printStackTrace()
         }
-        "New Delhi, India"
+        ""
     }
 
     suspend fun searchGlobalLocations(query: String): List<String> = withContext(Dispatchers.IO) {

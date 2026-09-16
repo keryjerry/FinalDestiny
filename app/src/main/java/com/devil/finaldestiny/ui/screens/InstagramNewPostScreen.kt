@@ -27,6 +27,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
@@ -112,7 +114,7 @@ fun InstagramNewPostScreen(
 
     var captionText by remember { mutableStateOf("") }
     var selectedAudioTrack by remember { mutableStateOf<AudioTrack?>(null) }
-    var selectedLocation by remember { mutableStateOf("Kolkata") }
+    var selectedLocation by remember { mutableStateOf("") }
     var isAiLabelEnabled by remember { mutableStateOf(false) }
     var isOnlyPostToProfile by remember { mutableStateOf(false) }
 
@@ -187,9 +189,13 @@ fun InstagramNewPostScreen(
 
     LaunchedEffect(Unit) {
         val currentLoc = com.devil.finaldestiny.data.GlobalLocationRepository.detectCurrentLocationWithGps(context)
-        detectedCity = currentLoc
-        selectedLocation = currentLoc
-        locationChips = com.devil.finaldestiny.data.GlobalLocationRepository.generateLocationChipsForCity(currentLoc)
+        if (currentLoc.isNotBlank()) {
+            detectedCity = currentLoc
+            selectedLocation = currentLoc
+            locationChips = com.devil.finaldestiny.data.GlobalLocationRepository.generateLocationChipsForCity(currentLoc)
+        } else {
+            detectedCity = "Add location"
+        }
     }
 
     LaunchedEffect(locationSearchQuery, showLocationPickerSheet) {
@@ -368,6 +374,7 @@ fun InstagramNewPostScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(260.dp)
+                    .clipToBounds()
                     .background(Color(0xFFF2F2F7))
             ) {
                 val activeFilterMatrix = samplePhotoFilters[selectedFilterIndex].colorMatrix
@@ -479,11 +486,22 @@ fun InstagramNewPostScreen(
 
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 items(samplePhotoFilters.indices.toList()) { index ->
                     val filterItem = samplePhotoFilters[index]
                     val isSelected = selectedFilterIndex == index
+
+                    val gradientColors = when (filterItem.name) {
+                        "Normal" -> listOf(Color(0xFF3897F0), Color(0xFF00C6FF))
+                        "Royal Gold" -> listOf(Color(0xFFFFD700), Color(0xFFFF8C00))
+                        "Cinema Noir" -> listOf(Color(0xFF434343), Color(0xFF000000))
+                        "Cyberpunk" -> listOf(Color(0xFFFF007F), Color(0xFF00E5FF))
+                        "Warm Sunset" -> listOf(Color(0xFFFF512F), Color(0xFFDD2476))
+                        "Moody Film" -> listOf(Color(0xFF13E2DA), Color(0xFFACE0F9))
+                        else -> listOf(Color(0xFF8E8E93), Color(0xFF636366))
+                    }
+
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.clickable { selectedFilterIndex = index }
@@ -491,22 +509,30 @@ fun InstagramNewPostScreen(
                         Box(
                             contentAlignment = Alignment.Center,
                             modifier = Modifier
-                                .size(50.dp)
-                                .clip(RoundedCornerShape(8.dp))
+                                .size(56.dp)
                                 .border(
-                                    width = if (isSelected) 2.dp else 1.dp,
-                                    color = if (isSelected) Color(0xFF3897F0) else Color(0xFFE5E5EA),
-                                    shape = RoundedCornerShape(8.dp)
+                                    width = if (isSelected) 2.5.dp else 1.dp,
+                                    brush = if (isSelected) Brush.linearGradient(gradientColors) else Brush.linearGradient(listOf(Color(0xFFE5E5EA), Color(0xFFC7C7CC))),
+                                    shape = CircleShape
                                 )
-                                .background(Color(0xFFF2F2F7))
+                                .padding(3.dp)
+                                .clip(CircleShape)
+                                .background(Brush.linearGradient(gradientColors))
                         ) {
-                            Text(filterItem.name.take(2), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                            Icon(
+                                imageVector = if (filterItem.name == "Normal") Icons.Default.FilterNone else Icons.Default.AutoAwesome,
+                                contentDescription = filterItem.name,
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            filterItem.name,
-                            fontSize = 10.sp,
-                            color = if (isSelected) Color(0xFF3897F0) else Color.Black,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                            text = filterItem.name,
+                            fontSize = 11.sp,
+                            color = if (isSelected) Color(0xFF3897F0) else Color(0xFF262626),
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            maxLines = 1
                         )
                     }
                 }
