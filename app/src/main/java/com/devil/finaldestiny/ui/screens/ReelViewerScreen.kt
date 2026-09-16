@@ -51,6 +51,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.devil.finaldestiny.model.MomentPost
+import com.devil.finaldestiny.ui.components.PostShareSheet
 import com.devil.finaldestiny.ui.components.ProfileAvatarView
 import com.devil.finaldestiny.ui.theme.HeartRed
 
@@ -89,6 +90,7 @@ fun ReelViewerScreen(
     val safeInitialIndex = initialIndex.coerceIn(0, reels.size - 1)
     val pagerState = rememberPagerState(initialPage = safeInitialIndex) { reels.size }
     var activeCommentSheetReel by remember { mutableStateOf<MomentPost?>(null) }
+    var activeShareSheetReel by remember { mutableStateOf<MomentPost?>(null) }
     var commentInputText by remember { mutableStateOf("") }
 
     // Trigger dynamic view count atomically via Supabase RPC on reel start
@@ -215,7 +217,7 @@ fun ReelViewerScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         IconButton(
                             onClick = {
-                                Toast.makeText(context, "🚀 Reel Link copied to clipboard!", Toast.LENGTH_SHORT).show()
+                                activeShareSheetReel = reel
                             },
                             modifier = Modifier
                                 .size(46.dp)
@@ -538,6 +540,13 @@ fun ReelViewerScreen(
                     }
                 }
             }
+        }
+
+        if (activeShareSheetReel != null) {
+            PostShareSheet(
+                post = activeShareSheetReel!!,
+                onDismiss = { activeShareSheetReel = null }
+            )
         }
     }
 }

@@ -2098,6 +2098,75 @@ object SupabaseAuthClient {
             list
         }
     }
+
+    suspend fun fetchShareSheetUsers(currentUserId: String?): List<UserProfile> = withContext(Dispatchers.IO) {
+        val resultList = mutableListOf<UserProfile>()
+        val seenIds = mutableSetOf<String>()
+        val myUid = currentUserId ?: getCurrentUserId() ?: ""
+        if (myUid.isNotBlank()) {
+            seenIds.add(myUid)
+        }
+
+        try {
+            if (myUid.isNotBlank()) {
+                val following = fetchFollowingListFromSupabase(myUid)
+                for (u in following) {
+                    if (u.id.isNotBlank() && seenIds.add(u.id)) {
+                        resultList.add(u)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "[SHARE_SHEET_USERS] Error fetching following", e)
+        }
+
+        try {
+            if (myUid.isNotBlank()) {
+                val followers = fetchFollowersListFromSupabase(myUid)
+                for (u in followers) {
+                    if (u.id.isNotBlank() && seenIds.add(u.id)) {
+                        resultList.add(u)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "[SHARE_SHEET_USERS] Error fetching followers", e)
+        }
+
+        if (resultList.size < 10) {
+            try {
+                val baseUrl = supabaseUrl.trimEnd('/')
+                val endpoint = "$baseUrl/rest/v1/profiles?select=id,username,full_name,avatar_url,bio&limit=20"
+                val (code, resText) = executeGetWithRetry(endpoint)
+                if (code in 200..299 && resText.isNotBlank()) {
+                    val jsonArr = org.json.JSONArray(resText)
+                    for (i in 0 until jsonArr.length()) {
+                        val obj = jsonArr.getJSONObject(i)
+                        val id = obj.optString("id", "")
+                        if (id.isNotBlank() && seenIds.add(id)) {
+                            val username = obj.optString("username").takeIf { !it.isNullOrBlank() && it != "null" } ?: "user_${id.take(5)}"
+                            val fullName = obj.optString("full_name").takeIf { !it.isNullOrBlank() && it != "null" } ?: username
+                            val avatarUrl = sanitizeAvatarUrl(obj.optString("avatar_url").takeIf { !it.isNullOrBlank() && it != "null" })
+                            val bio = obj.optString("bio").takeIf { !it.isNullOrBlank() && it != "null" } ?: ""
+
+                            resultList.add(
+                                UserProfile(
+                                    id = id,
+                                    name = fullName,
+                                    handle = if (username.startsWith("@")) username else "@$username",
+                                    profilePictureUri = avatarUrl,
+                                    bio = bio
+                                )
+                            )
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "[SHARE_SHEET_USERS] Error fetching profiles fallback", e)
+            }
+        }
+        resultList
+    }
 }
 
 data class DirectChatMessage(

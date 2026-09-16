@@ -87,6 +87,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devil.finaldestiny.data.SupabaseAuthClient
+import com.devil.finaldestiny.ui.components.PostShareSheet
 import com.devil.finaldestiny.engine.intelligence.CoreIntelligenceEngine
 import com.devil.finaldestiny.model.AppNotification
 import com.devil.finaldestiny.model.AudioTrack
@@ -1549,42 +1550,14 @@ fun SecondaryDashboardScreen(
         )
     }
 
-    // 4. DIRECT SHARE FRIENDS LIST SHEET (BOTTOM 6 ARROW 4 DM SHARE)
+    // 4. DIRECT SHARE FRIENDS LIST SHEET (PRODUCTION SHARE SHEET)
     if (showDirectShareSheetForPost != null) {
-        val post = showDirectShareSheetForPost!!
-        AlertDialog(
-            onDismissRequest = { showDirectShareSheetForPost = null },
-            containerColor = SkyBlueCardBg,
-            title = { Text("✈️ Send Post via Direct Message", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = NavyTextPrimary) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val friends = listOf("Ananya Roy", "Aarav Sharma", "Simran Kaur", "Vikram Malhotra", "Riya Kapoor")
-                    friends.forEach { friendName ->
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
-                        ) {
-                            Text(friendName, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = NavyTextPrimary)
-                            Button(
-                                onClick = {
-                                    showDirectShareSheetForPost = null
-                                    Toast.makeText(context, "✈️ Sent post to $friendName!", Toast.LENGTH_SHORT).show()
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = SkyBluePrimary),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                                modifier = Modifier.height(28.dp)
-                            ) {
-                                Text("Send", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showDirectShareSheetForPost = null }) {
-                    Text("Close", color = SlateTextSecondary)
-                }
+        PostShareSheet(
+            post = showDirectShareSheetForPost!!,
+            onDismiss = { showDirectShareSheetForPost = null },
+            onAddToStory = { postToShare ->
+                val mediaUrl = postToShare.mediaUrl.ifBlank { postToShare.mediaUri ?: "" }
+                onAddStory(mediaUrl)
             }
         )
     }
