@@ -52,36 +52,72 @@ data class PhotoFilterItem(
 )
 
 val samplePhotoFilters = listOf(
-    PhotoFilterItem("Normal", null),
-    PhotoFilterItem("Royal Gold", ColorMatrix(floatArrayOf(
-        1.2f, 0f, 0f, 0f, 15f,
-        0f, 1.1f, 0f, 0f, 10f,
-        0f, 0f, 0.85f, 0f, -10f,
-        0f, 0f, 0f, 1f, 0f
+    PhotoFilterItem("Original", null),
+    PhotoFilterItem("Royal Velvet", ColorMatrix(floatArrayOf(
+        1.15f, 0.05f, 0.00f, 0f, 10f,
+        0.05f, 1.05f, 0.00f, 0f, 5f,
+        0.00f, 0.10f, 1.25f, 0f, 15f,
+        0.00f, 0.00f, 0.00f, 1f, 0f
+    ))),
+    PhotoFilterItem("Golden Hour", ColorMatrix(floatArrayOf(
+        1.25f, 0.10f, 0.00f, 0f, 20f,
+        0.10f, 1.10f, 0.00f, 0f, 10f,
+        0.00f, 0.00f, 0.80f, 0f, -10f,
+        0.00f, 0.00f, 0.00f, 1f, 0f
     ))),
     PhotoFilterItem("Cinema Noir", ColorMatrix(floatArrayOf(
-        0.33f, 0.59f, 0.11f, 0f, -10f,
-        0.33f, 0.59f, 0.11f, 0f, -10f,
-        0.33f, 0.59f, 0.11f, 0f, -10f,
-        0f, 0f, 0f, 1f, 0f
+        0.30f, 0.59f, 0.11f, 0f, -5f,
+        0.30f, 0.59f, 0.11f, 0f, -5f,
+        0.30f, 0.59f, 0.11f, 0f, -5f,
+        0.00f, 0.00f, 0.00f, 1f, 0f
     ))),
-    PhotoFilterItem("Cyberpunk", ColorMatrix(floatArrayOf(
-        1.1f, 0f, 0.2f, 0f, 20f,
-        0f, 0.9f, 0.1f, 0f, -5f,
-        0.2f, 0f, 1.3f, 0f, 30f,
-        0f, 0f, 0f, 1f, 0f
+    PhotoFilterItem("Vintage Film", ColorMatrix(floatArrayOf(
+        0.95f, 0.05f, 0.05f, 0f, 12f,
+        0.05f, 0.90f, 0.05f, 0f, 8f,
+        0.05f, 0.05f, 0.85f, 0f, 15f,
+        0.00f, 0.00f, 0.00f, 1f, 0f
     ))),
-    PhotoFilterItem("Warm Sunset", ColorMatrix(floatArrayOf(
-        1.35f, 0.1f, 0.0f, 0f, 25f,
-        0.1f, 1.1f, 0.0f, 0f, 12f,
-        0.0f, 0.0f, 0.75f, 0f, -15f,
-        0f, 0f, 0f, 1f, 0f
+    PhotoFilterItem("Cyberpunk 2077", ColorMatrix(floatArrayOf(
+        1.20f, 0.00f, 0.25f, 0f, 20f,
+        0.00f, 0.85f, 0.15f, 0f, -10f,
+        0.20f, 0.00f, 1.40f, 0f, 30f,
+        0.00f, 0.00f, 0.00f, 1f, 0f
     ))),
-    PhotoFilterItem("Moody Film", ColorMatrix(floatArrayOf(
-        0.9f, 0.15f, 0.1f, 0f, 5f,
-        0.1f, 1.2f, 0.15f, 0f, 12f,
-        0.1f, 0.1f, 0.95f, 0f, 10f,
-        0.0f, 0.0f, 0.0f, 1f, 0f
+    PhotoFilterItem("Emerald Moody", ColorMatrix(floatArrayOf(
+        0.85f, 0.10f, 0.05f, 0f, -5f,
+        0.05f, 1.15f, 0.10f, 0f, 15f,
+        0.10f, 0.10f, 0.90f, 0f, 5f,
+        0.00f, 0.00f, 0.00f, 1f, 0f
+    ))),
+    PhotoFilterItem("Champagne Lux", ColorMatrix(floatArrayOf(
+        1.08f, 0.02f, 0.02f, 0f, 18f,
+        0.02f, 1.06f, 0.02f, 0f, 16f,
+        0.02f, 0.02f, 1.04f, 0f, 20f,
+        0.00f, 0.00f, 0.00f, 1f, 0f
+    ))),
+    PhotoFilterItem("Miami Sunset", ColorMatrix(floatArrayOf(
+        1.30f, 0.10f, 0.05f, 0f, 25f,
+        0.05f, 1.00f, 0.10f, 0f, 5f,
+        0.05f, 0.05f, 1.15f, 0f, 15f,
+        0.00f, 0.00f, 0.00f, 1f, 0f
+    ))),
+    PhotoFilterItem("Dark Knight", ColorMatrix(floatArrayOf(
+        0.80f, 0.10f, 0.10f, 0f, -10f,
+        0.10f, 0.85f, 0.10f, 0f, -10f,
+        0.15f, 0.15f, 1.10f, 0f, 10f,
+        0.00f, 0.00f, 0.00f, 1f, 0f
+    ))),
+    PhotoFilterItem("Monaco Sun", ColorMatrix(floatArrayOf(
+        1.20f, 0.15f, 0.00f, 0f, 15f,
+        0.05f, 1.10f, 0.05f, 0f, 10f,
+        0.00f, 0.05f, 0.85f, 0f, -5f,
+        0.00f, 0.00f, 0.00f, 1f, 0f
+    ))),
+    PhotoFilterItem("Soft Porcelain", ColorMatrix(floatArrayOf(
+        1.05f, 0.05f, 0.02f, 0f, 12f,
+        0.02f, 1.05f, 0.02f, 0f, 10f,
+        0.02f, 0.02f, 1.05f, 0f, 12f,
+        0.00f, 0.00f, 0.00f, 1f, 0f
     )))
 )
 
@@ -377,8 +413,9 @@ fun InstagramNewPostScreen(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(260.dp)
-                    .clipToBounds()
+                    .height(380.dp)
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+                    .clip(RoundedCornerShape(16.dp))
                     .drawWithContent {
                         if (activeFilterMatrix != null) {
                             drawIntoCanvas { canvas ->
@@ -393,7 +430,7 @@ fun InstagramNewPostScreen(
                             drawContent()
                         }
                     }
-                    .background(Color(0xFFF2F2F7))
+                    .background(Color.Black)
             ) {
                 if (!mediaUri.isNullOrBlank() && (mediaUri.contains("video", ignoreCase = true) || isReel) && loadedBitmap == null) {
                     ExoVideoPlayerView(
@@ -510,12 +547,18 @@ fun InstagramNewPostScreen(
                     val isSelected = selectedFilterIndex == index
 
                     val gradientColors = when (filterItem.name) {
-                        "Normal" -> listOf(Color(0xFF3897F0), Color(0xFF00C6FF))
-                        "Royal Gold" -> listOf(Color(0xFFFFD700), Color(0xFFFF8C00))
+                        "Original" -> listOf(Color(0xFF3897F0), Color(0xFF00C6FF))
+                        "Royal Velvet" -> listOf(Color(0xFF7F00FF), Color(0xFFE100FF))
+                        "Golden Hour" -> listOf(Color(0xFFFF8C00), Color(0xFFFFD700))
                         "Cinema Noir" -> listOf(Color(0xFF434343), Color(0xFF000000))
-                        "Cyberpunk" -> listOf(Color(0xFFFF007F), Color(0xFF00E5FF))
-                        "Warm Sunset" -> listOf(Color(0xFFFF512F), Color(0xFFDD2476))
-                        "Moody Film" -> listOf(Color(0xFF13E2DA), Color(0xFFACE0F9))
+                        "Vintage Film" -> listOf(Color(0xFFD4145A), Color(0xFFFBB03B))
+                        "Cyberpunk 2077" -> listOf(Color(0xFFFF007F), Color(0xFF00E5FF))
+                        "Emerald Moody" -> listOf(Color(0xFF0575E6), Color(0xFF00F260))
+                        "Champagne Lux" -> listOf(Color(0xFFE0EAFC), Color(0xFFCFDEF3))
+                        "Miami Sunset" -> listOf(Color(0xFFFF416C), Color(0xFFFF4B2B))
+                        "Dark Knight" -> listOf(Color(0xFF1F1C2C), Color(0xFF928DAB))
+                        "Monaco Sun" -> listOf(Color(0xFFF857A6), Color(0xFFFF5858))
+                        "Soft Porcelain" -> listOf(Color(0xFFA8C0FF), Color(0xFF3F2B96))
                         else -> listOf(Color(0xFF8E8E93), Color(0xFF636366))
                     }
 
@@ -537,7 +580,7 @@ fun InstagramNewPostScreen(
                                 .background(Brush.linearGradient(gradientColors))
                         ) {
                             Icon(
-                                imageVector = if (filterItem.name == "Normal") Icons.Default.FilterNone else Icons.Default.AutoAwesome,
+                                imageVector = if (filterItem.name == "Original") Icons.Default.FilterNone else Icons.Default.AutoAwesome,
                                 contentDescription = filterItem.name,
                                 tint = Color.White,
                                 modifier = Modifier.size(20.dp)

@@ -1885,6 +1885,7 @@ internal fun ExoVideoPlayerView(
         androidx.media3.exoplayer.ExoPlayer.Builder(context).build().apply {
             val mediaItem = androidx.media3.common.MediaItem.fromUri(Uri.parse(videoUri))
             setMediaItem(mediaItem)
+            videoScalingMode = android.media.MediaCodec.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING
             repeatMode = androidx.media3.common.Player.REPEAT_MODE_ONE
             playWhenReady = true
             prepare()
