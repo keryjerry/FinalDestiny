@@ -72,6 +72,44 @@ object SupabaseAuthClient {
     fun getCurrentUserId(): String? = currentUserId
 
     /**
+     * Safely resolves the Bearer token for Supabase REST API requests.
+     * Checks if currentSessionToken is a valid, non-expired JWT.
+     * If currentSessionToken is null, blank, dummy, or expired, falls back to supabaseAnonKey.
+     * This prevents PostgREST PGRST303 (HTTP 401 JWT expired) errors.
+     */
+    fun getValidAuthToken(): String {
+        val token = currentSessionToken
+        if (!token.isNullOrBlank() && isUnexpiredJwt(token)) {
+            return token
+        }
+        return supabaseAnonKey
+    }
+
+    private fun isUnexpiredJwt(jwt: String): Boolean {
+        if (!jwt.startsWith("eyJ") || jwt.count { it == '.' } != 2) {
+            return false
+        }
+        try {
+            val parts = jwt.split(".")
+            if (parts.size >= 2) {
+                val payloadBase64 = parts[1]
+                val padded = payloadBase64.padEnd(payloadBase64.length + (4 - payloadBase64.length % 4) % 4, '=')
+                val jsonBytes = android.util.Base64.decode(padded, android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP or android.util.Base64.NO_PADDING)
+                val jsonStr = String(jsonBytes, Charsets.UTF_8)
+                val json = JSONObject(jsonStr)
+                if (json.has("exp")) {
+                    val expSeconds = json.getLong("exp")
+                    val currentSeconds = System.currentTimeMillis() / 1000
+                    return expSeconds > (currentSeconds + 60)
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error checking JWT expiry: ${e.localizedMessage}")
+        }
+        return true
+    }
+
+    /**
      * Real Google OAuth 2.0 Sign-In launcher via Supabase Authorize endpoint
      */
     fun signInWithGoogle(
@@ -677,7 +715,7 @@ object SupabaseAuthClient {
 
     private var currentUserAvatarUrl: String? = null
 
-    fun getSessionToken(): String? = currentSessionToken
+    fun getSessionToken(): String? = getValidAuthToken()
     fun getUserEmail(): String? = currentUserEmail
     fun getUserId(): String? = currentUserId
     fun getUserAvatarUrl(): String? = sanitizeAvatarUrl(currentUserAvatarUrl) ?: currentUserAvatarUrl
@@ -1716,7 +1754,7 @@ object SupabaseAuthClient {
     suspend fun toggleFollowUserInSupabase(currentUserId: String, targetUserId: String, isFollowing: Boolean): Pair<Boolean, String?> = withContext(Dispatchers.IO) {
         if (currentUserId.isBlank() || targetUserId.isBlank()) return@withContext Pair(false, "Invalid user IDs")
         val baseUrl = supabaseUrl.trimEnd('/')
-        val token = currentSessionToken ?: supabaseAnonKey
+        val token = getValidAuthToken()
 
         try {
             if (isFollowing) {
@@ -1977,7 +2015,7 @@ object SupabaseAuthClient {
     ): Pair<Boolean, String?> {
         return withContext(Dispatchers.IO) {
             try {
-                val token = currentSessionToken ?: supabaseAnonKey
+                val token = getValidAuthToken()
                 val baseUrl = supabaseUrl.trimEnd('/')
                 val endpoint = "$baseUrl/rest/v1/messages"
                 val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
@@ -2021,7 +2059,7 @@ object SupabaseAuthClient {
         return withContext(Dispatchers.IO) {
             val list = mutableListOf<DirectChatMessage>()
             try {
-                val token = currentSessionToken ?: supabaseAnonKey
+                val token = getValidAuthToken()
                 val baseUrl = supabaseUrl.trimEnd('/')
                 val query = "or=(and(sender_id.eq.$currentUserId,receiver_id.eq.$targetUserId),and(sender_id.eq.$targetUserId,receiver_id.eq.$currentUserId))&order=created_at.asc"
                 val endpoint = "$baseUrl/rest/v1/messages?$query"
