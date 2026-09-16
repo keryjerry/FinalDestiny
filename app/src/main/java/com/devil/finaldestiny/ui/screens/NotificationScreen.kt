@@ -96,19 +96,13 @@ fun NotificationScreen(
                                 color = NavyTextPrimary
                             )
                             if (unreadCount > 0) {
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Surface(
-                                    color = HeartRed,
-                                    shape = CircleShape
-                                ) {
-                                    Text(
-                                        text = if (unreadCount > 99) "99+" else "$unreadCount",
-                                        fontSize = 11.sp,
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
-                                    )
-                                }
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .size(9.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFFEF4444))
+                                )
                             }
                         }
                         Text(

@@ -51,6 +51,7 @@ fun FloatingGalaxyNavPill(
     currentScreen: Screen,
     user: UserProfile = UserProfile(),
     unreadNotificationCount: Int = 0,
+    hasUnreadMessages: Boolean = false,
     isCapsuleCollapsed: Boolean = false,
     onExpandCapsule: () -> Unit = {},
     onNavigate: (Screen) -> Unit,
@@ -192,6 +193,7 @@ fun FloatingGalaxyNavPill(
                 GalaxyVortexCenterButton(
                     isSelected = isDmSelected,
                     vortexRotation = vortexRotation,
+                    hasUnreadMessages = hasUnreadMessages,
                     onClick = { onNavigate(Screen.INBOX) }
                 )
             }
@@ -293,6 +295,7 @@ private fun GalaxyNavItem(
 private fun GalaxyVortexCenterButton(
     isSelected: Boolean,
     vortexRotation: Float,
+    hasUnreadMessages: Boolean = false,
     onClick: () -> Unit
 ) {
     var isPressed by remember { mutableStateOf(false) }
@@ -344,12 +347,26 @@ private fun GalaxyVortexCenterButton(
             }
             .clip(CircleShape)
     ) {
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.Send,
-            contentDescription = "Direct Messages / Share",
-            tint = Color.White,
-            modifier = Modifier.size(22.dp)
-        )
+        Box(contentAlignment = Alignment.TopEnd) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.Send,
+                contentDescription = "Direct Messages / Share",
+                tint = Color.White,
+                modifier = Modifier.size(22.dp)
+            )
+
+            if (hasUnreadMessages) {
+                Box(
+                    modifier = Modifier
+                        .size(9.dp)
+                        .align(Alignment.TopEnd)
+                        .offset(x = 3.dp, y = (-2).dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFEF4444)) // Glowing Red Dot Indicator
+                        .border(1.dp, Color(0xFF0F0B29), CircleShape)
+                )
+            }
+        }
     }
 
     LaunchedEffect(isPressed) {

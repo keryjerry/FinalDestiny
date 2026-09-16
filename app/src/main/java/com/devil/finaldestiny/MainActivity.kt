@@ -35,6 +35,7 @@ import com.devil.finaldestiny.model.GiftItem
 import com.devil.finaldestiny.model.PaymentMethodType
 import com.devil.finaldestiny.model.UserProfile
 import com.devil.finaldestiny.ui.components.FloatingGalaxyNavPill
+import com.devil.finaldestiny.utils.NotificationHelper
 import com.devil.finaldestiny.ui.components.MediaPickerBottomSheet
 import com.devil.finaldestiny.ui.components.MonetizationAnnouncementModal
 import com.devil.finaldestiny.ui.components.NotificationCenterModal
@@ -83,6 +84,10 @@ class MainActivity : ComponentActivity(), PaymentResultWithDataListener {
         }
         repository.initializeUserSession(this)
         enableEdgeToEdge()
+
+        // Initialize High Importance Notification Channel & Request Runtime Permissions (Android 13+)
+        NotificationHelper.createNotificationChannel(applicationContext)
+        NotificationHelper.checkAndRequestNotificationPermission(this)
 
         lifecycleScope.launch {
             try {
@@ -167,6 +172,34 @@ fun FinalDestinyApp(repository: AppRepository) {
     var directChatTargetUserId by remember { mutableStateOf<String?>(null) }
     var directChatTargetUsername by remember { mutableStateOf<String?>(null) }
     var directChatTargetAvatarUrl by remember { mutableStateOf<String?>(null) }
+
+    var hasUnreadMessages by remember { mutableStateOf(false) }
+
+    // Synchronize Unread Messages & System Push Notification Trigger
+    LaunchedEffect(user.id, currentScreen) {
+        if (user.id.isNotBlank()) {
+            if (currentScreen == Screen.INBOX) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    com.devil.finaldestiny.data.SupabaseAuthClient.markMessagesAsReadInSupabase(user.id)
+                }
+                hasUnreadMessages = false
+            } else {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    val unread = com.devil.finaldestiny.data.SupabaseAuthClient.checkUnreadMessagesFromSupabase(user.id)
+                    if (unread && !hasUnreadMessages) {
+                        NotificationHelper.showHeadsUpPushNotification(
+                            context,
+                            1001,
+                            "New Message 💬",
+                            "You have unread direct messages on Final Destiny",
+                            "INBOX"
+                        )
+                    }
+                    hasUnreadMessages = unread
+                }
+            }
+        }
+    }
 
     val handleOpenUserProfile: (String) -> Unit = { targetUserId ->
         if (targetUserId.isBlank() || targetUserId == user.id) {
@@ -570,6 +603,7 @@ fun FinalDestinyApp(repository: AppRepository) {
                         currentScreen = currentScreen,
                         user = user,
                         unreadNotificationCount = notifications.count { !it.isRead },
+                        hasUnreadMessages = hasUnreadMessages,
                         isCapsuleCollapsed = isCapsuleCollapsed,
                         onExpandCapsule = {
                             isManuallyExpanded = true

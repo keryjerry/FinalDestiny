@@ -536,19 +536,11 @@ fun InboxScreen(
                             if (chat.unreadCount > 0) {
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Box(
-                                    contentAlignment = Alignment.Center,
                                     modifier = Modifier
-                                        .size(20.dp)
+                                        .size(9.dp)
                                         .clip(CircleShape)
-                                        .background(SkyBluePrimary)
-                                ) {
-                                    Text(
-                                        text = "${chat.unreadCount}",
-                                        color = Color.White,
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
+                                        .background(Color(0xFFEF4444))
+                                )
                             }
                         }
                     }

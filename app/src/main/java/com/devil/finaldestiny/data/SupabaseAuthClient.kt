@@ -2167,6 +2167,56 @@ object SupabaseAuthClient {
         }
         resultList
     }
+
+    suspend fun checkUnreadMessagesFromSupabase(currentUserId: String?): Boolean = withContext(Dispatchers.IO) {
+        if (currentUserId.isNullOrBlank()) return@withContext false
+        try {
+            val baseUrl = supabaseUrl.trimEnd('/')
+            val endpoint = "$baseUrl/rest/v1/messages?receiver_id=eq.$currentUserId&is_read=eq.false&select=id&limit=1"
+            val (code, resText) = executeGetWithRetry(endpoint)
+            Log.d(TAG, "[UNREAD_MESSAGES_CHECK] GET /rest/v1/messages status $code | Response: $resText")
+            if (code in 200..299 && resText.isNotBlank()) {
+                val arr = org.json.JSONArray(resText)
+                return@withContext arr.length() > 0
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "[UNREAD_MESSAGES_CHECK] Error checking unread messages", e)
+        }
+        false
+    }
+
+    suspend fun markMessagesAsReadInSupabase(currentUserId: String, senderId: String? = null): Boolean = withContext(Dispatchers.IO) {
+        if (currentUserId.isBlank()) return@withContext false
+        try {
+            val baseUrl = supabaseUrl.trimEnd('/')
+            val token = getValidAuthToken()
+            val query = if (senderId.isNullOrBlank()) "receiver_id=eq.$currentUserId" else "receiver_id=eq.$currentUserId&sender_id=eq.$senderId"
+            val endpoint = "$baseUrl/rest/v1/messages?$query"
+            val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+                requestMethod = "PATCH"
+                connectTimeout = 6000
+                readTimeout = 6000
+                setRequestProperty("apikey", supabaseAnonKey)
+                setRequestProperty("Authorization", "Bearer $token")
+                setRequestProperty("Content-Type", "application/json")
+                doOutput = true
+            }
+            val payload = org.json.JSONObject().apply {
+                put("is_read", true)
+            }
+            connection.outputStream.use { os ->
+                os.write(payload.toString().toByteArray(Charsets.UTF_8))
+            }
+            val resCode = connection.responseCode
+            val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
+            val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
+            Log.d(TAG, "[MESSAGES_READ_SYNC] PATCH /rest/v1/messages status $resCode | receiver: $currentUserId | Response: $resText")
+            return@withContext resCode in 200..299
+        } catch (e: Exception) {
+            Log.e(TAG, "[MESSAGES_READ_SYNC] Failed to mark messages read in Supabase", e)
+            false
+        }
+    }
 }
 
 data class DirectChatMessage(

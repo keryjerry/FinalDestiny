@@ -49,25 +49,17 @@ fun NotificationBellButton(
             modifier = Modifier.size(22.dp)
         )
 
-        // Unread Badge Indicator Pill
+        // Unread Badge Indicator Red Dot
         if (unreadCount > 0) {
             Box(
-                contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .offset(x = 2.dp, y = (-2).dp)
-                    .size(18.dp)
+                    .size(9.dp)
                     .clip(CircleShape)
-                    .background(HeartRed)
+                    .background(Color(0xFFEF4444)) // Clean Red Dot
                     .border(1.dp, Color.White, CircleShape)
-            ) {
-                Text(
-                    text = if (unreadCount > 9) "9+" else "$unreadCount",
-                    fontSize = 9.sp,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            )
         }
     }
 }
