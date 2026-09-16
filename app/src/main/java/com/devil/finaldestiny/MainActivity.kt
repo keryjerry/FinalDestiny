@@ -164,6 +164,9 @@ fun FinalDestinyApp(repository: AppRepository) {
     var isPickedMediaReel by remember { mutableStateOf(false) }
     var selectedReelInitialIndex by remember { mutableIntStateOf(0) }
     var selectedProfileUserId by remember { mutableStateOf<String?>(null) }
+    var directChatTargetUserId by remember { mutableStateOf<String?>(null) }
+    var directChatTargetUsername by remember { mutableStateOf<String?>(null) }
+    var directChatTargetAvatarUrl by remember { mutableStateOf<String?>(null) }
 
     val handleOpenUserProfile: (String) -> Unit = { targetUserId ->
         if (targetUserId.isBlank() || targetUserId == user.id) {
@@ -366,6 +369,12 @@ fun FinalDestinyApp(repository: AppRepository) {
                     onRemoveAccount = { targetId -> repository.removeAccount(targetId, context) },
                     onOpenMediaPicker = { showMediaPickerSheet = true },
                     onOpenUserProfile = handleOpenUserProfile,
+                    onOpenDirectChat = { targetId, targetName, targetAvatar ->
+                        directChatTargetUserId = targetId
+                        directChatTargetUsername = targetName
+                        directChatTargetAvatarUrl = targetAvatar
+                        currentScreen = Screen.INBOX
+                    },
                     onBack = {
                         selectedProfileUserId = null
                         currentScreen = Screen.PRIMARY_DASHBOARD
@@ -442,7 +451,19 @@ fun FinalDestinyApp(repository: AppRepository) {
                 )
 
                 Screen.INBOX -> InboxScreen(
-                    onBack = { currentScreen = Screen.SECONDARY_FEED }
+                    initialTargetUserId = directChatTargetUserId,
+                    initialTargetUsername = directChatTargetUsername,
+                    initialTargetAvatarUrl = directChatTargetAvatarUrl,
+                    onBack = {
+                        if (directChatTargetUserId != null) {
+                            directChatTargetUserId = null
+                            directChatTargetUsername = null
+                            directChatTargetAvatarUrl = null
+                            currentScreen = Screen.USER_PROFILE
+                        } else {
+                            currentScreen = Screen.SECONDARY_FEED
+                        }
+                    }
                 )
 
                 Screen.NOTIFICATION -> NotificationScreen(

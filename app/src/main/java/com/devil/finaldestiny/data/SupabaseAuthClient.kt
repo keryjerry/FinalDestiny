@@ -1964,4 +1964,104 @@ object SupabaseAuthClient {
     }
 
     private fun String?.isNull_or_blank_custom(): Boolean = this == null || this.trim().isEmpty()
+
+    // =========================================================================
+    // DIRECT MESSAGES (PUBLIC.MESSAGES TABLE SYNC)
+    // =========================================================================
+
+    suspend fun sendDirectMessageToSupabase(
+        context: Context,
+        currentUserId: String,
+        targetUserId: String,
+        content: String
+    ): Pair<Boolean, String?> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val token = currentSessionToken ?: supabaseAnonKey
+                val baseUrl = supabaseUrl.trimEnd('/')
+                val endpoint = "$baseUrl/rest/v1/messages"
+                val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    connectTimeout = 8000
+                    readTimeout = 8000
+                    setRequestProperty("apikey", supabaseAnonKey)
+                    setRequestProperty("Authorization", "Bearer $token")
+                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("Prefer", "return=representation")
+                    doOutput = true
+                }
+                val payload = org.json.JSONObject().apply {
+                    put("sender_id", currentUserId)
+                    put("receiver_id", targetUserId)
+                    put("content", content)
+                }
+                connection.outputStream.use { os ->
+                    os.write(payload.toString().toByteArray(Charsets.UTF_8))
+                }
+                val resCode = connection.responseCode
+                val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
+                val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
+                Log.d(TAG, "[DIRECT_MESSAGE] POST /rest/v1/messages status $resCode | sender: $currentUserId -> receiver: $targetUserId | Response: $resText")
+                if (resCode in 200..299) {
+                    Pair(true, resText)
+                } else {
+                    Pair(false, resText)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "[DIRECT_MESSAGE] Exception sending message to Supabase", e)
+                Pair(false, e.localizedMessage)
+            }
+        }
+    }
+
+    suspend fun fetchDirectMessagesFromSupabase(
+        currentUserId: String,
+        targetUserId: String
+    ): List<DirectChatMessage> {
+        return withContext(Dispatchers.IO) {
+            val list = mutableListOf<DirectChatMessage>()
+            try {
+                val token = currentSessionToken ?: supabaseAnonKey
+                val baseUrl = supabaseUrl.trimEnd('/')
+                val query = "or=(and(sender_id.eq.$currentUserId,receiver_id.eq.$targetUserId),and(sender_id.eq.$targetUserId,receiver_id.eq.$currentUserId))&order=created_at.asc"
+                val endpoint = "$baseUrl/rest/v1/messages?$query"
+                val (code, resText) = executeGetWithRetry(endpoint)
+                Log.d(TAG, "[DIRECT_MESSAGES_FETCH] GET /rest/v1/messages status $code | Response length: ${resText.length}")
+                if (code in 200..299 && resText.isNotBlank()) {
+                    val jsonArr = org.json.JSONArray(resText)
+                    for (i in 0 until jsonArr.length()) {
+                        val obj = jsonArr.getJSONObject(i)
+                        val sId = obj.optString("sender_id")
+                        val rId = obj.optString("receiver_id")
+                        val body = obj.optString("content")
+                        val createdAt = obj.optString("created_at")
+                        val id = obj.optString("id", "msg_$i")
+                        list.add(
+                            DirectChatMessage(
+                                id = id,
+                                senderId = sId,
+                                receiverId = rId,
+                                content = body,
+                                createdAt = createdAt,
+                                isFromMe = (sId == currentUserId)
+                            )
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "[DIRECT_MESSAGES_FETCH] Error fetching direct messages", e)
+            }
+            list
+        }
+    }
 }
+
+data class DirectChatMessage(
+    val id: String,
+    val senderId: String,
+    val receiverId: String,
+    val content: String,
+    val createdAt: String,
+    val isFromMe: Boolean
+)
+

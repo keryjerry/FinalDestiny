@@ -108,6 +108,7 @@ fun UserProfileScreen(
     onRemoveAccount: (String) -> Unit = {},
     onOpenMediaPicker: (() -> Unit)? = null,
     onOpenUserProfile: (String) -> Unit = {},
+    onOpenDirectChat: ((String, String, String?) -> Unit)? = null,
     onNavigateToReelViewer: (Int) -> Unit = {},
     onBack: () -> Unit
 ) {
@@ -898,6 +899,30 @@ fun UserProfileScreen(
                             Text(
                                 text = if (isFollowingUser) "Following" else "Follow",
                                 color = if (isFollowingUser) Color.Black else Color.White,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                val targetName = user.name.ifBlank { user.handle.removePrefix("@") }
+                                if (onOpenDirectChat != null) {
+                                    onOpenDirectChat(user.id, targetName, user.profilePictureUri)
+                                } else {
+                                    Toast.makeText(context, "💬 Opening Direct Chat with $targetName", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEFEFEF)),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(0.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(34.dp)
+                        ) {
+                            Text(
+                                text = "Message",
+                                color = Color.Black,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 13.sp
                             )
