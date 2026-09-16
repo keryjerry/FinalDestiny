@@ -158,7 +158,24 @@ fun InstagramNewPostScreen(
     var showOverlayTextDialog by remember { mutableStateOf(false) }
     var cropAspectRatioLabel by remember { mutableStateOf("Aspect 9:16 (Full)") }
 
-    val loadedBitmap = rememberLoadedImage(context, mediaUri)
+    // Active Media Uri and Draft State
+    var activeMediaUri by remember { mutableStateOf(mediaUri) }
+    var showDiscardDraftDialog by remember { mutableStateOf(false) }
+    var showResumeDraftDialog by remember { mutableStateOf(com.devil.finaldestiny.data.ReelDraftManager.hasDraft(context)) }
+
+    val loadedBitmap = rememberLoadedImage(context, activeMediaUri)
+
+    val handleBackAction = {
+        if (!activeMediaUri.isNullOrBlank() || captionText.isNotBlank() || selectedAudioTrack != null) {
+            showDiscardDraftDialog = true
+        } else {
+            onBack()
+        }
+    }
+
+    androidx.activity.compose.BackHandler(enabled = true) {
+        handleBackAction()
+    }
 
     // Dynamic Geolocation & Search State
     var detectedCity by remember { mutableStateOf("Detecting location...") }
@@ -260,7 +277,7 @@ fun InstagramNewPostScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = handleBackAction) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.Black)
                     }
                 },
@@ -268,9 +285,10 @@ fun InstagramNewPostScreen(
                     TextButton(
                         onClick = {
                             val finalCaption = captionText.ifBlank { if (isReel) "New Reel Video! 🎬" else "New Post Moment 📸" }
+                            com.devil.finaldestiny.data.ReelDraftManager.clearDraft(context)
                             onPublish(
                                 finalCaption,
-                                mediaUri,
+                                activeMediaUri ?: mediaUri,
                                 selectedAudioTrack?.title ?: "Original Audio",
                                 selectedAudioTrack?.artist ?: "Creator",
                                 selectedAudioTrack?.audioUrl,
@@ -305,9 +323,10 @@ fun InstagramNewPostScreen(
                 Button(
                     onClick = {
                         val finalCaption = captionText.ifBlank { if (isReel) "New Reel Video! 🎬" else "New Post Moment 📸" }
+                        com.devil.finaldestiny.data.ReelDraftManager.clearDraft(context)
                         onPublish(
                             finalCaption,
-                            mediaUri,
+                            activeMediaUri ?: mediaUri,
                             selectedAudioTrack?.title ?: "Original Audio",
                             selectedAudioTrack?.artist ?: "Creator",
                             selectedAudioTrack?.audioUrl,
@@ -1146,6 +1165,112 @@ fun InstagramNewPostScreen(
             confirmButton = {
                 TextButton(onClick = { showAudiencePickerSheet = false }) {
                     Text("Cancel", color = Color(0xFF8E8E93))
+                }
+            }
+        )
+    }
+
+    // RESUME DRAFT DIALOG
+    if (showResumeDraftDialog) {
+        AlertDialog(
+            onDismissRequest = { showResumeDraftDialog = false },
+            containerColor = Color.White,
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.EditNote, contentDescription = null, tint = Color(0xFF3897F0))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Continue Previous Draft?", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                }
+            },
+            text = {
+                Text(
+                    "You have a saved reel draft from earlier. Would you like to resume your edits or start a new video?",
+                    fontSize = 13.sp,
+                    color = Color(0xFF3C3C43)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val draft = com.devil.finaldestiny.data.ReelDraftManager.getDraft(context)
+                        if (draft != null) {
+                            activeMediaUri = draft.mediaUri
+                            captionText = draft.caption
+                            selectedFilterIndex = draft.filterIndex.coerceIn(0, samplePhotoFilters.lastIndex)
+                            selectedLocation = draft.location.ifBlank { selectedLocation }
+                            if (!draft.audioTitle.isNullOrBlank() && !draft.audioUrl.isNullOrBlank()) {
+                                selectedAudioTrack = AudioTrack(draft.audioTitle, draft.audioArtist ?: "Creator", draft.audioUrl, "0:30")
+                            }
+                            Toast.makeText(context, "Draft loaded 📝", Toast.LENGTH_SHORT).show()
+                        }
+                        showResumeDraftDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3897F0))
+                ) {
+                    Text("Resume Draft", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        com.devil.finaldestiny.data.ReelDraftManager.clearDraft(context)
+                        showResumeDraftDialog = false
+                        Toast.makeText(context, "Draft discarded", Toast.LENGTH_SHORT).show()
+                    }
+                ) {
+                    Text("Start New", color = Color.Red)
+                }
+            }
+        )
+    }
+
+    // SAVE OR DISCARD DRAFT DIALOG
+    if (showDiscardDraftDialog) {
+        AlertDialog(
+            onDismissRequest = { showDiscardDraftDialog = false },
+            containerColor = Color.White,
+            title = { Text("Save draft?", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Color.Black) },
+            text = { Text("If you go back now, you can save your changes as a draft or discard them.", fontSize = 13.sp, color = Color(0xFF3C3C43)) },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        com.devil.finaldestiny.data.ReelDraftManager.saveDraft(
+                            context,
+                            com.devil.finaldestiny.data.ReelDraft(
+                                mediaUri = activeMediaUri ?: mediaUri,
+                                caption = captionText,
+                                filterIndex = selectedFilterIndex,
+                                location = selectedLocation,
+                                audioTitle = selectedAudioTrack?.title,
+                                audioArtist = selectedAudioTrack?.artist,
+                                audioUrl = selectedAudioTrack?.audioUrl,
+                                isReel = isReel
+                            )
+                        )
+                        showDiscardDraftDialog = false
+                        Toast.makeText(context, "Draft saved 📝", Toast.LENGTH_SHORT).show()
+                        onBack()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3897F0))
+                ) {
+                    Text("Save as Draft", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(
+                        onClick = {
+                            com.devil.finaldestiny.data.ReelDraftManager.clearDraft(context)
+                            showDiscardDraftDialog = false
+                            Toast.makeText(context, "Edits discarded 🗑️", Toast.LENGTH_SHORT).show()
+                            onBack()
+                        }
+                    ) {
+                        Text("Discard", color = Color.Red, fontWeight = FontWeight.Bold)
+                    }
+                    TextButton(onClick = { showDiscardDraftDialog = false }) {
+                        Text("Cancel", color = Color.Gray)
+                    }
                 }
             }
         )

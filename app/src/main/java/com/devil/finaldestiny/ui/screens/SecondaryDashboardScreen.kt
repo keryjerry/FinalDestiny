@@ -1653,7 +1653,10 @@ fun SecondaryDashboardScreen(
                 selectedMediaUri = null
             },
             onPublish = { caption, mediaUri, audioTitle, audioArtist, audioUrl, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText, ctaLink, ctaLabel, isPaidPartnership, promotionStatus, promotionBudget ->
-                coroutineScope.launch {
+                showCreatePostDialog = false
+                selectedMediaUri = null
+
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.SupervisorJob()).launch {
                     try {
                         isUploadingMedia = true
                         uploadStatusText = if (isReelUploadMode) "Uploading Reel Video to Supabase..." else "Uploading Moment Photo to Supabase..."
@@ -1665,25 +1668,29 @@ fun SecondaryDashboardScreen(
                             kotlinx.coroutines.delay(200)
                             isUploadingMedia = false
                             uploadProgressPercentage = 0f
-                            showCreatePostDialog = false
-                            selectedMediaUri = null
-                            Toast.makeText(context, "Reel published successfully! 🚀", Toast.LENGTH_LONG).show()
-                            onNavigateToReelViewer(0)
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                Toast.makeText(context, "Reel published successfully! 🚀", Toast.LENGTH_LONG).show()
+                                onNavigateToReelViewer(0)
+                            }
                         } else {
                             onPublishPost(caption, mediaUri, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText, ctaLink, ctaLabel, isPaidPartnership, promotionStatus, promotionBudget)
                             uploadProgressPercentage = 1.0f
                             kotlinx.coroutines.delay(200)
                             isUploadingMedia = false
                             uploadProgressPercentage = 0f
-                            showCreatePostDialog = false
-                            selectedMediaUri = null
-                            Toast.makeText(context, "Post shared successfully! 🚀", Toast.LENGTH_LONG).show()
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                Toast.makeText(context, "Post shared successfully! 🚀", Toast.LENGTH_LONG).show()
+                            }
                         }
                     } catch (e: Exception) {
                         isUploadingMedia = false
                         uploadProgressPercentage = 0f
-                        android.util.Log.e("PostUpload", "Failed to publish post to Supabase", e)
-                        Toast.makeText(context, "❌ Upload failed: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                        if (e !is kotlinx.coroutines.CancellationException) {
+                            android.util.Log.e("PostUpload", "Failed to publish post to Supabase", e)
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                Toast.makeText(context, "❌ Upload failed: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                            }
+                        }
                     }
                 }
             }

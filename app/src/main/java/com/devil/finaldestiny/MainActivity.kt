@@ -546,26 +546,46 @@ fun FinalDestinyApp(repository: AppRepository) {
                     mediaUri = pickedMediaUri,
                     isReel = isPickedMediaReel,
                     user = user,
-                    onBack = { currentScreen = Screen.PRIMARY_DASHBOARD },
+                    onBack = {
+                        currentScreen = Screen.PRIMARY_DASHBOARD
+                        pickedMediaUri = null
+                    },
                     onPublish = { caption, mediaUri, audioTitle, audioArtist, audioUrl, isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt, altText, appliedFilter, overlayText, ctaLink, ctaLabel, isPaidPartnership, promotionStatus, promotionBudget ->
-                        coroutineScope.launch {
-                            if (isPickedMediaReel) {
-                                repository.postReelVideo(
-                                    context, caption, mediaUri, audioTitle, audioArtist, audioUrl,
-                                    isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt,
-                                    altText, appliedFilter, overlayText, ctaLink, ctaLabel,
-                                    isPaidPartnership, promotionStatus, promotionBudget
-                                )
-                            } else {
-                                repository.postMoment(
-                                    context, caption, mediaUri, isAiGenerated, commentsDisabled,
-                                    hideLikes, hideShares, scheduledAt, altText, appliedFilter,
-                                    overlayText, ctaLink, ctaLabel, isPaidPartnership,
-                                    promotionStatus, promotionBudget
-                                )
+                        currentScreen = Screen.PRIMARY_DASHBOARD
+                        pickedMediaUri = null
+
+                        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.SupervisorJob()).launch {
+                            try {
+                                if (isPickedMediaReel) {
+                                    repository.postReelVideo(
+                                        context, caption, mediaUri, audioTitle, audioArtist, audioUrl,
+                                        isAiGenerated, commentsDisabled, hideLikes, hideShares, scheduledAt,
+                                        altText, appliedFilter, overlayText, ctaLink, ctaLabel,
+                                        isPaidPartnership, promotionStatus, promotionBudget
+                                    )
+                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                        Toast.makeText(context, "Reel published successfully! 🚀", Toast.LENGTH_LONG).show()
+                                    }
+                                } else {
+                                    repository.postMoment(
+                                        context, caption, mediaUri, isAiGenerated, commentsDisabled,
+                                        hideLikes, hideShares, scheduledAt, altText, appliedFilter,
+                                        overlayText, ctaLink, ctaLabel, isPaidPartnership,
+                                        promotionStatus, promotionBudget
+                                    )
+                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                        Toast.makeText(context, "Post shared successfully! 🚀", Toast.LENGTH_LONG).show()
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                if (e !is kotlinx.coroutines.CancellationException) {
+                                    android.util.Log.e("PostUpload", "Failed to publish post", e)
+                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                        Toast.makeText(context, "❌ Upload failed: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                                    }
+                                }
                             }
                         }
-                        currentScreen = Screen.PRIMARY_DASHBOARD
                     }
                 )
 
