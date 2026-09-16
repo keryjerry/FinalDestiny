@@ -150,6 +150,19 @@ fun UserProfileScreen(
         user.id == "usr_me" || user.id.isBlank() || (currentLoggedInUid != null && user.id == currentLoggedInUid)
     }
     var isFollowingUser by remember(user.id) { mutableStateOf(false) }
+    var followerCountState by remember(user.id, user.followerCount) { mutableIntStateOf(user.followerCount) }
+
+    LaunchedEffect(user.id, isOwnProfile) {
+        if (!isOwnProfile && user.id.isNotBlank()) {
+            val myUid = currentLoggedInUid ?: com.devil.finaldestiny.data.SupabaseAuthClient.getCurrentUserId()
+            if (!myUid.isNullOrBlank()) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    val isFollowed = com.devil.finaldestiny.data.SupabaseAuthClient.checkIsFollowing(myUid, user.id)
+                    isFollowingUser = isFollowed
+                }
+            }
+        }
+    }
 
     var editName by remember(user) { mutableStateOf(user.name) }
     val initialCleanBio = user.bio.takeIf { !it.isNullOrBlank() && it.trim().lowercase() != "null" } ?: ""
@@ -589,10 +602,10 @@ fun UserProfileScreen(
                     InstagramStatItem(count = "${userPosts.size}", label = "posts")
 
                     Box(modifier = Modifier.clickable {
-                        dialogTitle = "Followers (${user.followerCount})"
+                        dialogTitle = "Followers ($followerCountState)"
                         showFollowersDialog = true
                     }) {
-                        InstagramStatItem(count = "${user.followerCount}", label = "followers")
+                        InstagramStatItem(count = "$followerCountState", label = "followers")
                     }
 
                     Box(modifier = Modifier.clickable {
@@ -818,8 +831,37 @@ fun UserProfileScreen(
                     ) {
                         Button(
                             onClick = {
-                                isFollowingUser = !isFollowingUser
-                                onToggleFollowCandidate(user.id, isFollowingUser)
+                                val previousState = isFollowingUser
+                                val previousCount = followerCountState
+                                val newState = !previousState
+                                val newCount = if (newState) (previousCount + 1) else (previousCount - 1).coerceAtLeast(0)
+
+                                // Optimistic & Reactive UI Toggle
+                                isFollowingUser = newState
+                                followerCountState = newCount
+
+                                coroutineScope.launch {
+                                    try {
+                                        val myUid = currentLoggedInUid ?: com.devil.finaldestiny.data.SupabaseAuthClient.getCurrentUserId() ?: ""
+                                        val (success, errMessage) = com.devil.finaldestiny.data.SupabaseAuthClient.toggleFollowUserInSupabase(
+                                            currentUserId = myUid,
+                                            targetUserId = user.id,
+                                            isFollowing = newState
+                                        )
+                                        if (success) {
+                                            onToggleFollowCandidate(user.id, newState)
+                                        } else {
+                                            // Revert state on network failure
+                                            isFollowingUser = previousState
+                                            followerCountState = previousCount
+                                            Toast.makeText(context, "❌ Follow update failed: ${errMessage ?: "Network error"}", Toast.LENGTH_SHORT).show()
+                                        }
+                                    } catch (e: Exception) {
+                                        isFollowingUser = previousState
+                                        followerCountState = previousCount
+                                        Toast.makeText(context, "❌ Follow error: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             },
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (isFollowingUser) Color(0xFFEFEFEF) else Color(0xFF3897F0)

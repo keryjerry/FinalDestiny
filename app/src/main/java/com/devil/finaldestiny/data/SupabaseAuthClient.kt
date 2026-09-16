@@ -1685,6 +1685,120 @@ object SupabaseAuthClient {
         }
     }
 
+    suspend fun checkIsFollowing(followerId: String?, targetUserId: String?): Boolean = withContext(Dispatchers.IO) {
+        if (followerId.isNullOrBlank() || targetUserId.isNullOrBlank()) return@withContext false
+        try {
+            val baseUrl = supabaseUrl.trimEnd('/')
+            val endpoint = "$baseUrl/rest/v1/follows?follower_id=eq.$followerId&following_id=eq.$targetUserId&select=id"
+            val url = URL(endpoint)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 6000
+                readTimeout = 6000
+                setRequestProperty("apikey", supabaseAnonKey)
+                setRequestProperty("Authorization", "Bearer ${currentSessionToken ?: supabaseAnonKey}")
+                setRequestProperty("Accept", "application/json")
+            }
+            val resCode = connection.responseCode
+            val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
+            val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
+            Log.d(TAG, "[FOLLOW_CHECK] GET /rest/v1/follows status $resCode | follower: $followerId -> following: $targetUserId | Response: $resText")
+            if (resCode in 200..299 && resText.isNotBlank()) {
+                val array = org.json.JSONArray(resText)
+                return@withContext array.length() > 0
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "[FOLLOW_CHECK] Exception checking follow status", e)
+        }
+        false
+    }
+
+    suspend fun toggleFollowUserInSupabase(currentUserId: String, targetUserId: String, isFollowing: Boolean): Pair<Boolean, String?> = withContext(Dispatchers.IO) {
+        if (currentUserId.isBlank() || targetUserId.isBlank()) return@withContext Pair(false, "Invalid user IDs")
+        val baseUrl = supabaseUrl.trimEnd('/')
+        val token = currentSessionToken ?: supabaseAnonKey
+
+        try {
+            if (isFollowing) {
+                val endpoint = "$baseUrl/rest/v1/follows"
+                val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    connectTimeout = 8000
+                    readTimeout = 8000
+                    setRequestProperty("apikey", supabaseAnonKey)
+                    setRequestProperty("Authorization", "Bearer $token")
+                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("Prefer", "resolution=merge-duplicates")
+                    doOutput = true
+                }
+                val payload = org.json.JSONObject().apply {
+                    put("follower_id", currentUserId)
+                    put("following_id", targetUserId)
+                }
+                connection.outputStream.use { os ->
+                    os.write(payload.toString().toByteArray(Charsets.UTF_8))
+                }
+                val resCode = connection.responseCode
+                val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
+                val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
+                Log.d(TAG, "[FOLLOW_SYNC] POST /rest/v1/follows status $resCode | follower: $currentUserId -> following: $targetUserId | Response: $resText")
+
+                if (resCode in 200..299) {
+                    try {
+                        val notifEndpoint = "$baseUrl/rest/v1/notifications"
+                        val notifConn = (URL(notifEndpoint).openConnection() as HttpURLConnection).apply {
+                            requestMethod = "POST"
+                            connectTimeout = 6000
+                            readTimeout = 6000
+                            setRequestProperty("apikey", supabaseAnonKey)
+                            setRequestProperty("Authorization", "Bearer $token")
+                            setRequestProperty("Content-Type", "application/json")
+                            doOutput = true
+                        }
+                        val notifPayload = org.json.JSONObject().apply {
+                            put("recipient_id", targetUserId)
+                            put("sender_id", currentUserId)
+                            put("type", "NEW_FOLLOWER")
+                            put("message", "started following you")
+                            put("is_read", false)
+                        }
+                        notifConn.outputStream.use { os ->
+                            os.write(notifPayload.toString().toByteArray(Charsets.UTF_8))
+                        }
+                        Log.d(TAG, "[FOLLOW_SYNC] Follow Notification insert status ${notifConn.responseCode}")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "[FOLLOW_SYNC] Failed to insert follow notification", e)
+                    }
+                    return@withContext Pair(true, null)
+                } else {
+                    return@withContext Pair(false, "HTTP $resCode: $resText")
+                }
+            } else {
+                val endpoint = "$baseUrl/rest/v1/follows?follower_id=eq.$currentUserId&following_id=eq.$targetUserId"
+                val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "DELETE"
+                    connectTimeout = 8000
+                    readTimeout = 8000
+                    setRequestProperty("apikey", supabaseAnonKey)
+                    setRequestProperty("Authorization", "Bearer $token")
+                }
+                val resCode = connection.responseCode
+                val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
+                val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
+                Log.d(TAG, "[FOLLOW_SYNC] DELETE /rest/v1/follows status $resCode | follower: $currentUserId -> following: $targetUserId | Response: $resText")
+
+                if (resCode in 200..299) {
+                    return@withContext Pair(true, null)
+                } else {
+                    return@withContext Pair(false, "HTTP $resCode: $resText")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "[FOLLOW_SYNC] Exception syncing follow status to Supabase", e)
+            return@withContext Pair(false, e.localizedMessage ?: "Network error")
+        }
+    }
+
     suspend fun fetchFollowersCount(userId: String?): Int = withContext(Dispatchers.IO) {
         if (userId.isNullOrBlank()) return@withContext 0
         try {
