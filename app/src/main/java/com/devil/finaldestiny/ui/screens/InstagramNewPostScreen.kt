@@ -28,10 +28,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -368,16 +372,29 @@ fun InstagramNewPostScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(bottom = 80.dp)
         ) {
-            // 1. MEDIA PREVIEW & FILTER CAROUSEL
+            val activeFilterMatrix = samplePhotoFilters[selectedFilterIndex].colorMatrix
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(260.dp)
                     .clipToBounds()
+                    .drawWithContent {
+                        if (activeFilterMatrix != null) {
+                            drawIntoCanvas { canvas ->
+                                val paint = Paint().apply {
+                                    colorFilter = ColorFilter.colorMatrix(activeFilterMatrix)
+                                }
+                                canvas.saveLayer(Rect(0f, 0f, size.width, size.height), paint)
+                                drawContent()
+                                canvas.restore()
+                            }
+                        } else {
+                            drawContent()
+                        }
+                    }
                     .background(Color(0xFFF2F2F7))
             ) {
-                val activeFilterMatrix = samplePhotoFilters[selectedFilterIndex].colorMatrix
                 if (!mediaUri.isNullOrBlank() && (mediaUri.contains("video", ignoreCase = true) || isReel) && loadedBitmap == null) {
                     ExoVideoPlayerView(
                         videoUri = mediaUri,

@@ -1899,20 +1899,19 @@ internal fun ExoVideoPlayerView(
 
     androidx.compose.ui.viewinterop.AndroidView(
         factory = { ctx ->
-            androidx.media3.ui.PlayerView(ctx).apply {
-                player = exoPlayer
-                useController = false
-                resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            android.view.TextureView(ctx).apply {
+                exoPlayer.setVideoTextureView(this)
             }
         },
-        update = { playerView ->
+        update = { textureView ->
+            exoPlayer.setVideoTextureView(textureView)
             if (colorMatrix != null) {
                 val cmFilter = android.graphics.ColorMatrixColorFilter(colorMatrix.values)
-                playerView.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, android.graphics.Paint().apply {
+                textureView.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, android.graphics.Paint().apply {
                     colorFilter = cmFilter
                 })
             } else {
-                playerView.setLayerType(android.view.View.LAYER_TYPE_NONE, null)
+                textureView.setLayerType(android.view.View.LAYER_TYPE_NONE, null)
             }
         },
         modifier = modifier
