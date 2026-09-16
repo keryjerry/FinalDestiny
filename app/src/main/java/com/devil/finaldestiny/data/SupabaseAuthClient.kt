@@ -381,7 +381,6 @@ object SupabaseAuthClient {
                 put("email", email)
                 put("username", cleanUsername)
                 put("full_name", cleanUsername)
-                put("name", cleanUsername)
                 if (sanitizedAvatar != null) {
                     put("avatar_url", sanitizedAvatar)
                 }
@@ -551,7 +550,6 @@ object SupabaseAuthClient {
 
         val payload = JSONObject().apply {
             put("id", targetId)
-            put("name", profile.name)
             put("full_name", profile.name)
             if (profile.handle.isNotBlank()) {
                 val cleanHandle = profile.handle.removePrefix("@").trim()
