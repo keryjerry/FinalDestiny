@@ -88,6 +88,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devil.finaldestiny.data.SupabaseAuthClient
 import com.devil.finaldestiny.ui.components.PostShareSheet
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import com.devil.finaldestiny.engine.intelligence.CoreIntelligenceEngine
 import com.devil.finaldestiny.model.AppNotification
 import com.devil.finaldestiny.model.AudioTrack
@@ -203,6 +208,39 @@ fun SecondaryDashboardScreen(
             AudioTrack("a4", "Bole Chudiyan (Remix) 💃", "Simran & Group", duration = "0:60"),
             AudioTrack("a5", "Lo-Fi Coffee Chill ☕", "LoFi Girl", duration = "0:30")
         )
+    }
+
+    // Periodic Auto-Refresh Timer (every 75 seconds) & ON_RESUME Lifecycle Listener
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(Unit) {
+        while (isActive) {
+            delay(75_000L) // Periodic refresh every 75 seconds
+            try {
+                android.util.Log.d("FEED_AUTO_REFRESH", "[PERIODIC_REFRESH] 75s auto-refresh timer triggered - fetching latest posts from Supabase")
+                onRefresh()
+            } catch (e: Exception) {
+                android.util.Log.e("FEED_AUTO_REFRESH", "Error in periodic 75s feed auto-refresh", e)
+            }
+        }
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                android.util.Log.d("FEED_AUTO_REFRESH", "[ON_RESUME] App resumed from background/screen lock - checking for newly published posts")
+                coroutineScope.launch {
+                    try {
+                        onRefresh()
+                    } catch (e: Exception) {
+                        android.util.Log.e("FEED_AUTO_REFRESH", "Error on ON_RESUME feed refresh", e)
+                    }
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     // Eligibility & Warning Dialog States for Go Live

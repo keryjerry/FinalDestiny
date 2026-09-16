@@ -611,7 +611,26 @@ fun FinalDestinyApp(repository: AppRepository) {
                                 secondaryFeedListState.animateScrollToItem(0)
                             }
                         },
-                        onNavigate = { destination -> currentScreen = destination }
+                        onNavigate = { destination ->
+                            if (destination == Screen.PRIMARY_DASHBOARD || destination == Screen.SECONDARY_FEED) {
+                                if (currentScreen == Screen.PRIMARY_DASHBOARD || currentScreen == Screen.SECONDARY_FEED) {
+                                    // Re-tap on Home/Feed icon while already on Feed: Scroll-to-top & Refresh data from Supabase
+                                    isManuallyExpanded = true
+                                    coroutineScope.launch {
+                                        secondaryFeedListState.animateScrollToItem(0)
+                                        try {
+                                            repository.refreshMomentsAndReels()
+                                        } catch (e: Exception) {
+                                            android.util.Log.e("NAV_RE_TAP", "Error refreshing feed on re-tap", e)
+                                        }
+                                    }
+                                } else {
+                                    currentScreen = destination
+                                }
+                            } else {
+                                currentScreen = destination
+                            }
+                        }
                     )
                 }
 
