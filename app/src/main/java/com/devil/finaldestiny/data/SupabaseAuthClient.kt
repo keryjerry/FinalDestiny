@@ -1734,7 +1734,7 @@ object SupabaseAuthClient {
                 connectTimeout = 6000
                 readTimeout = 6000
                 setRequestProperty("apikey", supabaseAnonKey)
-                setRequestProperty("Authorization", "Bearer ${currentSessionToken ?: supabaseAnonKey}")
+                setRequestProperty("Authorization", "Bearer ${getValidAuthToken()}")
                 setRequestProperty("Accept", "application/json")
             }
             val resCode = connection.responseCode
@@ -1781,31 +1781,37 @@ object SupabaseAuthClient {
                 val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
                 Log.d(TAG, "[FOLLOW_SYNC] POST /rest/v1/follows status $resCode | follower: $currentUserId -> following: $targetUserId | Response: $resText")
 
-                if (resCode in 200..299) {
-                    try {
-                        val notifEndpoint = "$baseUrl/rest/v1/notifications"
-                        val notifConn = (URL(notifEndpoint).openConnection() as HttpURLConnection).apply {
-                            requestMethod = "POST"
-                            connectTimeout = 6000
-                            readTimeout = 6000
-                            setRequestProperty("apikey", supabaseAnonKey)
-                            setRequestProperty("Authorization", "Bearer $token")
-                            setRequestProperty("Content-Type", "application/json")
-                            doOutput = true
+                val isDuplicateKey = resCode == 409 || resText.contains("23505") || resText.contains("duplicate key") || resText.contains("already exists")
+
+                if (resCode in 200..299 || isDuplicateKey) {
+                    if (isDuplicateKey) {
+                        Log.d(TAG, "[FOLLOW_SYNC] Row already exists (HTTP 409 / 23505) -> Treating follow as successful")
+                    } else {
+                        try {
+                            val notifEndpoint = "$baseUrl/rest/v1/notifications"
+                            val notifConn = (URL(notifEndpoint).openConnection() as HttpURLConnection).apply {
+                                requestMethod = "POST"
+                                connectTimeout = 6000
+                                readTimeout = 6000
+                                setRequestProperty("apikey", supabaseAnonKey)
+                                setRequestProperty("Authorization", "Bearer $token")
+                                setRequestProperty("Content-Type", "application/json")
+                                doOutput = true
+                            }
+                            val notifPayload = org.json.JSONObject().apply {
+                                put("recipient_id", targetUserId)
+                                put("sender_id", currentUserId)
+                                put("type", "NEW_FOLLOWER")
+                                put("message", "started following you")
+                                put("is_read", false)
+                            }
+                            notifConn.outputStream.use { os ->
+                                os.write(notifPayload.toString().toByteArray(Charsets.UTF_8))
+                            }
+                            Log.d(TAG, "[FOLLOW_SYNC] Follow Notification insert status ${notifConn.responseCode}")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "[FOLLOW_SYNC] Failed to insert follow notification", e)
                         }
-                        val notifPayload = org.json.JSONObject().apply {
-                            put("recipient_id", targetUserId)
-                            put("sender_id", currentUserId)
-                            put("type", "NEW_FOLLOWER")
-                            put("message", "started following you")
-                            put("is_read", false)
-                        }
-                        notifConn.outputStream.use { os ->
-                            os.write(notifPayload.toString().toByteArray(Charsets.UTF_8))
-                        }
-                        Log.d(TAG, "[FOLLOW_SYNC] Follow Notification insert status ${notifConn.responseCode}")
-                    } catch (e: Exception) {
-                        Log.e(TAG, "[FOLLOW_SYNC] Failed to insert follow notification", e)
                     }
                     return@withContext Pair(true, null)
                 } else {
