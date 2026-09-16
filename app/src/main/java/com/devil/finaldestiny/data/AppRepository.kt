@@ -87,9 +87,10 @@ class AppRepository {
 
     fun switchAccount(targetUserId: String, context: Context) {
         val target = _savedAccounts.value.find { it.id == targetUserId } ?: return
+        SupabaseAuthClient.clearUserAvatarCache(context)
         _currentUser.value = target
         val prefs = context.getSharedPreferences("destiny_auth_prefs", Context.MODE_PRIVATE)
-        prefs.edit().putString("unique_user_id", target.id).apply()
+        prefs.edit().putString("unique_user_id", target.id).remove("user_avatar_url").apply()
         fetchProfileFromSupabase(target.id)
     }
 

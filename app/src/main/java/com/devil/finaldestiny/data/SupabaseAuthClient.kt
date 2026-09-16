@@ -700,10 +700,19 @@ object SupabaseAuthClient {
         return currentUserAvatarUrl
     }
 
+    fun clearUserAvatarCache(context: Context? = null) {
+        currentUserAvatarUrl = null
+        if (context != null) {
+            val prefs = context.getSharedPreferences("destiny_auth_prefs", Context.MODE_PRIVATE)
+            prefs.edit().remove("user_avatar_url").apply()
+        }
+    }
+
     fun signOut(context: Context? = null) {
         currentSessionToken = null
         currentUserEmail = null
         currentUserId = null
+        currentUserAvatarUrl = null
         isAuthenticated = false
         if (context != null) {
             val prefs = context.getSharedPreferences("destiny_auth_prefs", Context.MODE_PRIVATE)
@@ -712,6 +721,7 @@ object SupabaseAuthClient {
                 .remove("user_email")
                 .remove("session_token")
                 .remove("session_created_at")
+                .remove("user_avatar_url")
                 .apply()
         }
     }

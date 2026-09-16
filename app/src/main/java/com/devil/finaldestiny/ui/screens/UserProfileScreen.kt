@@ -498,9 +498,8 @@ fun UserProfileScreen(
                                 } else Modifier
                             )
                     ) {
-                        val rawAvatarUrl = user.profilePictureUri.takeIf { !it.isNullOrBlank() }
-                            ?: if (isOwnProfile) com.devil.finaldestiny.data.SupabaseAuthClient.getUserAvatarUrl() else null
-                        val avatarUrl = com.devil.finaldestiny.data.SupabaseAuthClient.sanitizeAvatarUrl(rawAvatarUrl) ?: rawAvatarUrl
+                        val rawAvatarUrl = user.profilePictureUri.takeIf { !it.isNullOrBlank() && it.trim().lowercase() != "null" }
+                        val avatarUrl = com.devil.finaldestiny.data.SupabaseAuthClient.sanitizeAvatarUrl(rawAvatarUrl)
                         if (pendingCroppedBitmap != null) {
                             Image(
                                 bitmap = pendingCroppedBitmap!!.asImageBitmap(),
