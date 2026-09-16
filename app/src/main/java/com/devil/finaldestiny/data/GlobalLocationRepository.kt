@@ -133,7 +133,11 @@ object GlobalLocationRepository {
             baseCity,
             "$baseCity City Center",
             "Central $baseCity",
-            "Downtown $baseCity"
-        )
+            "$baseCity Market Place",
+            "$baseCity High Street",
+            "$baseCity Metro Station",
+            "Downtown $baseCity",
+            "Sector 18, $baseCity"
+        ).distinct()
     }
 }

@@ -1865,6 +1865,7 @@ internal fun rememberLoadedImage(context: Context, uriString: String?): ImageBit
 internal fun ExoVideoPlayerView(
     videoUri: String,
     modifier: Modifier = Modifier,
+    colorMatrix: androidx.compose.ui.graphics.ColorMatrix? = null,
     onVideoPlay: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -1895,6 +1896,16 @@ internal fun ExoVideoPlayerView(
                 player = exoPlayer
                 useController = false
                 resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+            }
+        },
+        update = { playerView ->
+            if (colorMatrix != null) {
+                val cmFilter = android.graphics.ColorMatrixColorFilter(colorMatrix.values)
+                playerView.setLayerType(android.view.View.LAYER_TYPE_HARDWARE, android.graphics.Paint().apply {
+                    colorFilter = cmFilter
+                })
+            } else {
+                playerView.setLayerType(android.view.View.LAYER_TYPE_NONE, null)
             }
         },
         modifier = modifier

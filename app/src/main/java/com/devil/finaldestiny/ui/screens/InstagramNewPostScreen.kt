@@ -48,16 +48,21 @@ data class PhotoFilterItem(
 val samplePhotoFilters = listOf(
     PhotoFilterItem("Normal", null),
     PhotoFilterItem("Royal Gold", ColorMatrix(floatArrayOf(
-        1.25f, 0.1f, 0.0f, 0f, 15f,
-        0.05f, 1.15f, 0.0f, 0f, 10f,
-        0.0f, 0.0f, 0.85f, 0f, -5f,
+        1.2f, 0f, 0f, 0f, 15f,
+        0f, 1.1f, 0f, 0f, 10f,
+        0f, 0f, 0.85f, 0f, -10f,
         0f, 0f, 0f, 1f, 0f
     ))),
-    PhotoFilterItem("Cinema Noir", ColorMatrix().apply { setToSaturation(0f) }),
+    PhotoFilterItem("Cinema Noir", ColorMatrix(floatArrayOf(
+        0.33f, 0.59f, 0.11f, 0f, -10f,
+        0.33f, 0.59f, 0.11f, 0f, -10f,
+        0.33f, 0.59f, 0.11f, 0f, -10f,
+        0f, 0f, 0f, 1f, 0f
+    ))),
     PhotoFilterItem("Cyberpunk", ColorMatrix(floatArrayOf(
-        0.85f, 0.2f, 0.5f, 0f, 20f,
-        0.1f, 1.25f, 0.3f, 0f, -10f,
-        0.3f, 0.1f, 1.4f, 0f, 25f,
+        1.1f, 0f, 0.2f, 0f, 20f,
+        0f, 0.9f, 0.1f, 0f, -5f,
+        0.2f, 0f, 1.3f, 0f, 30f,
         0f, 0f, 0f, 1f, 0f
     ))),
     PhotoFilterItem("Warm Sunset", ColorMatrix(floatArrayOf(
@@ -346,23 +351,25 @@ fun InstagramNewPostScreen(
                     .height(260.dp)
                     .background(Color(0xFFF2F2F7))
             ) {
+                val activeFilterMatrix = samplePhotoFilters[selectedFilterIndex].colorMatrix
                 if (!mediaUri.isNullOrBlank() && (mediaUri.contains("video", ignoreCase = true) || isReel) && loadedBitmap == null) {
                     ExoVideoPlayerView(
                         videoUri = mediaUri,
+                        colorMatrix = activeFilterMatrix,
                         modifier = Modifier.fillMaxSize()
                     )
                 } else if (loadedBitmap != null) {
-                    val filter = samplePhotoFilters[selectedFilterIndex].colorMatrix
                     Image(
                         bitmap = loadedBitmap,
                         contentDescription = "Media Preview",
                         contentScale = ContentScale.Crop,
-                        colorFilter = if (filter != null) ColorFilter.colorMatrix(filter) else null,
+                        colorFilter = if (activeFilterMatrix != null) ColorFilter.colorMatrix(activeFilterMatrix) else null,
                         modifier = Modifier.fillMaxSize()
                     )
                 } else if (!mediaUri.isNullOrBlank()) {
                     ExoVideoPlayerView(
                         videoUri = mediaUri,
+                        colorMatrix = activeFilterMatrix,
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
@@ -629,15 +636,6 @@ fun InstagramNewPostScreen(
             )
 
             HorizontalDivider(color = Color(0xFFE5E5EA), thickness = 0.5.dp)
-
-            // Only post to profile Option
-            ListItem(
-                headlineContent = { Text("Only post to profile", fontSize = 14.sp, fontWeight = FontWeight.SemiBold) },
-                supportingContent = { Text("Try Instagram Plus", fontSize = 11.sp, color = Color(0xFF3897F0)) },
-                leadingContent = { Icon(Icons.Default.GridOn, contentDescription = null, tint = Color.Black) },
-                trailingContent = { Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color(0xFF8E8E93)) },
-                modifier = Modifier.clickable { isOnlyPostToProfile = !isOnlyPostToProfile }
-            )
 
             // Audience Option
             ListItem(
