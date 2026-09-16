@@ -1538,6 +1538,99 @@ object SupabaseAuthClient {
         notifications
     }
 
+    var isNotifReadColumnMissing: Boolean = false
+        private set
+
+    suspend fun updateNotificationReadStateInSupabase(notificationId: String, isRead: Boolean = true): Boolean = withContext(Dispatchers.IO) {
+        if (notificationId.isBlank()) return@withContext false
+        try {
+            val baseUrl = supabaseUrl.trimEnd('/')
+            val endpoint = "$baseUrl/rest/v1/notifications?id=eq.$notificationId"
+            val token = getSessionToken() ?: supabaseAnonKey
+            val url = URL(endpoint)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                try {
+                    requestMethod = "PATCH"
+                } catch (e: Exception) {
+                    requestMethod = "POST"
+                    setRequestProperty("X-HTTP-Method-Override", "PATCH")
+                }
+                connectTimeout = 8000
+                readTimeout = 8000
+                setRequestProperty("apikey", supabaseAnonKey)
+                setRequestProperty("Authorization", "Bearer $token")
+                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("Prefer", "return=minimal")
+                doOutput = true
+            }
+            val body = org.json.JSONObject().apply {
+                put("is_read", isRead)
+            }
+            connection.outputStream.use { os ->
+                os.write(body.toString().toByteArray(Charsets.UTF_8))
+            }
+            val resCode = connection.responseCode
+            val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
+            val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
+            Log.d(TAG, "[NOTIF_READ_SYNC] PATCH notification $notificationId (is_read=$isRead) -> Status $resCode: $resText")
+
+            if (resCode in 200..299) {
+                return@withContext true
+            } else {
+                if (resText.contains("is_read", ignoreCase = true) || resCode == 400) {
+                    isNotifReadColumnMissing = true
+                    Log.e(TAG, "[NOTIF_READ_SYNC] Column 'is_read' missing or invalid schema in public.notifications: $resText")
+                }
+                return@withContext false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "[NOTIF_READ_SYNC] Failed to update notification read state on Supabase", e)
+            return@withContext false
+        }
+    }
+
+    suspend fun markAllNotificationsReadInSupabase(currentUserId: String): Boolean = withContext(Dispatchers.IO) {
+        if (currentUserId.isBlank()) return@withContext false
+        try {
+            val baseUrl = supabaseUrl.trimEnd('/')
+            val endpoint = "$baseUrl/rest/v1/notifications?recipient_id=eq.$currentUserId"
+            val token = getSessionToken() ?: supabaseAnonKey
+            val url = URL(endpoint)
+            val connection = (url.openConnection() as HttpURLConnection).apply {
+                try {
+                    requestMethod = "PATCH"
+                } catch (e: Exception) {
+                    requestMethod = "POST"
+                    setRequestProperty("X-HTTP-Method-Override", "PATCH")
+                }
+                connectTimeout = 8000
+                readTimeout = 8000
+                setRequestProperty("apikey", supabaseAnonKey)
+                setRequestProperty("Authorization", "Bearer $token")
+                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("Prefer", "return=minimal")
+                doOutput = true
+            }
+            val body = org.json.JSONObject().apply {
+                put("is_read", true)
+            }
+            connection.outputStream.use { os ->
+                os.write(body.toString().toByteArray(Charsets.UTF_8))
+            }
+            val resCode = connection.responseCode
+            val stream = if (resCode in 200..299) connection.inputStream else connection.errorStream
+            val resText = stream?.bufferedReader()?.use { it.readText() } ?: ""
+            Log.d(TAG, "[NOTIF_READ_SYNC] PATCH all notifications for user $currentUserId -> Status $resCode: $resText")
+            if (resCode !in 200..299 && (resText.contains("is_read", ignoreCase = true) || resCode == 400)) {
+                isNotifReadColumnMissing = true
+            }
+            return@withContext (resCode in 200..299)
+        } catch (e: Exception) {
+            Log.e(TAG, "[NOTIF_READ_SYNC] Failed to mark all notifications read on Supabase", e)
+            return@withContext false
+        }
+    }
+
     suspend fun followUser(targetUserId: String, currentUserId: String) = withContext(Dispatchers.IO) {
         try {
             val baseUrl = supabaseUrl.trimEnd('/')

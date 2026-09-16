@@ -47,6 +47,7 @@ fun NotificationScreen(
     val context = LocalContext.current
     var isRefreshing by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+    val unreadCount = remember(notificationsList) { notificationsList.count { !it.isRead } }
 
     Column(
         modifier = Modifier
@@ -87,12 +88,29 @@ fun NotificationScreen(
                     Spacer(modifier = Modifier.width(12.dp))
 
                     Column {
-                        Text(
-                            text = "Notifications",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = NavyTextPrimary
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Notifications",
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NavyTextPrimary
+                            )
+                            if (unreadCount > 0) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    color = HeartRed,
+                                    shape = CircleShape
+                                ) {
+                                    Text(
+                                        text = if (unreadCount > 99) "99+" else "$unreadCount",
+                                        fontSize = 11.sp,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
                         Text(
                             text = user.handle,
                             fontSize = 11.sp,
@@ -161,11 +179,17 @@ fun NotificationScreen(
                             notification.title.contains(notification.message, ignoreCase = true)
 
                         Card(
-                            colors = CardDefaults.cardColors(containerColor = SkyBlueCardBg),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (!notification.isRead) SkyBlueHeader.copy(alpha = 0.5f) else SkyBlueCardBg
+                            ),
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .border(1.dp, SkyBlueBorder, RoundedCornerShape(16.dp))
+                                .border(
+                                    width = if (!notification.isRead) 1.5.dp else 1.dp,
+                                    color = if (!notification.isRead) SkyBluePrimary.copy(alpha = 0.8f) else SkyBlueBorder,
+                                    shape = RoundedCornerShape(16.dp)
+                                )
                                 .clickable {
                                     onSelectNotification(notification)
                                     val senderId = notification.actionTargetScreen
@@ -185,17 +209,28 @@ fun NotificationScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    if (!notification.senderAvatarUrl.isNullOrBlank()) {
-                                        ProfileAvatarView(
-                                            name = notification.title,
-                                            profilePictureUri = notification.senderAvatarUrl,
-                                            size = 40.dp
-                                        )
-                                    } else {
-                                        Text(
-                                            text = notification.iconSymbol.ifBlank { "🔔" },
-                                            fontSize = 24.sp
-                                        )
+                                    Box(contentAlignment = Alignment.TopEnd) {
+                                        if (!notification.senderAvatarUrl.isNullOrBlank()) {
+                                            ProfileAvatarView(
+                                                name = notification.title,
+                                                profilePictureUri = notification.senderAvatarUrl,
+                                                size = 40.dp
+                                            )
+                                        } else {
+                                            Text(
+                                                text = notification.iconSymbol.ifBlank { "🔔" },
+                                                fontSize = 24.sp
+                                            )
+                                        }
+                                        if (!notification.isRead) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(10.dp)
+                                                    .clip(CircleShape)
+                                                    .background(HeartRed)
+                                                    .border(1.dp, Color.White, CircleShape)
+                                            )
+                                        }
                                     }
 
                                     Spacer(modifier = Modifier.width(12.dp))

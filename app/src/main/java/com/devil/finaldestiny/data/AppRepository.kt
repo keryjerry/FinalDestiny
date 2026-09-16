@@ -339,14 +339,35 @@ class AppRepository {
         }
     }
 
+    private val repositoryScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.SupervisorJob())
+
     fun markNotificationAsRead(notificationId: String) {
         _notifications.value = _notifications.value.map {
             if (it.id == notificationId) it.copy(isRead = true) else it
+        }
+        repositoryScope.launch {
+            try {
+                val ok = SupabaseAuthClient.updateNotificationReadStateInSupabase(notificationId, true)
+                android.util.Log.d("NOTIF_SYNC", "Notification $notificationId synced read state to Supabase: ok=$ok")
+            } catch (e: Exception) {
+                android.util.Log.e("NOTIF_SYNC", "Error syncing notification read state to Supabase", e)
+            }
         }
     }
 
     fun markAllNotificationsAsRead() {
         _notifications.value = _notifications.value.map { it.copy(isRead = true) }
+        val myId = _currentUser.value.id
+        if (myId.isNotBlank()) {
+            repositoryScope.launch {
+                try {
+                    val ok = SupabaseAuthClient.markAllNotificationsReadInSupabase(myId)
+                    android.util.Log.d("NOTIF_SYNC", "All notifications for $myId synced read state to Supabase: ok=$ok")
+                } catch (e: Exception) {
+                    android.util.Log.e("NOTIF_SYNC", "Error marking all notifications read in Supabase", e)
+                }
+            }
+        }
     }
 
     fun clearAllNotifications() {
