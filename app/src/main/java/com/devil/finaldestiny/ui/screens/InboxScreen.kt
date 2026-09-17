@@ -66,12 +66,54 @@ fun InboxScreen(
     }
 
     val currentUserId = remember { SupabaseAuthClient.getCurrentUserId() ?: "usr_me" }
+    var liveConversations by remember { mutableStateOf<List<DirectMessageConversation>>(conversationsList) }
+
+    // Fetch live conversations with resilient profile resolution
+    LaunchedEffect(currentUserId) {
+        if (currentUserId.isNotBlank()) {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    val fetched = SupabaseAuthClient.fetchConversationsFromSupabase(currentUserId)
+                    if (fetched.isNotEmpty()) {
+                        liveConversations = fetched
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
+
+    val displayConversations = if (conversationsList.isNotEmpty()) conversationsList else liveConversations
 
     if (activeChatTarget != null) {
         val target = activeChatTarget!!
         var chatInput by remember { mutableStateOf("") }
         val messagesList = remember { mutableStateListOf<DirectChatMessage>() }
         var isLoadingMessages by remember { mutableStateOf(true) }
+
+        // Resolve Target Profile Details asynchronously if generic or fallback
+        LaunchedEffect(target.id) {
+            if (target.name == "User" || target.name.startsWith("User_") || target.avatarUrl.isNullOrBlank()) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    try {
+                        val prof = SupabaseAuthClient.fetchSingleUserProfileFromSupabase(target.id)
+                        if (prof != null) {
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                activeChatTarget = ActiveDirectChatTarget(
+                                    id = prof.id,
+                                    name = prof.name,
+                                    handle = prof.handle,
+                                    avatarUrl = prof.profilePictureUri ?: target.avatarUrl
+                                )
+                            }
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+        }
 
         LaunchedEffect(target.id) {
             isLoadingMessages = true
@@ -324,7 +366,7 @@ fun InboxScreen(
     }
 
     // MAIN CONVERSATIONS LIST VIEW
-    val filteredList = conversationsList.filter {
+    val filteredList = displayConversations.filter {
         it.userName.contains(searchInput, ignoreCase = true) ||
         it.userHandle.contains(searchInput, ignoreCase = true) ||
         it.lastMessage.contains(searchInput, ignoreCase = true)

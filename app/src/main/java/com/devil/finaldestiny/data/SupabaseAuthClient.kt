@@ -2256,6 +2256,108 @@ object SupabaseAuthClient {
             false
         }
     }
+
+    suspend fun fetchConversationsFromSupabase(currentUserId: String): List<com.devil.finaldestiny.model.DirectMessageConversation> = withContext(Dispatchers.IO) {
+        val conversationsMap = mutableMapOf<String, com.devil.finaldestiny.model.DirectMessageConversation>()
+        if (currentUserId.isBlank()) return@withContext emptyList()
+        try {
+            val baseUrl = supabaseUrl.trimEnd('/')
+            val query = "or=(sender_id.eq.$currentUserId,receiver_id.eq.$currentUserId)&order=created_at.desc"
+            val endpoint = "$baseUrl/rest/v1/messages?$query"
+            val (code, resText) = executeGetWithRetry(endpoint)
+            if (code in 200..299 && resText.isNotBlank()) {
+                val jsonArr = org.json.JSONArray(resText)
+                val partnerIds = mutableSetOf<String>()
+                val partnerLatestMsgs = mutableMapOf<String, org.json.JSONObject>()
+                val unreadCounts = mutableMapOf<String, Int>()
+
+                for (i in 0 until jsonArr.length()) {
+                    val obj = jsonArr.getJSONObject(i)
+                    val sId = obj.optString("sender_id", "")
+                    val rId = obj.optString("receiver_id", "")
+                    val isRead = obj.optBoolean("is_read", true)
+                    val partnerId = if (sId == currentUserId) rId else sId
+                    if (partnerId.isBlank()) continue
+
+                    partnerIds.add(partnerId)
+                    if (!partnerLatestMsgs.containsKey(partnerId)) {
+                        partnerLatestMsgs[partnerId] = obj
+                    }
+                    if (rId == currentUserId && !isRead) {
+                        unreadCounts[partnerId] = (unreadCounts[partnerId] ?: 0) + 1
+                    }
+                }
+
+                if (partnerIds.isNotEmpty()) {
+                    val profilesMap = mutableMapOf<String, com.devil.finaldestiny.model.ProfileDto>()
+                    try {
+                        val idList = partnerIds.joinToString(",")
+                        val profileEndpoint = "$baseUrl/rest/v1/profiles?id=in.($idList)&select=id,username,full_name,display_name,avatar_url,email,phone"
+                        val (pCode, pText) = executeGetWithRetry(profileEndpoint)
+                        if (pCode in 200..299 && pText.isNotBlank()) {
+                            val pArr = org.json.JSONArray(pText)
+                            for (j in 0 until pArr.length()) {
+                                val pObj = pArr.getJSONObject(j)
+                                val pId = pObj.optString("id", "")
+                                if (pId.isNotBlank()) {
+                                    profilesMap[pId] = com.devil.finaldestiny.model.ProfileDto(
+                                        id = pId,
+                                        username = pObj.optString("username").takeIf { !it.isNullOrBlank() && it != "null" },
+                                        fullName = pObj.optString("full_name").takeIf { !it.isNullOrBlank() && it != "null" },
+                                        displayName = pObj.optString("display_name").takeIf { !it.isNullOrBlank() && it != "null" },
+                                        avatarUrl = pObj.optString("avatar_url").takeIf { !it.isNullOrBlank() && it != "null" },
+                                        email = pObj.optString("email").takeIf { !it.isNullOrBlank() && it != "null" },
+                                        phone = pObj.optString("phone").takeIf { !it.isNullOrBlank() && it != "null" }
+                                    )
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "[CONVERSATIONS_FETCH] Error batch fetching profiles", e)
+                    }
+
+                    for (partnerId in partnerIds) {
+                        val msgObj = partnerLatestMsgs[partnerId] ?: continue
+                        val prof = profilesMap[partnerId]
+
+                        val msgSenderName = if (msgObj.optString("sender_id") == partnerId) {
+                            msgObj.optString("sender_name").takeIf { !it.isNullOrBlank() && it != "null" }
+                                ?: msgObj.optString("sender_handle").takeIf { !it.isNullOrBlank() && it != "null" }
+                        } else null
+
+                        val msgSenderAvatar = if (msgObj.optString("sender_id") == partnerId) {
+                            msgObj.optString("sender_avatar").takeIf { !it.isNullOrBlank() && it != "null" }
+                        } else null
+
+                        val resolvedName = prof?.getResolvedName()
+                            ?: msgSenderName
+                            ?: "User_${partnerId.take(5)}"
+
+                        val resolvedHandle = prof?.getResolvedHandle()
+                            ?: if (!msgSenderName.isNullOrBlank()) (if (msgSenderName.startsWith("@")) msgSenderName else "@$msgSenderName") else "@user_${partnerId.take(5)}"
+
+                        val avatarUrl = sanitizeAvatarUrl(prof?.avatarUrl ?: msgSenderAvatar) ?: ""
+                        val createdAtRaw = msgObj.optString("created_at", "")
+                        val lastMsgText = msgObj.optString("content", msgObj.optString("text", "Message"))
+
+                        conversationsMap[partnerId] = com.devil.finaldestiny.model.DirectMessageConversation(
+                            id = partnerId,
+                            userName = resolvedName,
+                            userHandle = resolvedHandle,
+                            userAvatar = avatarUrl,
+                            lastMessage = lastMsgText,
+                            timestamp = TimeUtils.formatTimeAgo(createdAtRaw),
+                            unreadCount = unreadCounts[partnerId] ?: 0,
+                            isOnline = true
+                        )
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "[CONVERSATIONS_FETCH] Error fetching conversations from Supabase", e)
+        }
+        conversationsMap.values.toList()
+    }
 }
 
 data class DirectChatMessage(

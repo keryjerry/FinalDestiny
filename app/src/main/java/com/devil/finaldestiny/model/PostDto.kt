@@ -7,8 +7,40 @@ import kotlinx.serialization.Serializable
 data class ProfileBriefDto(
     @SerialName("username") val username: String? = null,
     @SerialName("full_name") val fullName: String? = null,
+    @SerialName("display_name") val displayName: String? = null,
     @SerialName("avatar_url") val avatarUrl: String? = null
 )
+
+@Serializable
+data class ProfileDto(
+    @SerialName("id") val id: String? = null,
+    @SerialName("username") val username: String? = null,
+    @SerialName("full_name") val fullName: String? = null,
+    @SerialName("display_name") val displayName: String? = null,
+    @SerialName("avatar_url") val avatarUrl: String? = null,
+    @SerialName("email") val email: String? = null,
+    @SerialName("phone") val phone: String? = null
+) {
+    fun getResolvedName(): String {
+        val u = username?.trim()?.takeIf { it.isNotBlank() && it.lowercase() != "null" }
+        val f = fullName?.trim()?.takeIf { it.isNotBlank() && it.lowercase() != "null" }
+        val d = displayName?.trim()?.takeIf { it.isNotBlank() && it.lowercase() != "null" }
+        val e = email?.trim()?.takeIf { it.isNotBlank() && it.lowercase() != "null" }?.substringBefore("@")
+        val p = phone?.trim()?.takeIf { it.isNotBlank() && it.lowercase() != "null" }
+
+        return u ?: f ?: d ?: e ?: p ?: (id?.takeIf { it.isNotBlank() }?.let { "User_${it.take(5)}" } ?: "Destiny Creator")
+    }
+
+    fun getResolvedHandle(): String {
+        val u = username?.trim()?.takeIf { it.isNotBlank() && it.lowercase() != "null" }
+        val name = getResolvedName()
+        return if (!u.isNullOrBlank()) {
+            if (u.startsWith("@")) u else "@$u"
+        } else {
+            if (name.startsWith("@")) name else "@${name.lowercase().replace(" ", "_")}"
+        }
+    }
+}
 
 @Serializable
 data class PostDto(
