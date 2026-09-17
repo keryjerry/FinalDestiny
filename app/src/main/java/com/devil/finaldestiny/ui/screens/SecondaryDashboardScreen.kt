@@ -107,17 +107,7 @@ import com.devil.finaldestiny.utils.TimeUtils
 
 fun getRelativeTime(isoString: String?): String {
     if (isoString.isNullOrBlank()) return "Just now"
-    return try {
-        val postTime = java.time.OffsetDateTime.parse(isoString).toInstant()
-        val diff = java.time.Duration.between(postTime, java.time.Instant.now()).seconds
-        when {
-            diff < 60 -> "Just now"
-            diff < 3600 -> "${diff / 60}m ago"
-            diff < 86400 -> "${diff / 3600}h ago"
-            diff < 604800 -> "${diff / 86400}d ago"
-            else -> "${diff / 604800}w ago"
-        }
-    } catch (e: Exception) { "Just now" }
+    return TimeUtils.formatTimeAgo(isoString)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

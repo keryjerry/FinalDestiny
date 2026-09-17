@@ -62,46 +62,70 @@ object TimeUtils {
     }
 
     /**
+     * Resilient Supabase UTC ISO-8601 & Relative Timestamp Formatter.
+     */
+    fun formatTimeAgo(timestampString: String?): String {
+        if (timestampString.isNullOrBlank()) return "Just now"
+        val trimmed = timestampString.trim()
+
+        if (trimmed.equals("Just now", ignoreCase = true) ||
+            trimmed.endsWith("ago", ignoreCase = true) ||
+            trimmed.equals("Yesterday", ignoreCase = true) ||
+            trimmed.startsWith("Scheduled:", ignoreCase = true)) {
+            return trimmed
+        }
+
+        val numericEpoch = trimmed.toLongOrNull()
+        val postMillis: Long = if (numericEpoch != null && numericEpoch > 1000000000L) {
+            numericEpoch
+        } else {
+            try {
+                // Support API 26+ Instant
+                try {
+                    java.time.Instant.parse(trimmed).toEpochMilli()
+                } catch (eInstant: Exception) {
+                    java.time.OffsetDateTime.parse(trimmed).toInstant().toEpochMilli()
+                }
+            } catch (e: Exception) {
+                try {
+                    val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US).apply {
+                        timeZone = java.util.TimeZone.getTimeZone("UTC")
+                    }
+                    val cleanStr = trimmed.replace(" ", "T")
+                        .substringBefore(".")
+                        .substringBefore("+")
+                        .substringBefore("Z")
+                    sdf.parse(cleanStr)?.time ?: System.currentTimeMillis()
+                } catch (e2: Exception) {
+                    System.currentTimeMillis()
+                }
+            }
+        }
+
+        val now = System.currentTimeMillis()
+        val diff = now - postMillis
+
+        return when {
+            diff < 60_000L -> "Just now"
+            diff < 3_600_000L -> "${diff / 60_000L}m ago"
+            diff < 86_400_000L -> "${diff / 3_600_000L}h ago"
+            diff < 172_800_000L -> "Yesterday"
+            diff < 604_800_000L -> "${diff / 86_400_000L}d ago"
+            else -> {
+                val outSdf = java.text.SimpleDateFormat("MMM d", java.util.Locale.getDefault())
+                outSdf.format(java.util.Date(postMillis))
+            }
+        }
+    }
+
+    /**
      * Formats existing timestamp string or falls back to current epoch.
      */
     fun formatTimestamp(rawTimestamp: String?, epochMs: Long = 0L): String {
         if (epochMs > 0L) {
             return getRelativeTimeString(epochMs)
         }
-        val clean = rawTimestamp?.trim().orEmpty()
-        if (clean.isEmpty() || clean.equals("Just now", ignoreCase = true)) return "Just now"
-
-        // If numeric timestamp string
-        val parsedEpoch = clean.toLongOrNull()
-        if (parsedEpoch != null && parsedEpoch > 1000000000L) {
-            return getRelativeTimeString(parsedEpoch)
-        }
-
-        // Try ISO 8601 UTC string
-        val isoEpoch = parseIsoToEpochMs(clean)
-        if (isoEpoch != null && isoEpoch > 0L) {
-            return getRelativeTimeString(isoEpoch)
-        }
-
-        // If string like "2h ago", parse relative token dynamically
-        if (clean.endsWith("ago", ignoreCase = true)) {
-            val token = clean.split(" ").firstOrNull().orEmpty()
-            val unit = token.takeLast(1).lowercase()
-            val amount = token.dropLast(1).toLongOrNull()
-            if (amount != null) {
-                val now = System.currentTimeMillis()
-                val calculatedMs = when (unit) {
-                    "s" -> now - TimeUnit.SECONDS.toMillis(amount)
-                    "m" -> now - TimeUnit.MINUTES.toMillis(amount)
-                    "h" -> now - TimeUnit.HOURS.toMillis(amount)
-                    "d" -> now - TimeUnit.DAYS.toMillis(amount)
-                    else -> now
-                }
-                return getRelativeTimeString(calculatedMs)
-            }
-        }
-
-        return clean
+        return formatTimeAgo(rawTimestamp)
     }
 
     fun formatIsoTimestamp(epochMs: Long = System.currentTimeMillis()): String {
