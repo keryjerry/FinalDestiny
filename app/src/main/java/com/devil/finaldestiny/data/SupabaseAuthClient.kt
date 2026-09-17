@@ -2257,6 +2257,53 @@ object SupabaseAuthClient {
         }
     }
 
+    suspend fun sendSocialNotificationToSupabase(
+        recipientId: String,
+        actorId: String,
+        type: String,
+        entityId: String,
+        title: String,
+        content: String
+    ): Boolean = withContext(Dispatchers.IO) {
+        if (recipientId.isBlank() || actorId.isBlank() || recipientId == actorId) return@withContext false
+        try {
+            val baseUrl = supabaseUrl.trimEnd('/')
+            val token = getValidAuthToken()
+            val endpoint = "$baseUrl/rest/v1/notifications"
+            val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 6000
+                readTimeout = 6000
+                setRequestProperty("apikey", supabaseAnonKey)
+                setRequestProperty("Authorization", "Bearer $token")
+                setRequestProperty("Content-Type", "application/json")
+                doOutput = true
+            }
+            val payload = org.json.JSONObject().apply {
+                put("recipient_id", recipientId)
+                put("user_id", recipientId)
+                put("actor_id", actorId)
+                put("sender_id", actorId)
+                put("type", type)
+                put("entity_id", entityId)
+                put("post_id", entityId)
+                put("title", title)
+                put("message", content)
+                put("content", content)
+                put("is_read", false)
+            }
+            connection.outputStream.use { os ->
+                os.write(payload.toString().toByteArray(Charsets.UTF_8))
+            }
+            val resCode = connection.responseCode
+            Log.d(TAG, "[SOCIAL_NOTIF_SEND] POST /rest/v1/notifications status $resCode | recipient: $recipientId, actor: $actorId, type: $type")
+            resCode in 200..299
+        } catch (e: Exception) {
+            Log.e(TAG, "[SOCIAL_NOTIF_SEND] Error sending social notification to Supabase", e)
+            false
+        }
+    }
+
     suspend fun fetchConversationsFromSupabase(currentUserId: String): List<com.devil.finaldestiny.model.DirectMessageConversation> = withContext(Dispatchers.IO) {
         val conversationsMap = mutableMapOf<String, com.devil.finaldestiny.model.DirectMessageConversation>()
         if (currentUserId.isBlank()) return@withContext emptyList()

@@ -192,16 +192,35 @@ fun FinalDestinyApp(
 
     var hasUnreadMessages by remember { mutableStateOf(false) }
 
-    // Process incoming notification click intent & navigate directly to ChatDetail / Inbox
+    // Start Realtime Social Notification Manager Service
+    LaunchedEffect(user.id) {
+        if (user.id.isNotBlank()) {
+            com.devil.finaldestiny.engine.NotificationManagerService.startNotificationListener(context, user.id)
+        }
+    }
+
+    // Process incoming notification click intent & navigate directly to Target Screen (ChatDetail / Profile / Feed)
     LaunchedEffect(pendingNotificationIntent) {
         val targetIntent = pendingNotificationIntent
         if (targetIntent != null) {
             val navTarget = targetIntent.getStringExtra("NAV_TARGET") ?: targetIntent.getStringExtra("target_screen")
+            val notifType = targetIntent.getStringExtra("NOTIF_TYPE")
             val otherUserId = targetIntent.getStringExtra("OTHER_USER_ID")
             val otherUsername = targetIntent.getStringExtra("OTHER_USERNAME")
             val otherAvatar = targetIntent.getStringExtra("OTHER_AVATAR")
 
-            if (navTarget == "CHAT_DETAIL" || navTarget == "INBOX" || !otherUserId.isNullOrBlank()) {
+            if (navTarget == "USER_PROFILE" || notifType == "FOLLOW" || notifType == "NEW_FOLLOWER") {
+                if (!otherUserId.isNullOrBlank()) {
+                    if (otherUserId.isBlank() || otherUserId == user.id) {
+                        selectedProfileUserId = null
+                    } else {
+                        selectedProfileUserId = otherUserId
+                    }
+                    currentScreen = Screen.USER_PROFILE
+                }
+            } else if (navTarget == "SECONDARY_FEED" || notifType == "LIKE" || notifType == "POST_LIKED" || notifType == "COMMENT") {
+                currentScreen = Screen.SECONDARY_FEED
+            } else if (navTarget == "CHAT_DETAIL" || navTarget == "INBOX" || !otherUserId.isNullOrBlank()) {
                 if (!otherUserId.isNullOrBlank()) {
                     directChatTargetUserId = otherUserId
                     directChatTargetUsername = otherUsername

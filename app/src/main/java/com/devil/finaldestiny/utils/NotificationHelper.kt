@@ -19,10 +19,12 @@ import com.devil.finaldestiny.R
 object NotificationHelper {
     const val CHANNEL_ID = "final_destiny_alerts"
     const val CHANNEL_NAME = "Messages & Activity Alerts"
+    const val SOCIAL_CHANNEL_ID = "social_notifications"
+    const val SOCIAL_CHANNEL_NAME = "Social Notifications (Likes, Follows, Comments)"
     private const val TAG = "NotificationHelper"
 
     /**
-     * Initializes the high-importance Notification Channel for banner push popups.
+     * Initializes the high-importance Notification Channels for push popups.
      */
     fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -39,7 +41,20 @@ object NotificationHelper {
                     setShowBadge(true)
                 }
                 manager.createNotificationChannel(channel)
-                Log.d(TAG, "[CHANNEL_INIT] High Importance Notification Channel '$CHANNEL_ID' created successfully")
+
+                val socialChannel = NotificationChannel(
+                    SOCIAL_CHANNEL_ID,
+                    SOCIAL_CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "High priority notifications for Likes, Follows, and Comments"
+                    enableVibration(true)
+                    enableLights(true)
+                    setShowBadge(true)
+                }
+                manager.createNotificationChannel(socialChannel)
+
+                Log.d(TAG, "[CHANNEL_INIT] High Importance Notification Channels created successfully")
             }
         }
     }
@@ -78,7 +93,8 @@ object NotificationHelper {
         targetScreen: String? = null,
         senderId: String? = null,
         senderUsername: String? = null,
-        senderAvatarUrl: String? = null
+        senderAvatarUrl: String? = null,
+        notificationType: String? = null
     ) {
         // Verify POST_NOTIFICATIONS permission on API 33+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -91,15 +107,13 @@ object NotificationHelper {
         try {
             val intent = Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                if (!senderId.isNullOrBlank()) {
-                    putExtra("NAV_TARGET", "CHAT_DETAIL")
-                    putExtra("OTHER_USER_ID", senderId)
-                    if (!senderUsername.isNullOrBlank()) putExtra("OTHER_USERNAME", senderUsername)
-                    if (!senderAvatarUrl.isNullOrBlank()) putExtra("OTHER_AVATAR", senderAvatarUrl)
-                } else if (!targetScreen.isNullOrBlank()) {
-                    putExtra("NAV_TARGET", targetScreen)
-                    putExtra("target_screen", targetScreen)
-                }
+                val resolvedTarget = targetScreen ?: if (!senderId.isNullOrBlank()) "CHAT_DETAIL" else "INBOX"
+                putExtra("NAV_TARGET", resolvedTarget)
+                if (!senderId.isNullOrBlank()) putExtra("OTHER_USER_ID", senderId)
+                if (!senderUsername.isNullOrBlank()) putExtra("OTHER_USERNAME", senderUsername)
+                if (!senderAvatarUrl.isNullOrBlank()) putExtra("OTHER_AVATAR", senderAvatarUrl)
+                if (!targetScreen.isNullOrBlank()) putExtra("target_screen", targetScreen)
+                if (!notificationType.isNullOrBlank()) putExtra("NOTIF_TYPE", notificationType)
             }
 
             val requestCode = if (!senderId.isNullOrBlank()) senderId.hashCode() else notificationId
@@ -111,9 +125,10 @@ object NotificationHelper {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
+            val channelId = if (notificationType == "FOLLOW" || notificationType == "LIKE" || notificationType == "COMMENT" || notificationType == "NEW_FOLLOWER" || notificationType == "POST_LIKED") SOCIAL_CHANNEL_ID else CHANNEL_ID
             val smallIconRes = R.mipmap.ic_launcher
 
-            val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+            val builder = NotificationCompat.Builder(context, channelId)
                 .setSmallIcon(smallIconRes)
                 .setContentTitle(title)
                 .setContentText(message)
@@ -126,7 +141,7 @@ object NotificationHelper {
             val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
             manager?.notify(notificationId, builder.build())
 
-            Log.d(TAG, "[PUSH_NOTIF] Successfully posted heads-up notification #$notificationId: '$title' - '$message'")
+            Log.d(TAG, "[PUSH_NOTIF] Successfully posted heads-up notification #$notificationId ($channelId): '$title' - '$message'")
         } catch (e: Exception) {
             Log.e(TAG, "[PUSH_NOTIF] Error posting notification #$notificationId", e)
         }

@@ -694,6 +694,7 @@ class AppRepository {
     }
 
     fun toggleLikePost(postId: String) {
+        val targetPost = _momentPosts.value.find { it.id == postId }
         _momentPosts.value = _momentPosts.value.map { post ->
             if (post.id == postId) {
                 post.copy(
@@ -702,10 +703,29 @@ class AppRepository {
                 )
             } else post
         }
+
+        if (targetPost != null && !targetPost.isLiked) {
+            val myId = _currentUser.value.id.takeIf { it.isNotBlank() && it != "usr_me" } ?: SupabaseAuthClient.getCurrentUserId() ?: ""
+            val postOwnerId = targetPost.userId
+            if (myId.isNotBlank() && postOwnerId.isNotBlank() && myId != postOwnerId) {
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                    SupabaseAuthClient.sendSocialNotificationToSupabase(
+                        recipientId = postOwnerId,
+                        actorId = myId,
+                        type = "POST_LIKED",
+                        entityId = postId,
+                        title = "${_currentUser.value.name}",
+                        content = "liked your reel"
+                    )
+                }
+            }
+        }
     }
 
     fun addCommentToPost(postId: String, text: String) {
         val user = _currentUser.value
+        val targetPost = _momentPosts.value.find { it.id == postId }
+
         _momentPosts.value = _momentPosts.value.map { post ->
             if (post.id == postId) {
                 val newComment = MomentComment(senderName = user.name, text = text, timestamp = "Just now")
@@ -714,6 +734,23 @@ class AppRepository {
                     commentsCount = post.commentsCount + 1
                 )
             } else post
+        }
+
+        if (targetPost != null) {
+            val myId = user.id.takeIf { it.isNotBlank() && it != "usr_me" } ?: SupabaseAuthClient.getCurrentUserId() ?: ""
+            val postOwnerId = targetPost.userId
+            if (myId.isNotBlank() && postOwnerId.isNotBlank() && myId != postOwnerId) {
+                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                    SupabaseAuthClient.sendSocialNotificationToSupabase(
+                        recipientId = postOwnerId,
+                        actorId = myId,
+                        type = "COMMENT",
+                        entityId = postId,
+                        title = "${user.name}",
+                        content = "commented on your reel: ${text.take(30)}"
+                    )
+                }
+            }
         }
     }
 
