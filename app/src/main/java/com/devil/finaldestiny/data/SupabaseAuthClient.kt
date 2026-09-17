@@ -14,6 +14,13 @@ import com.devil.finaldestiny.model.MomentPost
 import com.devil.finaldestiny.model.UserProfile
 import com.devil.finaldestiny.utils.TimeUtils
 
+data class UnreadMessageSenderInfo(
+    val senderId: String,
+    val senderName: String,
+    val senderAvatarUrl: String?,
+    val text: String
+)
+
 sealed class AuthResult {
     data class Success(val uid: String, val email: String, val token: String) : AuthResult()
     data class Error(val message: String) : AuthResult()
@@ -2183,6 +2190,38 @@ object SupabaseAuthClient {
             Log.e(TAG, "[UNREAD_MESSAGES_CHECK] Error checking unread messages", e)
         }
         false
+    }
+
+    suspend fun fetchUnreadMessageInfoFromSupabase(currentUserId: String?): UnreadMessageSenderInfo? = withContext(Dispatchers.IO) {
+        if (currentUserId.isNullOrBlank()) return@withContext null
+        try {
+            val baseUrl = supabaseUrl.trimEnd('/')
+            val endpoint = "$baseUrl/rest/v1/messages?receiver_id=eq.$currentUserId&is_read=eq.false&order=created_at.desc&limit=1"
+            val (code, resText) = executeGetWithRetry(endpoint)
+            if (code in 200..299 && resText.isNotBlank()) {
+                val arr = org.json.JSONArray(resText)
+                if (arr.length() > 0) {
+                    val obj = arr.getJSONObject(0)
+                    val senderId = obj.optString("sender_id", "")
+                    val senderName = obj.optString("sender_name", "").takeIf { it.isNotBlank() && it != "null" }
+                        ?: obj.optString("sender_handle", "").takeIf { it.isNotBlank() && it != "null" }
+                        ?: "User"
+                    val senderAvatar = obj.optString("sender_avatar", "").takeIf { it.isNotBlank() && it != "null" }
+                    val text = obj.optString("text", "")
+                    if (senderId.isNotBlank()) {
+                        return@withContext UnreadMessageSenderInfo(
+                            senderId = senderId,
+                            senderName = senderName,
+                            senderAvatarUrl = senderAvatar,
+                            text = text
+                        )
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "[UNREAD_MESSAGES_INFO] Error fetching unread message info", e)
+        }
+        null
     }
 
     suspend fun markMessagesAsReadInSupabase(currentUserId: String, senderId: String? = null): Boolean = withContext(Dispatchers.IO) {

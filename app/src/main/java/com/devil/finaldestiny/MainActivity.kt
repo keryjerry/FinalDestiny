@@ -74,6 +74,7 @@ enum class Screen {
 
 class MainActivity : ComponentActivity(), PaymentResultWithDataListener {
     private val repository = AppRepository()
+    private val pendingNotificationIntent = androidx.compose.runtime.mutableStateOf<android.content.Intent?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,6 +90,8 @@ class MainActivity : ComponentActivity(), PaymentResultWithDataListener {
         NotificationHelper.createNotificationChannel(applicationContext)
         NotificationHelper.checkAndRequestNotificationPermission(this)
 
+        pendingNotificationIntent.value = intent
+
         lifecycleScope.launch {
             try {
                 val info = AppInstallerEngine.checkSupabaseAppVersion()
@@ -102,9 +105,19 @@ class MainActivity : ComponentActivity(), PaymentResultWithDataListener {
 
         setContent {
             FinalDestinyTheme {
-                FinalDestinyApp(repository = repository)
+                FinalDestinyApp(
+                    repository = repository,
+                    pendingNotificationIntent = pendingNotificationIntent.value,
+                    onNotificationIntentHandled = { pendingNotificationIntent.value = null }
+                )
             }
         }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        pendingNotificationIntent.value = intent
     }
 
     override fun onPaymentSuccess(razorpayPaymentId: String?, paymentData: PaymentData?) {
@@ -124,7 +137,11 @@ class MainActivity : ComponentActivity(), PaymentResultWithDataListener {
 }
 
 @Composable
-fun FinalDestinyApp(repository: AppRepository) {
+fun FinalDestinyApp(
+    repository: AppRepository,
+    pendingNotificationIntent: android.content.Intent? = null,
+    onNotificationIntentHandled: () -> Unit = {}
+) {
     val context = LocalContext.current
     LaunchedEffect(context) {
         com.devil.finaldestiny.ui.theme.ThemeManager.init(context)
@@ -175,24 +192,63 @@ fun FinalDestinyApp(repository: AppRepository) {
 
     var hasUnreadMessages by remember { mutableStateOf(false) }
 
+    // Process incoming notification click intent & navigate directly to ChatDetail / Inbox
+    LaunchedEffect(pendingNotificationIntent) {
+        val targetIntent = pendingNotificationIntent
+        if (targetIntent != null) {
+            val navTarget = targetIntent.getStringExtra("NAV_TARGET") ?: targetIntent.getStringExtra("target_screen")
+            val otherUserId = targetIntent.getStringExtra("OTHER_USER_ID")
+            val otherUsername = targetIntent.getStringExtra("OTHER_USERNAME")
+            val otherAvatar = targetIntent.getStringExtra("OTHER_AVATAR")
+
+            if (navTarget == "CHAT_DETAIL" || navTarget == "INBOX" || !otherUserId.isNullOrBlank()) {
+                if (!otherUserId.isNullOrBlank()) {
+                    directChatTargetUserId = otherUserId
+                    directChatTargetUsername = otherUsername
+                    directChatTargetAvatarUrl = otherAvatar
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                        com.devil.finaldestiny.data.SupabaseAuthClient.markMessagesAsReadInSupabase(user.id, otherUserId)
+                    }
+                } else {
+                    directChatTargetUserId = null
+                    directChatTargetUsername = null
+                    directChatTargetAvatarUrl = null
+                }
+                currentScreen = Screen.INBOX
+                hasUnreadMessages = false
+            }
+            onNotificationIntentHandled()
+        }
+    }
+
     // Synchronize Unread Messages & System Push Notification Trigger
     LaunchedEffect(user.id, currentScreen) {
         if (user.id.isNotBlank()) {
             if (currentScreen == Screen.INBOX) {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    com.devil.finaldestiny.data.SupabaseAuthClient.markMessagesAsReadInSupabase(user.id)
+                    com.devil.finaldestiny.data.SupabaseAuthClient.markMessagesAsReadInSupabase(user.id, directChatTargetUserId)
                 }
                 hasUnreadMessages = false
             } else {
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    val unread = com.devil.finaldestiny.data.SupabaseAuthClient.checkUnreadMessagesFromSupabase(user.id)
+                    val unreadInfo = com.devil.finaldestiny.data.SupabaseAuthClient.fetchUnreadMessageInfoFromSupabase(user.id)
+                    val unread = unreadInfo != null || com.devil.finaldestiny.data.SupabaseAuthClient.checkUnreadMessagesFromSupabase(user.id)
                     if (unread && !hasUnreadMessages) {
+                        val senderId = unreadInfo?.senderId
+                        val senderName = unreadInfo?.senderName ?: "Direct Message"
+                        val senderAvatar = unreadInfo?.senderAvatarUrl
+                        val msgText = unreadInfo?.text?.ifBlank { "You have unread direct messages on Final Destiny" }
+                            ?: "You have unread direct messages on Final Destiny"
+
                         NotificationHelper.showHeadsUpPushNotification(
-                            context,
-                            1001,
-                            "New Message 💬",
-                            "You have unread direct messages on Final Destiny",
-                            "INBOX"
+                            context = context,
+                            notificationId = 1001,
+                            title = "Message from $senderName 💬",
+                            message = msgText,
+                            targetScreen = "CHAT_DETAIL",
+                            senderId = senderId,
+                            senderUsername = senderName,
+                            senderAvatarUrl = senderAvatar
                         )
                     }
                     hasUnreadMessages = unread

@@ -68,14 +68,17 @@ object NotificationHelper {
     }
 
     /**
-     * Triggers an Android system-level Heads-Up Push Notification.
+     * Triggers an Android system-level Heads-Up Push Notification with direct chat navigation support.
      */
     fun showHeadsUpPushNotification(
         context: Context,
         notificationId: Int,
         title: String,
         message: String,
-        targetScreen: String? = null
+        targetScreen: String? = null,
+        senderId: String? = null,
+        senderUsername: String? = null,
+        senderAvatarUrl: String? = null
     ) {
         // Verify POST_NOTIFICATIONS permission on API 33+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -87,15 +90,23 @@ object NotificationHelper {
 
         try {
             val intent = Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                if (!targetScreen.isNullOrBlank()) {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                if (!senderId.isNullOrBlank()) {
+                    putExtra("NAV_TARGET", "CHAT_DETAIL")
+                    putExtra("OTHER_USER_ID", senderId)
+                    if (!senderUsername.isNullOrBlank()) putExtra("OTHER_USERNAME", senderUsername)
+                    if (!senderAvatarUrl.isNullOrBlank()) putExtra("OTHER_AVATAR", senderAvatarUrl)
+                } else if (!targetScreen.isNullOrBlank()) {
+                    putExtra("NAV_TARGET", targetScreen)
                     putExtra("target_screen", targetScreen)
                 }
             }
 
+            val requestCode = if (!senderId.isNullOrBlank()) senderId.hashCode() else notificationId
+
             val pendingIntent = PendingIntent.getActivity(
                 context,
-                notificationId,
+                requestCode,
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
