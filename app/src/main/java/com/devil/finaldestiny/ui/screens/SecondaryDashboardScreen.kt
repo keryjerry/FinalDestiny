@@ -387,7 +387,7 @@ fun SecondaryDashboardScreen(
     ) {
         LazyColumn(
             state = feedListState,
-            contentPadding = PaddingValues(bottom = 96.dp),
+            contentPadding = PaddingValues(top = 8.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxSize()
         ) {
@@ -517,7 +517,7 @@ fun SecondaryDashboardScreen(
             // INSTAGRAM-STYLE STORIES TRAY
             item {
                 LazyRow(
-                    contentPadding = PaddingValues(horizontal = 14.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
