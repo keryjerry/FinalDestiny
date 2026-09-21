@@ -584,7 +584,7 @@ fun SecondaryDashboardScreen(
                                 }
                             }
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text("Your story", fontSize = 10.sp, color = NavyTextPrimary, fontWeight = FontWeight.Bold)
+                            Text("Your story", fontSize = 10.sp, color = Color(0xFFE2E8F0), fontWeight = FontWeight.Bold)
                         }
                     }
 
@@ -612,69 +612,69 @@ fun SecondaryDashboardScreen(
                                 )
                             }
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text(story.authorName, fontSize = 10.sp, color = NavyTextPrimary, maxLines = 1, fontWeight = FontWeight.SemiBold)
-                            Text(relativeTime, fontSize = 9.sp, color = SlateTextSecondary, maxLines = 1)
+                            Text(story.authorName, fontSize = 10.sp, color = Color(0xFFE2E8F0), maxLines = 1, fontWeight = FontWeight.SemiBold)
+                            Text(relativeTime, fontSize = 9.sp, color = Color(0xFF94A3B8), maxLines = 1)
                         }
                     }
                 }
             }
 
-            // ACTION BUTTONS (DIRECTLY BELOW STORIES TRAY: 🎬 REEL & 🔴 GO LIVE)
+            // SLEEK COMPACT ACTION BAR (REEL & GO LIVE)
             item {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp)
+                        .padding(horizontal = 14.dp, vertical = 2.dp)
                 ) {
-                    // 🎬 Reel Button: Gradient Blue #2563EB to Purple #7C3AED
-                    Box(
-                        contentAlignment = Alignment.Center,
+                    // 🎬 Reel Button
+                    Surface(
+                        onClick = {
+                            isReelUploadMode = true
+                            postMediaLauncher.launch("*/*")
+                        },
+                        color = Color(0xFF141721),
+                        shape = RoundedCornerShape(16.dp),
+                        border = androidx.compose.foundation.BorderStroke(0.6.dp, Color(0x33D4AF37)),
                         modifier = Modifier
                             .weight(1f)
-                            .height(42.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(
-                                Brush.horizontalGradient(
-                                    colors = listOf(Color(0xFF2563EB), Color(0xFF7C3AED))
-                                )
-                            )
-                            .clickable {
-                                isReelUploadMode = true
-                                postMediaLauncher.launch("*/*")
-                            }
+                            .height(32.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("🎬", fontSize = 14.sp)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Text("🎬", fontSize = 12.sp)
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Reel", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("Reel", color = Color(0xFFE2E8F0), fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                         }
                     }
 
-                    // 🔴 Go Live Button: Gradient Red #E11D48 to Orange #F97316 (With 500 Follower Check & Guidelines)
-                    Box(
-                        contentAlignment = Alignment.Center,
+                    // 🔴 Go Live Button
+                    Surface(
+                        onClick = {
+                            if (user.followerCount < 500) {
+                                showNotEligibleDialog = true
+                            } else {
+                                showCommunityGuidelinesDialog = true
+                            }
+                        },
+                        color = Color(0xFF141721),
+                        shape = RoundedCornerShape(16.dp),
+                        border = androidx.compose.foundation.BorderStroke(0.6.dp, Color(0x33D4AF37)),
                         modifier = Modifier
                             .weight(1f)
-                            .height(42.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(
-                                Brush.horizontalGradient(
-                                    colors = listOf(Color(0xFFE11D48), Color(0xFFF97316))
-                                )
-                            )
-                            .clickable {
-                                if (user.followerCount < 500) {
-                                    showNotEligibleDialog = true
-                                } else {
-                                    showCommunityGuidelinesDialog = true
-                                }
-                            }
+                            .height(32.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("🔴", fontSize = 14.sp)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            Text("🔴", fontSize = 12.sp)
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Go Live", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                            Text("Go Live", color = Color(0xFFE2E8F0), fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                         }
                     }
                 }
@@ -754,7 +754,7 @@ fun SecondaryDashboardScreen(
 
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF141721)),
-                    shape = RoundedCornerShape(20.dp),
+                    shape = RoundedCornerShape(16.dp),
                     border = androidx.compose.foundation.BorderStroke(0.7.dp, Color(0x33D4AF37)),
                     modifier = Modifier
                         .fillMaxWidth()
@@ -763,7 +763,7 @@ fun SecondaryDashboardScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(20.dp))
+                            .clip(RoundedCornerShape(16.dp))
                     ) {
                         // FULL-BLEED MEDIA CONTAINER WITH TOP 4 & BOTTOM 6 INSTAGRAM OVERLAYS
                         com.devil.finaldestiny.ui.components.PinchZoomContainer(
@@ -929,8 +929,8 @@ fun SecondaryDashboardScreen(
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(
                                             text = creatorTitle.removePrefix("@"),
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.White,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color(0xFFFFFFFF),
                                             fontSize = 13.sp
                                         )
                                         Text(" ✓", fontSize = 10.sp, color = VerifiedBlue, fontWeight = FontWeight.Bold)
@@ -943,8 +943,8 @@ fun SecondaryDashboardScreen(
                                             )
                                             Text(
                                                 text = post.collaboratorName.trim(),
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color.White,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color(0xFFFFFFFF),
                                                 fontSize = 13.sp
                                             )
                                             Text(" ✓", fontSize = 10.sp, color = VerifiedBlue, fontWeight = FontWeight.Bold)
@@ -961,14 +961,14 @@ fun SecondaryDashboardScreen(
                                         Icon(
                                             imageVector = Icons.Default.NorthEast,
                                             contentDescription = "Audio Track",
-                                            tint = Color.White.copy(0.9f),
+                                            tint = Color(0xFF94A3B8),
                                             modifier = Modifier.size(12.dp)
                                         )
                                         Spacer(modifier = Modifier.width(3.dp))
                                         Icon(
                                             imageVector = Icons.Default.MusicNote,
                                             contentDescription = "Music",
-                                            tint = Color.White.copy(0.9f),
+                                            tint = Color(0xFF94A3B8),
                                             modifier = Modifier.size(12.dp)
                                         )
                                         Spacer(modifier = Modifier.width(4.dp))
@@ -978,10 +978,10 @@ fun SecondaryDashboardScreen(
                                         }
                                         Text(
                                             text = displayAudioTitle,
-                                            color = Color.White.copy(0.9f),
+                                            color = Color(0xFF94A3B8),
                                             fontSize = 11.sp,
                                             maxLines = 1,
-                                            fontWeight = FontWeight.Medium
+                                            fontWeight = FontWeight.Normal
                                         )
                                     }
                                 }
@@ -990,26 +990,26 @@ fun SecondaryDashboardScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    // ARROW 3: High-End Translucent Follow Pill Button
+                                    // ARROW 3: Luxury Translucent Follow Pill Button with Gold Accent
                                     Surface(
                                         onClick = {
                                             onToggleFollowAuthor(post.id)
                                             Toast.makeText(context, if (post.isFollowingAuthor) "Unfollowed" else "Following!", Toast.LENGTH_SHORT).show()
                                         },
                                         color = Color(0x33FFFFFF),
-                                        shape = RoundedCornerShape(8.dp),
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(0.6f)),
-                                        modifier = Modifier.height(28.dp)
+                                        shape = RoundedCornerShape(13.dp),
+                                        border = androidx.compose.foundation.BorderStroke(0.8.dp, Color(0x66D4AF37)),
+                                        modifier = Modifier.height(26.dp)
                                     ) {
                                         Box(
                                             contentAlignment = Alignment.Center,
-                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 1.dp)
                                         ) {
                                             Text(
                                                 text = if (post.isFollowingAuthor) "Following" else "Follow",
                                                 color = Color.White,
                                                 fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold
+                                                fontWeight = FontWeight.SemiBold
                                             )
                                         }
                                     }
