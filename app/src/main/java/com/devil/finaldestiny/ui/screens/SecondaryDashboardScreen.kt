@@ -383,7 +383,7 @@ fun SecondaryDashboardScreen(
         },
         modifier = Modifier
             .fillMaxSize()
-            .background(SkyBlueBgLight)
+            .background(Color(0xFF0A0B10))
     ) {
         LazyColumn(
             state = feedListState,
@@ -448,12 +448,13 @@ fun SecondaryDashboardScreen(
                             modifier = Modifier
                                 .size(36.dp)
                                 .clip(CircleShape)
-                                .background(SkyBlueHeader)
+                                .background(Color(0xFF141721))
+                                .border(0.7.dp, Color(0x33D4AF37), CircleShape)
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = "Back",
-                                tint = NavyTextPrimary,
+                                tint = Color(0xFFD4AF37),
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -462,7 +463,7 @@ fun SecondaryDashboardScreen(
                             text = "Final Destiny",
                             fontSize = 24.sp,
                             fontWeight = FontWeight.ExtraBold,
-                            color = NavyTextPrimary,
+                            color = Color(0xFFD4AF37),
                             letterSpacing = (-0.5).sp
                         )
                     }
@@ -473,12 +474,13 @@ fun SecondaryDashboardScreen(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(SkyBlueHeader)
+                                .background(Color(0xFF141721))
+                                .border(0.7.dp, Color(0x33D4AF37), CircleShape)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Add,
                                 contentDescription = "Create Post or Reel",
-                                tint = NavyTextPrimary,
+                                tint = Color(0xFFD4AF37),
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -491,7 +493,8 @@ fun SecondaryDashboardScreen(
                                 modifier = Modifier
                                     .size(40.dp)
                                     .clip(CircleShape)
-                                    .background(SkyBlueHeader)
+                                    .background(Color(0xFF141721))
+                                    .border(0.7.dp, Color(0x33D4AF37), CircleShape)
                             ) {
                                 Icon(
                                     imageVector = if (notifications.any { !it.isRead }) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
@@ -749,539 +752,543 @@ fun SecondaryDashboardScreen(
                     }
                 }
 
-                Column(
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF141721)),
+                    shape = RoundedCornerShape(20.dp),
+                    border = androidx.compose.foundation.BorderStroke(0.7.dp, Color(0x33D4AF37)),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 14.dp)
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    // FULL-BLEED MEDIA CONTAINER WITH TOP 4 & BOTTOM 6 INSTAGRAM OVERLAYS
-                    com.devil.finaldestiny.ui.components.PinchZoomContainer(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .aspectRatio(if (isReel) 9f / 16f else 4f / 5f)
+                            .clip(RoundedCornerShape(20.dp))
                     ) {
-                        Box(
-                            contentAlignment = Alignment.Center,
+                        // FULL-BLEED MEDIA CONTAINER WITH TOP 4 & BOTTOM 6 INSTAGRAM OVERLAYS
+                        com.devil.finaldestiny.ui.components.PinchZoomContainer(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .background(NavyTextPrimary)
-                                .pointerInput(post.id) {
-                                    detectTapGestures(
-                                        onTap = {
-                                            if (isReel) {
-                                                val reelsOnly = momentPosts.filter {
-                                                    val url = it.mediaUrl.ifBlank { it.mediaUri ?: "" }
-                                                    it.mediaType == MediaType.REEL_VIDEO || (url.isNotBlank() && (url.endsWith(".mp4", ignoreCase = true) || url.contains("video", ignoreCase = true)))
-                                                }
-                                                val reelIdx = reelsOnly.indexOfFirst { r -> r.id == post.id }.coerceAtLeast(0)
-                                                onNavigateToReelViewer(reelIdx)
-                                            }
-                                        },
-                                        onDoubleTap = {
-                                            onLikePost(post.id)
-                                            Toast.makeText(context, "❤️ Loved!", Toast.LENGTH_SHORT).show()
-                                        }
-                                    )
-                                }
+                                .fillMaxWidth()
+                                .aspectRatio(if (isReel) 9f / 16f else 4f / 5f)
                         ) {
-                        // BASE THUMBNAIL PLACEHOLDER LAYER (ALWAYS RENDERED FIRST TO PREVENT BLACK FLICKER/FREEZING ON SCROLL)
-                        if (effectiveMediaUrl.isNotBlank()) {
-                            coil.compose.AsyncImage(
-                                model = coil.request.ImageRequest.Builder(context)
-                                    .data(effectiveMediaUrl)
-                                    .videoFrameMillis(500)
-                                    .crossfade(true)
-                                    .build(),
-                                imageLoader = videoImageLoader,
-                                contentDescription = "Uploaded Media",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        } else if (localBitmap != null) {
-                            Image(
-                                bitmap = localBitmap,
-                                contentDescription = "Uploaded Media",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        } else {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.padding(16.dp)
-                            ) {
-                                Icon(
-                                    if (isReel) Icons.Default.Videocam else Icons.Default.PhotoLibrary,
-                                    contentDescription = null,
-                                    tint = BrightCyanAccent,
-                                    modifier = Modifier.size(48.dp)
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = if (isReel) "🎬 9:16 Vertical Reel Video" else "📸 4:5 Photo Post",
-                                    color = Color.White,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-
-                        // VIDEO PLAYER OVERLAY SURFACE (ACTIVE WHEN IN CENTER VIEWPORT)
-                        if (isActivePlaying && effectiveMediaUrl.isNotBlank()) {
-                            androidx.compose.ui.viewinterop.AndroidView(
-                                factory = { ctx ->
-                                    androidx.media3.ui.PlayerView(ctx).apply {
-                                        player = sharedExoPlayer
-                                        useController = false
-                                        resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                                        setBackgroundColor(android.graphics.Color.TRANSPARENT)
-                                    }
-                                },
-                                update = { playerView ->
-                                    if (playerView.player != sharedExoPlayer) {
-                                        playerView.player = sharedExoPlayer
-                                    }
-                                },
+                            Box(
+                                contentAlignment = Alignment.Center,
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .graphicsLayer { alpha = playerAlpha }
+                                    .background(NavyTextPrimary)
+                                    .pointerInput(post.id) {
+                                        detectTapGestures(
+                                            onTap = {
+                                                if (isReel) {
+                                                    val reelsOnly = momentPosts.filter {
+                                                        val url = it.mediaUrl.ifBlank { it.mediaUri ?: "" }
+                                                        it.mediaType == MediaType.REEL_VIDEO || (url.isNotBlank() && (url.endsWith(".mp4", ignoreCase = true) || url.contains("video", ignoreCase = true)))
+                                                    }
+                                                    val reelIdx = reelsOnly.indexOfFirst { r -> r.id == post.id }.coerceAtLeast(0)
+                                                    onNavigateToReelViewer(reelIdx)
+                                                }
+                                            },
+                                            onDoubleTap = {
+                                                onLikePost(post.id)
+                                                Toast.makeText(context, "❤️ Loved!", Toast.LENGTH_SHORT).show()
+                                            }
+                                        )
+                                    }
+                            ) {
+                            // BASE THUMBNAIL PLACEHOLDER LAYER (ALWAYS RENDERED FIRST TO PREVENT BLACK FLICKER/FREEZING ON SCROLL)
+                            if (effectiveMediaUrl.isNotBlank()) {
+                                coil.compose.AsyncImage(
+                                    model = coil.request.ImageRequest.Builder(context)
+                                        .data(effectiveMediaUrl)
+                                        .videoFrameMillis(500)
+                                        .crossfade(true)
+                                        .build(),
+                                    imageLoader = videoImageLoader,
+                                    contentDescription = "Uploaded Media",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else if (localBitmap != null) {
+                                Image(
+                                    bitmap = localBitmap,
+                                    contentDescription = "Uploaded Media",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            } else {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.padding(16.dp)
+                                ) {
+                                    Icon(
+                                        if (isReel) Icons.Default.Videocam else Icons.Default.PhotoLibrary,
+                                        contentDescription = null,
+                                        tint = BrightCyanAccent,
+                                        modifier = Modifier.size(48.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Text(
+                                        text = if (isReel) "🎬 9:16 Vertical Reel Video" else "📸 4:5 Photo Post",
+                                        color = Color.White,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
+                            // VIDEO PLAYER OVERLAY SURFACE (ACTIVE WHEN IN CENTER VIEWPORT)
+                            if (isActivePlaying && effectiveMediaUrl.isNotBlank()) {
+                                androidx.compose.ui.viewinterop.AndroidView(
+                                    factory = { ctx ->
+                                        androidx.media3.ui.PlayerView(ctx).apply {
+                                            player = sharedExoPlayer
+                                            useController = false
+                                            resizeMode = androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                                            setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                                        }
+                                    },
+                                    update = { playerView ->
+                                        if (playerView.player != sharedExoPlayer) {
+                                            playerView.player = sharedExoPlayer
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .graphicsLayer { alpha = playerAlpha }
+                                )
+
+                                // Floating Mute/Unmute Audio Speaker Toggle
+                                IconButton(
+                                    onClick = {
+                                        isFeedAudioMuted = !isFeedAudioMuted
+                                        sharedExoPlayer.volume = if (isFeedAudioMuted) 0f else 1f
+                                    },
+                                    modifier = Modifier
+                                        .align(Alignment.BottomEnd)
+                                        .padding(12.dp)
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.Black.copy(alpha = 0.6f))
+                                ) {
+                                    Icon(
+                                        imageVector = if (isFeedAudioMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                                        contentDescription = if (isFeedAudioMuted) "Unmute Video" else "Mute Video",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+
+                            // Top Gradient Scrim for Header Overlay Visibility
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(100.dp)
+                                    .align(Alignment.TopCenter)
+                                    .background(
+                                        Brush.verticalGradient(
+                                            colors = listOf(Color.Black.copy(0.65f), Color.Transparent)
+                                        )
+                                    )
                             )
 
-                            // Floating Mute/Unmute Audio Speaker Toggle
-                            IconButton(
-                                onClick = {
-                                    isFeedAudioMuted = !isFeedAudioMuted
-                                    sharedExoPlayer.volume = if (isFeedAudioMuted) 0f else 1f
-                                },
+                            // ----------------------------------------------------
+                            // TOP 4 ACTIONS OVERLAY (MATCHING ANNOTATED SCREENSHOT)
+                            // ----------------------------------------------------
+                            Row(
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier
-                                    .align(Alignment.BottomEnd)
-                                    .padding(12.dp)
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.Black.copy(alpha = 0.6f))
+                                    .fillMaxWidth()
+                                    .align(Alignment.TopCenter)
+                                    .padding(horizontal = 12.dp, vertical = 10.dp)
                             ) {
-                                Icon(
-                                    imageVector = if (isFeedAudioMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
-                                    contentDescription = if (isFeedAudioMuted) "Unmute Video" else "Mute Video",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-
-                        // Top Gradient Scrim for Header Overlay Visibility
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(100.dp)
-                                .align(Alignment.TopCenter)
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors = listOf(Color.Black.copy(0.65f), Color.Transparent)
-                                    )
-                                )
-                        )
-
-                        // ----------------------------------------------------
-                        // TOP 4 ACTIONS OVERLAY (MATCHING ANNOTATED SCREENSHOT)
-                        // ----------------------------------------------------
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .align(Alignment.TopCenter)
-                                .padding(horizontal = 12.dp, vertical = 10.dp)
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                val creatorTitle = when {
-                                    !post.profile?.fullName.isNullOrBlank() -> post.profile!!.fullName!!
-                                    !post.profile?.username.isNullOrBlank() -> if (post.profile!!.username!!.startsWith("@")) post.profile!!.username!! else "@${post.profile!!.username!!}"
-                                    !post.authorName.isNullOrBlank() && post.authorName.trim().lowercase() != "null" && !post.authorName.startsWith("User_") && !post.authorName.startsWith("user_") -> post.authorName.trim()
-                                    !post.authorHandle.isNullOrBlank() && post.authorHandle.trim().lowercase() != "null" -> post.authorHandle.trim()
-                                    else -> "Creator"
-                                }
-
-                                // ARROW 1: Profile Avatar & Co-Author Header
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.clickable {
-                                        onOpenUserProfile(post.userId)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    val creatorTitle = when {
+                                        !post.profile?.fullName.isNullOrBlank() -> post.profile!!.fullName!!
+                                        !post.profile?.username.isNullOrBlank() -> if (post.profile!!.username!!.startsWith("@")) post.profile!!.username!! else "@${post.profile!!.username!!}"
+                                        !post.authorName.isNullOrBlank() && post.authorName.trim().lowercase() != "null" && !post.authorName.startsWith("User_") && !post.authorName.startsWith("user_") -> post.authorName.trim()
+                                        !post.authorHandle.isNullOrBlank() && post.authorHandle.trim().lowercase() != "null" -> post.authorHandle.trim()
+                                        else -> "Creator"
                                     }
-                                ) {
-                                    ProfileAvatarView(
-                                        name = creatorTitle,
-                                        profilePictureUri = post.authorAvatar,
-                                        size = 32.dp,
-                                        showBorder = true,
-                                        borderColor = Color.White
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = creatorTitle.removePrefix("@"),
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White,
-                                        fontSize = 13.sp
-                                    )
-                                    Text(" ✓", fontSize = 10.sp, color = VerifiedBlue, fontWeight = FontWeight.Bold)
 
-                                    if (!post.collaboratorName.isNullOrBlank() && post.collaboratorName.trim().lowercase() != "null") {
-                                        Text(
-                                            text = " and ",
-                                            color = Color.White.copy(0.85f),
-                                            fontSize = 12.sp
+                                    // ARROW 1: Profile Avatar & Co-Author Header
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.clickable {
+                                            onOpenUserProfile(post.userId)
+                                        }
+                                    ) {
+                                        ProfileAvatarView(
+                                            name = creatorTitle,
+                                            profilePictureUri = post.authorAvatar,
+                                            size = 32.dp,
+                                            showBorder = true,
+                                            borderColor = Color.White
                                         )
+                                        Spacer(modifier = Modifier.width(8.dp))
                                         Text(
-                                            text = post.collaboratorName.trim(),
+                                            text = creatorTitle.removePrefix("@"),
                                             fontWeight = FontWeight.Bold,
                                             color = Color.White,
                                             fontSize = 13.sp
                                         )
                                         Text(" ✓", fontSize = 10.sp, color = VerifiedBlue, fontWeight = FontWeight.Bold)
+
+                                        if (!post.collaboratorName.isNullOrBlank() && post.collaboratorName.trim().lowercase() != "null") {
+                                            Text(
+                                                text = " and ",
+                                                color = Color.White.copy(0.85f),
+                                                fontSize = 12.sp
+                                            )
+                                            Text(
+                                                text = post.collaboratorName.trim(),
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White,
+                                                fontSize = 13.sp
+                                            )
+                                            Text(" ✓", fontSize = 10.sp, color = VerifiedBlue, fontWeight = FontWeight.Bold)
+                                        }
                                     }
-                                }
 
-                                Spacer(modifier = Modifier.height(4.dp))
+                                    Spacer(modifier = Modifier.height(4.dp))
 
-                                // ARROW 2: Tilted Arrow Music Pill
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.clickable { showAudioDetailSheetForPost = post }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.NorthEast,
-                                        contentDescription = "Audio Track",
-                                        tint = Color.White.copy(0.9f),
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(3.dp))
-                                    Icon(
-                                        imageVector = Icons.Default.MusicNote,
-                                        contentDescription = "Music",
-                                        tint = Color.White.copy(0.9f),
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    val displayAudioTitle = when {
-                                        !post.audioTitle.isNullOrBlank() && post.audioTitle.trim().lowercase() != "null" -> post.audioTitle.trim()
-                                        else -> "Original Audio"
-                                    }
-                                    Text(
-                                        text = displayAudioTitle,
-                                        color = Color.White.copy(0.9f),
-                                        fontSize = 11.sp,
-                                        maxLines = 1,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
-                            }
-
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                // ARROW 3: High-End Translucent Follow Pill Button
-                                Surface(
-                                    onClick = {
-                                        onToggleFollowAuthor(post.id)
-                                        Toast.makeText(context, if (post.isFollowingAuthor) "Unfollowed" else "Following!", Toast.LENGTH_SHORT).show()
-                                    },
-                                    color = Color(0x33FFFFFF),
-                                    shape = RoundedCornerShape(8.dp),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(0.6f)),
-                                    modifier = Modifier.height(28.dp)
-                                ) {
-                                    Box(
-                                        contentAlignment = Alignment.Center,
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+                                    // ARROW 2: Tilted Arrow Music Pill
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.clickable { showAudioDetailSheetForPost = post }
                                     ) {
+                                        Icon(
+                                            imageVector = Icons.Default.NorthEast,
+                                            contentDescription = "Audio Track",
+                                            tint = Color.White.copy(0.9f),
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(3.dp))
+                                        Icon(
+                                            imageVector = Icons.Default.MusicNote,
+                                            contentDescription = "Music",
+                                            tint = Color.White.copy(0.9f),
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        val displayAudioTitle = when {
+                                            !post.audioTitle.isNullOrBlank() && post.audioTitle.trim().lowercase() != "null" -> post.audioTitle.trim()
+                                            else -> "Original Audio"
+                                        }
                                         Text(
-                                            text = if (post.isFollowingAuthor) "Following" else "Follow",
-                                            color = Color.White,
+                                            text = displayAudioTitle,
+                                            color = Color.White.copy(0.9f),
                                             fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold
+                                            maxLines = 1,
+                                            fontWeight = FontWeight.Medium
                                         )
                                     }
                                 }
 
-                                // ARROW 4: More Options Three-Dots Menu Icon
-                                IconButton(
-                                    onClick = { showMoreOptionsMenuForPost = post },
-                                    modifier = Modifier.size(28.dp)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.MoreVert,
-                                        contentDescription = "More Options",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(22.dp)
-                                    )
+                                    // ARROW 3: High-End Translucent Follow Pill Button
+                                    Surface(
+                                        onClick = {
+                                            onToggleFollowAuthor(post.id)
+                                            Toast.makeText(context, if (post.isFollowingAuthor) "Unfollowed" else "Following!", Toast.LENGTH_SHORT).show()
+                                        },
+                                        color = Color(0x33FFFFFF),
+                                        shape = RoundedCornerShape(8.dp),
+                                        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(0.6f)),
+                                        modifier = Modifier.height(28.dp)
+                                    ) {
+                                        Box(
+                                            contentAlignment = Alignment.Center,
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+                                        ) {
+                                            Text(
+                                                text = if (post.isFollowingAuthor) "Following" else "Follow",
+                                                color = Color.White,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+
+                                    // ARROW 4: More Options Three-Dots Menu Icon
+                                    IconButton(
+                                        onClick = { showMoreOptionsMenuForPost = post },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.MoreVert,
+                                            contentDescription = "More Options",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Reel Center Play Button Overlay
+                            if (isReel) {
+                                Box(
+                                    contentAlignment = Alignment.Center,
+                                    modifier = Modifier
+                                        .size(54.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.Black.copy(0.45f))
+                                        .border(1.dp, Color.White.copy(0.6f), CircleShape)
+                                        .clickable {
+                                            Toast.makeText(context, "▶️ Playing Reel Video...", Toast.LENGTH_SHORT).show()
+                                        }
+                                ) {
+                                    Icon(Icons.Default.PlayArrow, contentDescription = "Play", tint = Color.White, modifier = Modifier.size(32.dp))
                                 }
                             }
                         }
 
-                        // Reel Center Play Button Overlay
-                        if (isReel) {
-                            Box(
-                                contentAlignment = Alignment.Center,
+                        // --------------------------------------------------------
+                        // CONDITIONAL CTA BANNER (SLIM ~38DP INDIGO/PURPLE BANNER)
+                        // Rendered ONLY IF post has valid link & (active promotion or paid partnership)
+                        // --------------------------------------------------------
+                        val hasActiveCta = (!post.ctaUrl.isNullOrBlank() || !post.ctaText.isNullOrBlank() || !post.ctaLabel.isNullOrBlank()) &&
+                                (post.isSponsored || post.isPaidPartnership || post.promotionStatus == "active")
+
+                        if (hasActiveCta) {
+                            Surface(
+                                color = Color(0xFF3730A3), // Deep Indigo / Purple matching Reference Screenshot 3
                                 modifier = Modifier
-                                    .size(54.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.Black.copy(0.45f))
-                                    .border(1.dp, Color.White.copy(0.6f), CircleShape)
+                                    .fillMaxWidth()
+                                    .height(38.dp)
                                     .clickable {
-                                        Toast.makeText(context, "▶️ Playing Reel Video...", Toast.LENGTH_SHORT).show()
+                                        val targetUrl = post.ctaUrl ?: "https://finaldestiny.app"
+                                        try {
+                                            val intent = android.content.Intent(
+                                                android.content.Intent.ACTION_VIEW,
+                                                Uri.parse(targetUrl)
+                                            )
+                                            context.startActivity(intent)
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, "Opening CTA link: $targetUrl", Toast.LENGTH_SHORT).show()
+                                        }
                                     }
                             ) {
-                                Icon(Icons.Default.PlayArrow, contentDescription = "Play", tint = Color.White, modifier = Modifier.size(32.dp))
+                                Row(
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 14.dp)
+                                ) {
+                                    Text(
+                                        text = post.ctaText ?: post.ctaLabel ?: "Sign up",
+                                        color = Color.White,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                        contentDescription = "Navigate Link",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                             }
                         }
                     }
 
-                    // --------------------------------------------------------
-                    // CONDITIONAL CTA BANNER (SLIM ~38DP INDIGO/PURPLE BANNER)
-                    // Rendered ONLY IF post has valid link & (active promotion or paid partnership)
-                    // --------------------------------------------------------
-                    val hasActiveCta = (!post.ctaUrl.isNullOrBlank() || !post.ctaText.isNullOrBlank() || !post.ctaLabel.isNullOrBlank()) &&
-                            (post.isSponsored || post.isPaidPartnership || post.promotionStatus == "active")
-
-                    if (hasActiveCta) {
-                        Surface(
-                            color = Color(0xFF3730A3), // Deep Indigo / Purple matching Reference Screenshot 3
+                        // --------------------------------------------------------
+                        // BOTTOM ENGAGEMENT DETAILS (ROYAL OBSIDIAN DARK CARD CONTAINER)
+                        // --------------------------------------------------------
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(38.dp)
-                                .clickable {
-                                    val targetUrl = post.ctaUrl ?: "https://finaldestiny.app"
-                                    try {
-                                        val intent = android.content.Intent(
-                                            android.content.Intent.ACTION_VIEW,
-                                            Uri.parse(targetUrl)
-                                        )
-                                        context.startActivity(intent)
-                                    } catch (e: Exception) {
-                                        Toast.makeText(context, "Opening CTA link: $targetUrl", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
+                                .wrapContentHeight()
+                                .background(Color(0xFF141721))
+                                .padding(horizontal = 14.dp, vertical = 8.dp)
                         ) {
+                            // ENGAGEMENT ICONS BAR (Heart, Comment, Repost, Send DM, Bookmark)
                             Row(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 14.dp)
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Text(
-                                    text = post.ctaText ?: post.ctaLabel ?: "Sign up",
-                                    color = Color.White,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                                    contentDescription = "Navigate Link",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                    }
-                }
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    // Heart Icon
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        IconButton(
+                                            onClick = {
+                                                onLikePost(post.id)
+                                                CoreIntelligenceEngine.instance.recordInteraction("usr_me", post, EventType.LIKE)
+                                                Toast.makeText(context, if (post.isLiked) "Unliked" else "❤️ Loved!", Toast.LENGTH_SHORT).show()
+                                            },
+                                            modifier = Modifier.size(28.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = if (post.isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                                contentDescription = "Like",
+                                                tint = if (post.isLiked) HeartRed else Color.White,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+                                    }
 
-                    // --------------------------------------------------------
-                    // BOTTOM ENGAGEMENT DETAILS (STRICT WRAP CONTENT HEIGHT, NO DEAD WHITESPACE)
-                    // --------------------------------------------------------
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .wrapContentHeight()
-                            .background(SkyBlueCardBg)
-                            .padding(horizontal = 14.dp, vertical = 6.dp)
-                    ) {
-                        // ENGAGEMENT ICONS BAR (Heart, Comment, Repost, Send DM, Bookmark)
-                        Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                // Heart Icon
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    // Comment Icon
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.clickable {
+                                            showCommentsSheetForPost = post
+                                            CoreIntelligenceEngine.instance.recordInteraction("usr_me", post, EventType.COMMENT)
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.Comment,
+                                            contentDescription = "Comments",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "${post.commentsCount}",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+
+                                    // Repost Counter
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.clickable {
+                                            CoreIntelligenceEngine.instance.recordInteraction("usr_me", post, EventType.SHARE)
+                                            Toast.makeText(context, "🔁 Reposted Reel to your feed!", Toast.LENGTH_SHORT).show()
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Repeat,
+                                            contentDescription = "Repost",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(22.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "${post.sharesCount}",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                    }
+
+                                    // Send DM Icon
                                     IconButton(
                                         onClick = {
-                                            onLikePost(post.id)
-                                            CoreIntelligenceEngine.instance.recordInteraction("usr_me", post, EventType.LIKE)
-                                            Toast.makeText(context, if (post.isLiked) "Unliked" else "❤️ Loved!", Toast.LENGTH_SHORT).show()
+                                            showDirectShareSheetForPost = post
+                                            CoreIntelligenceEngine.instance.recordInteraction("usr_me", post, EventType.SHARE)
                                         },
                                         modifier = Modifier.size(28.dp)
                                     ) {
                                         Icon(
-                                            imageVector = if (post.isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                            contentDescription = "Like",
-                                            tint = if (post.isLiked) HeartRed else NavyTextPrimary,
-                                            modifier = Modifier.size(24.dp)
+                                            imageVector = Icons.AutoMirrored.Filled.Send,
+                                            contentDescription = "Share DM",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(22.dp)
                                         )
                                     }
                                 }
 
-                                // Comment Icon
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.clickable {
-                                        showCommentsSheetForPost = post
-                                        CoreIntelligenceEngine.instance.recordInteraction("usr_me", post, EventType.COMMENT)
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.Comment,
-                                        contentDescription = "Comments",
-                                        tint = NavyTextPrimary,
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "${post.commentsCount}",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = NavyTextPrimary
-                                    )
-                                }
-
-                                // Repost Counter
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.clickable {
-                                        CoreIntelligenceEngine.instance.recordInteraction("usr_me", post, EventType.SHARE)
-                                        Toast.makeText(context, "🔁 Reposted Reel to your feed!", Toast.LENGTH_SHORT).show()
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Repeat,
-                                        contentDescription = "Repost",
-                                        tint = NavyTextPrimary,
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "${post.sharesCount}",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = NavyTextPrimary
-                                    )
-                                }
-
-                                // Send DM Icon
+                                // Bookmark Ribbon Icon
                                 IconButton(
                                     onClick = {
-                                        showDirectShareSheetForPost = post
-                                        CoreIntelligenceEngine.instance.recordInteraction("usr_me", post, EventType.SHARE)
+                                        onToggleSavePost(post.id)
+                                        CoreIntelligenceEngine.instance.recordInteraction("usr_me", post, EventType.SAVE_BOOKMARK)
+                                        Toast.makeText(context, if (post.isSaved) "Unsaved" else "📌 Saved to Profile!", Toast.LENGTH_SHORT).show()
                                     },
                                     modifier = Modifier.size(28.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.Send,
-                                        contentDescription = "Share DM",
-                                        tint = NavyTextPrimary,
-                                        modifier = Modifier.size(22.dp)
+                                        imageVector = if (post.isSaved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                                        contentDescription = "Save Post",
+                                        tint = if (post.isSaved) Color(0xFFD4AF37) else Color.White,
+                                        modifier = Modifier.size(24.dp)
                                     )
                                 }
                             }
 
-                            // Bookmark Ribbon Icon
-                            IconButton(
-                                onClick = {
-                                    onToggleSavePost(post.id)
-                                    CoreIntelligenceEngine.instance.recordInteraction("usr_me", post, EventType.SAVE_BOOKMARK)
-                                    Toast.makeText(context, if (post.isSaved) "Unsaved" else "📌 Saved to Profile!", Toast.LENGTH_SHORT).show()
-                                },
-                                modifier = Modifier.size(28.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (post.isSaved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                                    contentDescription = "Save Post",
-                                    tint = if (post.isSaved) SkyBluePrimary else NavyTextPrimary,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        // Dynamic Likes Summary
-                        val likesCount = post.likesCount
-                        if (likesCount > 0) {
-                            Text(
-                                text = "$likesCount likes",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = NavyTextPrimary
-                            )
                             Spacer(modifier = Modifier.height(4.dp))
-                        }
 
-                        // INLINE CAPTION CLAMPING (REPAIRS VERTICAL LETTER-BY-LETTER WRAP BUG)
-                        val authorHandleText = when {
-                            !post.authorName.isNullOrBlank() && post.authorName.trim().lowercase() != "null" && !post.authorName.startsWith("User_") && !post.authorName.startsWith("user_") -> post.authorName.trim()
-                            !post.authorHandle.isNullOrBlank() && post.authorHandle.trim().lowercase() != "null" -> post.authorHandle.trim().removePrefix("@")
-                            else -> "Creator"
-                        }
-                        val isLongCaptionText = post.caption.length > 42
-
-                        val annotatedCaptionText = remember(authorHandleText, post.caption, isExpandedCaption) {
-                            buildAnnotatedString {
-                                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = NavyTextPrimary)) {
-                                    append(authorHandleText)
-                                }
-                                append(" ")
-                                if (isExpandedCaption || !isLongCaptionText) {
-                                    append(post.caption)
-                                } else {
-                                    append(post.caption.take(42))
-                                    append("...")
-                                }
-                            }
-                        }
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text(
-                                text = annotatedCaptionText,
-                                fontSize = 13.sp,
-                                color = NavyTextPrimary,
-                                maxLines = if (isExpandedCaption) 15 else 2,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier
-                                    .weight(1f, fill = false)
-                                    .clickable { if (isLongCaptionText) isExpandedCaption = !isExpandedCaption }
-                            )
-                            if (isLongCaptionText && !isExpandedCaption) {
+                            // Dynamic Likes Summary
+                            val likesCount = post.likesCount
+                            if (likesCount > 0) {
                                 Text(
-                                    text = "more",
-                                    fontSize = 13.sp,
+                                    text = "$likesCount likes",
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = SlateTextSecondary,
-                                    modifier = Modifier
-                                        .padding(start = 2.dp)
-                                        .clickable { isExpandedCaption = true }
+                                    color = Color.White
                                 )
+                                Spacer(modifier = Modifier.height(4.dp))
                             }
+
+                            // INLINE CAPTION CLAMPING (REPAIRS VERTICAL LETTER-BY-LETTER WRAP BUG)
+                            val authorHandleText = when {
+                                !post.authorName.isNullOrBlank() && post.authorName.trim().lowercase() != "null" && !post.authorName.startsWith("User_") && !post.authorName.startsWith("user_") -> post.authorName.trim()
+                                !post.authorHandle.isNullOrBlank() && post.authorHandle.trim().lowercase() != "null" -> post.authorHandle.trim().removePrefix("@")
+                                else -> "Creator"
+                            }
+                            val isLongCaptionText = post.caption.length > 42
+
+                            val annotatedCaptionText = remember(authorHandleText, post.caption, isExpandedCaption) {
+                                buildAnnotatedString {
+                                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = Color(0xFFD4AF37))) {
+                                        append(authorHandleText)
+                                    }
+                                    append(" ")
+                                    if (isExpandedCaption || !isLongCaptionText) {
+                                        append(post.caption)
+                                    } else {
+                                        append(post.caption.take(42))
+                                        append("...")
+                                    }
+                                }
+                            }
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = annotatedCaptionText,
+                                    fontSize = 13.sp,
+                                    color = Color.White,
+                                    maxLines = if (isExpandedCaption) 15 else 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier
+                                        .weight(1f, fill = false)
+                                        .clickable { if (isLongCaptionText) isExpandedCaption = !isExpandedCaption }
+                                )
+                                if (isLongCaptionText && !isExpandedCaption) {
+                                    Text(
+                                        text = "more",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFF94A3B8),
+                                        modifier = Modifier
+                                            .padding(start = 2.dp)
+                                            .clickable { isExpandedCaption = true }
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = getRelativeTime(post.timestamp),
+                                fontSize = 10.sp,
+                                color = Color(0xFF94A3B8)
+                            )
                         }
-
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = getRelativeTime(post.timestamp),
-                            fontSize = 10.sp,
-                            color = SlateTextSecondary
-                        )
                     }
-
-                    HorizontalDivider(
-                        color = SkyBlueBorder,
-                        thickness = 0.5.dp
-                    )
                 }
             }
 

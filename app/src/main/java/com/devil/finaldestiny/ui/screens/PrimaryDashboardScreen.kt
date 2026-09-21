@@ -80,7 +80,7 @@ fun PrimaryDashboardScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(PrimaryGradient)
+                .background(Color(0xFF0A0B10))
                 .statusBarsPadding()
                 .pointerInput(Unit) {
                     detectHorizontalDragGestures { _, dragAmount ->
@@ -96,11 +96,11 @@ fun PrimaryDashboardScreen(
         ) {
         // User Profile Header Card with Realtime Notification Bell
         Card(
-            colors = CardDefaults.cardColors(containerColor = CardBackground),
-            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF141721)),
+            shape = RoundedCornerShape(20.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, CrimsonVelvet, RoundedCornerShape(16.dp))
+                .border(0.7.dp, Color(0x33D4AF37), RoundedCornerShape(20.dp))
                 .clickable { onNavigateToProfile() }
                 .padding(10.dp)
         ) {
